@@ -17,8 +17,8 @@ export async function enableNotifications(): Promise<boolean> {
 async function show(title: string, body: string) {
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg) await reg.showNotification(title, { body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: 'nefesh-dose' });
-    else new Notification(title, { body, icon: '/icons/icon-192.png' });
+    if (reg) await reg.showNotification(title, { body, icon: `${import.meta.env.BASE_URL}icons/icon-192.png`, badge: `${import.meta.env.BASE_URL}icons/icon-192.png`, tag: 'nefesh-dose' });
+    else new Notification(title, { body, icon: `${import.meta.env.BASE_URL}icons/icon-192.png` });
   } catch {
     /* sem suporte */
   }

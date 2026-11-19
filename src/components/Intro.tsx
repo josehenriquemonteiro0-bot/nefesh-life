@@ -15,8 +15,8 @@ export function Intro({ hasPlan, onDone }: { hasPlan: boolean; onDone: () => voi
     return (
       <div className={cls} role="dialog" aria-label="Boas-vindas">
         <div className="inner">
-          <div className="mark"><i /><i /><i /><img src="/brand/mark.png" alt="" /></div>
-          <img className="word" src="/brand/wordmark.png" alt="nefesh" />
+          <div className="mark"><i /><i /><i /><img src={`${import.meta.env.BASE_URL}brand/mark.png`} alt="" /></div>
+          <img className="word" src={`${import.meta.env.BASE_URL}brand/wordmark.png`} alt="nefesh" />
           <p className="rise d1 life">LIFE</p>
           <h1 className="rise d1">Bem-vindo ao seu ritual de Spirulina</h1>
           <p className="rise d2">Nutrição inteligente, produzida em Portugal e feita à sua medida.</p>

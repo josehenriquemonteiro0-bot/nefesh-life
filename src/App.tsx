@@ -107,7 +107,7 @@ export function App() {
       <div className="app">
         <header>
           <div className="logo">
-            <img src="/brand/logo-header.png" alt="nefesh" width={130} height={30} />
+            <img src={`${import.meta.env.BASE_URL}brand/logo-header.png`} alt="nefesh" width={130} height={30} />
             <small>LIFE</small>
           </div>
           <button className="btn ghost sm" onClick={startQuiz}>Reavaliar</button>
