@@ -1,0 +1,114 @@
+import { useState } from 'react';
+import { Bar, Columns, LineChart } from '../components/Charts';
+import { Icon } from '../components/Icon';
+import { STEP_GOAL } from '../domain/content';
+import { daysSince, keyDaysAgo, shortDate } from '../domain/dates';
+import { healthProvider } from '../domain/health';
+import { calcPlan, indexOf } from '../domain/plan';
+import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
+import { useStore } from '../state/store';
+
+export function Evolution({ openReport }: { openReport: () => void }) {
+  const { S } = useStore();
+  const [days, setDays] = useState<14 | 30>(14);
+  if (!S.ans) return null;
+  const de = changeSinceStart(S, 'e');
+  const dd = changeSinceStart(S, 'd');
+  const gw = calcPlan(S.ans).water;
+  const bs = badges(S);
+  const got = bs.filter((b) => b[2]).length;
+  const range = (n: number) => Array.from({ length: n }, (_, i) => S.logs[keyDaysAgo(n - 1 - i)]);
+  const lastEval = S.evals[S.evals.length - 1];
+
+  return (
+    <>
+      <h1>A sua evolução</h1>
+      <section className="card hero">
+        <p className="small" style={{ margin: 0, opacity: 0.8 }}>Resumo{S.planStart ? ` desde ${shortDate(S.planStart)}` : ''}</p>
+        {de !== null ? (
+          <>
+            <h2 style={{ margin: '6px 0 4px', fontSize: 22 }}>
+              A sua energia {de >= 0 ? 'subiu' : 'desceu'} <span className="neon">{Math.abs(de)}%</span> desde que começou
+            </h2>
+            <p className="small" style={{ margin: 0, opacity: 0.85 }}>
+              Disposição: {dd! >= 0 ? '+' : ''}{dd}% · melhor sequência: {bestStreak(S)} dias
+            </p>
+          </>
+        ) : (
+          <h2 style={{ margin: '6px 0 0' }}>Faça check-in durante 10 dias para ver o seu primeiro resumo.</h2>
+        )}
+      </section>
+
+      <div className="stats">
+        <div className="stat"><b>{streak(S)}</b><span>dias seguidos</span></div>
+        <div className="stat"><b>{adherence(S, 30)}%</b><span>adesão 30 dias</span></div>
+        <div className="stat"><b>{got}/{bs.length}</b><span>conquistas</span></div>
+      </div>
+
+      <section className="card">
+        <div className="row">
+          <h2 style={{ margin: 0 }}>Como se tem sentido</h2>
+          <div className="seg" role="group" aria-label="Período">
+            <button className={days === 14 ? 'on' : ''} aria-pressed={days === 14} onClick={() => setDays(14)}>14 dias</button>
+            <button className={days === 30 ? 'on' : ''} aria-pressed={days === 30} onClick={() => setDays(30)}>30 dias</button>
+          </div>
+        </div>
+        <div className="legend" style={{ marginTop: 10 }}>
+          <span><i style={{ background: '#00FE8A' }} />Energia</span>
+          <span><i style={{ background: '#C9A85C' }} />Sono</span>
+          <span><i style={{ background: '#e8ede9' }} />Disposição</span>
+        </div>
+        <LineChart
+          days={days}
+          series={[
+            { color: '#00FE8A', values: range(days).map((l) => l?.e) },
+            { color: '#C9A85C', values: range(days).map((l) => l?.s) },
+            { color: '#e8ede9', values: range(days).map((l) => l?.d) },
+          ]}
+        />
+      </section>
+
+      <section className="card">
+        <div className="row"><h2 style={{ margin: 0 }}>Água</h2><span className="small mute">meta {gw} copos</span></div>
+        <Columns values={range(14).map((l) => l?.water || 0)} goal={gw} label={(v) => `${v} copos`} />
+      </section>
+
+      {S.health && (
+        <section className="card">
+          <div className="row"><h2 style={{ margin: 0 }}>Passos</h2><span className="small mute">meta {STEP_GOAL.toLocaleString('pt-PT')}</span></div>
+          <Columns values={Array.from({ length: 14 }, (_, i) => healthProvider.steps(13 - i))} goal={STEP_GOAL} variant="steps" label={(v) => `${v} passos`} />
+        </section>
+      )}
+
+      <section className="card">
+        <h2>Índice NEFESH</h2>
+        <div className="evals">
+          {S.evals.length ? (
+            S.evals.map((e) => (
+              <div className="ev" key={e.date}><span className="mute">{shortDate(e.date)}</span><Bar pct={indexOf(e.sc)} /><b>{indexOf(e.sc)}</b></div>
+            ))
+          ) : (
+            <p className="small mute">Sem avaliações.</p>
+          )}
+        </div>
+        <p className="small mute" style={{ margin: '10px 0 0' }}>
+          {lastEval && daysSince(lastEval.date) >= 30 ? 'Já pode fazer a sua reavaliação mensal.' : 'Próxima reavaliação recomendada a cada 30 dias.'}
+        </p>
+      </section>
+
+      <section className="card">
+        <h2>Conquistas</h2>
+        <div className="badges">
+          {bs.map(([icon, t, on]) => (
+            <div className={`badge ${on ? 'on' : ''}`} key={t}>
+              <div className="b"><Icon name={icon} color={on ? '#1a1406' : 'currentColor'} width={2} /></div>
+              {t}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <button className="btn ghost full" onClick={openReport}>Partilhar relatório com um profissional</button>
+    </>
+  );
+}
