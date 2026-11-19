@@ -63,19 +63,35 @@ export interface AppState {
   logs: Record<string, DayLog>;
   evals: Evaluation[];
   bottles?: Bottle[];
+  /** formato em que a pessoa toma a Spirulina */
+  format?: 'caps' | 'po' | 'nibs';
+  proDose?: ProDose | null;
 }
 
 /** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */
 export interface WhyStep {
   label: string;
   value: string;
-  kind: 'evidencia' | 'criterio';
+  kind: 'evidencia' | 'criterio' | 'rotulo' | 'profissional';
   note: string;
   studies?: string[];
 }
 
-export interface Plan {
+export interface ProDose {
   g: number;
+  by: string;
+  at: string;
+}
+
+export interface Plan {
+  /** dose diária final, em gramas */
+  g: number;
+  /** referência dos estudos ajustada à pessoa, antes do limite do rótulo */
+  gStudy: number;
+  /** true quando o rótulo limitou a dose */
+  capped: boolean;
+  format: 'caps' | 'po' | 'nibs';
+  /** unidades de 0,5 g (= cápsulas) */
   caps: number;
   /** dose em g por kg de peso */
   gPerKg: number;

@@ -3,10 +3,10 @@ import { Icon } from '../components/Icon';
 import { GLASS_ML, HABITS, SHOP_URL, STEP_GOAL, TIPS } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
 import { healthProvider } from '../domain/health';
-import { calcPlan, inAdaptation, indexOf, slotsFor } from '../domain/plan';
+import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
 import { adherence, habitOn, stock, streak, took } from '../domain/stats';
 import { useStore } from '../state/store';
-import { lotFor } from '../domain/lots';
+import { doseText, lotFor, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import type { Nav } from '../App';
@@ -89,7 +89,8 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
       </>
     );
 
-  const c = calcPlan(S.ans);
+  const c = planFor(S);
+  const dt = (n: number) => doseText(n, c.format);
   const sl = slotsFor(S);
   const st = stock(S);
   const doses = l.doses || [];
@@ -130,7 +131,7 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
         <div className="row">
           <div>
             <p className="small" style={{ margin: 0, opacity: 0.8 }}>Spirulina de hoje</p>
-            <h2 style={{ margin: '2px 0 0' }}>{done}/{sl.length} tomas · {totalCaps} cápsulas</h2>
+            <h2 style={{ margin: '2px 0 0' }}>{done}/{sl.length} {sl.length === 1 ? 'toma' : 'tomas'} · {dt(totalCaps)}</h2>
           </div>
           {ev && (
             <div style={{ textAlign: 'right' }}>
@@ -144,7 +145,7 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
             <div className="slot" key={s.l}>
               <div>
                 <h3>{s.l}</h3>
-                <p className="small mute" style={{ margin: 0 }}>{s.n} cápsulas{i === 0 ? ` · lembrete às ${S.reminder}` : ''}</p>
+                <p className="small mute" style={{ margin: 0 }}>{dt(s.n)}{i === 0 ? ` · lembrete às ${S.reminder}` : ''}</p>
               </div>
               <button className={`tick ${doses[i] ? 'on' : ''}`} onClick={() => toggleDose(i)} aria-pressed={!!doses[i]} aria-label={`Marcar toma: ${s.l}`}>
                 <Icon name="ok" color="#00140d" width={3} />
@@ -249,7 +250,7 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
       <section className="card">
         <div className="row">
           <h2 style={{ margin: 0 }}>Reposição</h2>
-          <span className="mute small">{st.left} de {S.stockCaps} cápsulas</span>
+          <span className="mute small">{c.format === 'caps' ? st.left : fmtNum(st.left / 2)} de {stockText(S.stockCaps, c.format)}</span>
         </div>
         <Bar pct={st.pct} variant={low ? 'low' : undefined} />
         <p className={`small ${low ? '' : 'mute'}`}>

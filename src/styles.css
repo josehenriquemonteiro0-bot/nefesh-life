@@ -173,3 +173,6 @@ input[type=time]{background:var(--panel2);border:1px solid var(--line);border-ra
 .recipe-day{display:block;width:100%;text-align:left;border:0;cursor:pointer;color:var(--ink)}
 .steps li:not(:has(.row)){font-size:15px}
 @media(max-width:360px){.rgrid{grid-template-columns:minmax(0,1fr)}.nrv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kind.ro{background:#10232c;color:var(--water)}.kind.pr{background:#2a1530;color:#e0b3f0}
+.seg-wide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+.seg-wide button{min-height:40px}

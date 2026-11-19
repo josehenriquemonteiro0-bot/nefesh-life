@@ -10,18 +10,42 @@ export type ProductId = 'caps' | 'po' | 'nibs';
 export interface Product {
   id: ProductId;
   name: string;
-  /** conteúdo da embalagem em gramas */
+  /** conteúdo da embalagem em gramas de Spirulina */
   grams: number;
   unit: string;
-  /** tamanho da embalagem ainda por confirmar com a NEFESH */
-  confirmar?: boolean;
+  /** recomendação diária máxima do rótulo, em gramas */
+  dailyMax: number;
+  dailyText: string;
 }
 
+/** Dados retirados dos rótulos NEFESH. */
 export const PRODUCTS: Record<ProductId, Product> = {
-  caps: { id: 'caps', name: 'Pure Spirulina · 120 cápsulas', grams: 60, unit: '120 cápsulas de 500 mg' },
-  po: { id: 'po', name: 'Spirulina em pó', grams: 100, unit: '100 g', confirmar: true },
-  nibs: { id: 'nibs', name: 'Spirulina Nibs', grams: 100, unit: '100 g', confirmar: true },
+  caps: { id: 'caps', name: 'Spirulina em cápsulas', grams: 60, unit: '120 cápsulas de 500 mg', dailyMax: 2, dailyText: '4 cápsulas (2 g)' },
+  po: { id: 'po', name: 'Spirulina em pó', grams: 60, unit: '60 g', dailyMax: 3, dailyText: '1 colher de chá (3 g)' },
+  nibs: { id: 'nibs', name: 'Spirulina em palhinha (Nibs)', grams: 60, unit: '60 g', dailyMax: 3, dailyText: '1 colher de chá (3 g)' },
 };
+
+const spoons = (g: number) => {
+  const c = g / 3;
+  const whole = Math.floor(c + 1e-9);
+  const frac = c - whole;
+  const f = frac < 0.2 ? '' : frac < 0.42 ? '⅓' : frac < 0.6 ? '½' : frac < 0.8 ? '⅔' : '';
+  const n = frac >= 0.8 ? whole + 1 : whole;
+  const txt = n && f ? `${n} ${f}` : n ? String(n) : f || '⅓';
+  return `${txt} ${n > 1 || (n === 1 && f) ? 'colheres' : 'colher'} de chá`;
+};
+
+/** Dose em texto no formato da pessoa: "4 cápsulas" ou "3 g (1 colher de chá)". */
+export function doseText(units: number, format: ProductId = 'caps') {
+  if (format === 'caps') return `${units} ${units === 1 ? 'cápsula' : 'cápsulas'}`;
+  const g = units / 2;
+  return `${String(g).replace('.', ',')} g (${spoons(g)})`;
+}
+
+/** Stock em texto: cápsulas ou gramas. */
+export function stockText(units: number, format: ProductId = 'caps') {
+  return format === 'caps' ? `${units} cápsulas` : `${String(units / 2).replace('.', ',')} g`;
+}
 
 /** Cápsulas-equivalentes (0,5 g) numa embalagem. */
 export const capsEquivalent = (p: ProductId) => Math.round(PRODUCTS[p].grams * 2);
@@ -76,6 +100,14 @@ export interface ScanResult {
   raw: string;
 }
 
+/**
+ * Certificados de análise ligados aos QR codes atuais dos rótulos (links do Google Drive).
+ * A confirmar: que este ficheiro é o certificado do laudo GCL_26_1372.
+ */
+export const LINKED_DOCS: Record<string, string> = {
+  '1RmLRQ1rWUAZMCPHXcSYjnDGr-0KaswGD': 'GCL_26_1372',
+};
+
 const CODE_RE = /\b([A-Z]{2,6}[_-]\d{2}[_-]\d{2,8}|L\d{4,12}|LOTE?[_-]?[A-Z0-9]{3,12})\b/i;
 
 /** Interpreta o texto de um QR code: um URL com parâmetros, um código de lote, ou texto livre. */
@@ -88,7 +120,10 @@ export function parseScan(raw: string): ScanResult {
     const u = new URL(text);
     if (u.protocol === 'http:' || u.protocol === 'https:') {
       url = u.toString();
+      const drive = u.hostname === 'drive.google.com' ? u.pathname.match(/\/d\/([\w-]+)/)?.[1] : null;
+      if (drive && LINKED_DOCS[drive]) code = LINKED_DOCS[drive];
       for (const k of ['lote', 'lot', 'batch', 'l', 'laudo', 'code']) {
+        if (code) break;
         const v = u.searchParams.get(k);
         if (v) { code = v; break; }
       }

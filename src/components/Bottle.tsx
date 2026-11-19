@@ -189,7 +189,7 @@ export function BottleSheet({ onClose, doseGrams }: { onClose: () => void; doseG
               {(Object.keys(PRODUCTS) as ProductId[]).map((p) => (
                 <button key={p} className={`opt ${product === p ? 'on' : ''}`} aria-pressed={product === p} onClick={() => setProduct(p)}>
                   {PRODUCTS[p].name}
-                  <span className="small mute" style={{ display: 'block', fontWeight: 500 }}>{PRODUCTS[p].unit} · conta como {capsEquivalent(p)} cápsulas</span>
+                  <span className="small mute" style={{ display: 'block', fontWeight: 500 }}>{PRODUCTS[p].unit} · rótulo: até {PRODUCTS[p].dailyText} por dia</span>
                 </button>
               ))}
             </div>

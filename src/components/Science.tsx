@@ -6,8 +6,15 @@ export function LevelTag({ level }: { level: EvidenceLevel }) {
   return <span className={`lvl lvl-${level}`}>{LEVELS[level].label}</span>;
 }
 
+const KINDS: Record<WhyStep['kind'], [string, string]> = {
+  evidencia: ['Estudo', 'ev'],
+  criterio: ['Critério NEFESH', 'cr'],
+  rotulo: ['Rótulo do produto', 'ro'],
+  profissional: ['Profissional de saúde', 'pr'],
+};
+
 export function KindTag({ kind }: { kind: WhyStep['kind'] }) {
-  return kind === 'evidencia' ? <span className="kind ev">Estudo</span> : <span className="kind cr">Critério NEFESH</span>;
+  return <span className={`kind ${KINDS[kind][1]}`}>{KINDS[kind][0]}</span>;
 }
 
 export function StudyCard({ s }: { s: Study }) {

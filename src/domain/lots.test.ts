@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capsEquivalent, doseNutrients, lotFor, parseScan } from './lots';
+import { capsEquivalent, doseNutrients, doseText, lotFor, parseScan } from './lots';
 import { RECIPES, recipeOfDay } from './recipes';
 import { blankState } from './sample';
 import { keyDaysAgo } from './dates';
@@ -17,10 +17,21 @@ describe('parseScan', () => {
   it('encontra o lote no caminho do URL', () => {
     expect(parseScan('https://nefesh.pt/lotes/GCL_26_1372.pdf').code).toBe('GCL_26_1372');
   });
+  it('reconhece o QR atual dos rótulos (certificado no Google Drive)', () => {
+    expect(parseScan('https://drive.google.com/file/d/1RmLRQ1rWUAZMCPHXcSYjnDGr-0KaswGD/view?usp=drivesdk').code).toBe('GCL_26_1372');
+  });
   it('guarda o URL mesmo sem código reconhecível', () => {
     const r = parseScan('https://drive.google.com/file/d/abc123/view');
     expect(r.code).toBeNull();
     expect(r.url).toContain('drive.google.com');
+  });
+});
+
+describe('doseText', () => {
+  it('mostra cápsulas ou gramas com colheres de chá', () => {
+    expect(doseText(4, 'caps')).toBe('4 cápsulas');
+    expect(doseText(6, 'po')).toBe('3 g (1 colher de chá)');
+    expect(doseText(3, 'nibs')).toBe('1,5 g (½ colher de chá)');
   });
 });
 
@@ -36,7 +47,7 @@ describe('lote e nutrientes', () => {
   });
   it('converte embalagens em cápsulas-equivalentes', () => {
     expect(capsEquivalent('caps')).toBe(120);
-    expect(capsEquivalent('po')).toBe(200);
+    expect(capsEquivalent('po')).toBe(120);
   });
 });
 
@@ -46,7 +57,7 @@ describe('receitas', () => {
     const S = { ...blankState(now), ans: { goal: 'energia' as const, peso: 70, prior: 'regular' }, stockStart: keyDaysAgo(5, now) };
     S.logs[keyDaysAgo(1, now)] = { doses: [true, true] };
     S.logs[keyDaysAgo(0, now)] = { doses: [true, true], viaRecipe: { 0: 'verde-tropical' } };
-    expect(stock(S, now).used).toBe(9);
+    expect(stock(S, now).used).toBe(4);
   });
   it('todas as receitas são frias e têm Spirulina por porção', () => {
     for (const r of RECIPES) {

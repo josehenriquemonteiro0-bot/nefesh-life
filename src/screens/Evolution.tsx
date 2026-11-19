@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { STEP_GOAL } from '../domain/content';
 import { daysSince, keyDaysAgo, shortDate } from '../domain/dates';
 import { healthProvider } from '../domain/health';
-import { calcPlan, indexOf } from '../domain/plan';
+import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
 
@@ -14,7 +14,7 @@ export function Evolution({ openReport }: { openReport: () => void }) {
   if (!S.ans) return null;
   const de = changeSinceStart(S, 'e');
   const dd = changeSinceStart(S, 'd');
-  const gw = calcPlan(S.ans).water;
+  const gw = planFor(S).water;
   const bs = badges(S);
   const got = bs.filter((b) => b[2]).length;
   const range = (n: number) => Array.from({ length: n }, (_, i) => S.logs[keyDaysAgo(n - 1 - i)]);

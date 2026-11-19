@@ -33,7 +33,7 @@ function RecipeDetail({ r, onBack }: { r: Recipe; onBack: () => void }) {
         {S.ans && next >= 0 && (
           <>
             <p className="small" style={{ margin: '10px 0' }}>
-              A sua próxima toma ({sl[next].l}) são {sl[next].n} cápsulas ({fmtNum(sl[next].n / 2)} g).
+              A sua próxima toma ({sl[next].l}) é de {fmtNum(sl[next].n / 2)} g.
               {caps < sl[next].n ? ` Esta porção cobre ${Math.round((caps / sl[next].n) * 100)}% dessa toma.` : ' Esta porção cobre a toma inteira.'}
             </p>
             <button
@@ -45,7 +45,7 @@ function RecipeDetail({ r, onBack }: { r: Recipe; onBack: () => void }) {
                   d.doses = ds;
                   d.viaRecipe = { ...(d.viaRecipe || {}), [next]: r.id };
                 });
-                toast(`Toma registada: ${sl[next].l}, com a receita. Não conta para o stock de cápsulas.`);
+                toast(`Toma registada: ${sl[next].l}, com a receita. Não conta para o stock.`);
               }}
             >
               Contar como a toma: {sl[next].l}

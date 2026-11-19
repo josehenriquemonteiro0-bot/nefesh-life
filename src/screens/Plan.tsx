@@ -1,8 +1,10 @@
 import { Bar, Radar } from '../components/Charts';
 import { DoseSteps, LevelTag, StudyCard } from '../components/Science';
-import { ADVICE, AREAS, CAPSULE_MG, EXPECT } from '../domain/content';
+import { useState } from 'react';
+import { ADVICE, AREAS, EXPECT } from '../domain/content';
+import { PRODUCTS, doseText, type ProductId } from '../domain/lots';
 import { GOAL_EVIDENCE, LEVELS, SAFETY_REASONS, studiesFor } from '../domain/science';
-import { daysSince, fmtNum } from '../domain/dates';
+import { daysSince, fmtNum, todayKey } from '../domain/dates';
 import { calcPlan, indexOf, scores, splitDose } from '../domain/plan';
 import type { Answers } from '../domain/types';
 import { useStore } from '../state/store';
@@ -18,6 +20,59 @@ interface Props {
   openScience: () => void;
 }
 
+function FormatPicker() {
+  const { S, update } = useStore();
+  const f = S.format ?? 'caps';
+  return (
+    <div className="seg seg-wide" role="group" aria-label="Como vai tomar a Spirulina">
+      {(Object.keys(PRODUCTS) as ProductId[]).map((k) => (
+        <button key={k} className={f === k ? 'on' : ''} aria-pressed={f === k} onClick={() => update((d) => { d.format = k; })}>
+          {k === 'caps' ? 'Cápsulas' : k === 'po' ? 'Pó' : 'Palhinha'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProDoseForm() {
+  const { S, update, toast } = useStore();
+  const [open, setOpen] = useState(false);
+  const [g, setG] = useState(S.proDose?.g ?? 4);
+  const [by, setBy] = useState(S.proDose?.by ?? '');
+  if (S.proDose)
+    return (
+      <div className="row" style={{ marginTop: 12 }}>
+        <p className="small" style={{ margin: 0 }}>Dose indicada por <b>{S.proDose.by}</b>.</p>
+        <button className="btn ghost sm" onClick={() => { update((d) => { d.proDose = null; }); toast('Voltou à dose do rótulo.'); }}>Remover</button>
+      </div>
+    );
+  if (!open)
+    return <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => setOpen(true)}>Um profissional indicou-me outra dose</button>;
+  return (
+    <div className="card" style={{ marginTop: 12, background: 'var(--panel2)' }}>
+      <h3>Dose indicada pelo seu profissional</h3>
+      <div className="num" style={{ margin: '6px 0' }}><output>{fmtNum(g)}</output><span className="mute">g por dia</span></div>
+      <input type="range" min={0.5} max={8} step={0.5} value={g} onChange={(e) => setG(+e.target.value)} aria-label="Gramas por dia" />
+      <input className="field sm" style={{ width: '100%', margin: '8px 0' }} value={by} onChange={(e) => setBy(e.target.value)} placeholder="Nome do profissional (ex.: Dra. Ana Silva)" aria-label="Nome do profissional" />
+      <p className="small mute">Confirmo que esta dose foi indicada por um profissional de saúde para o meu caso.</p>
+      <div className="row">
+        <button className="btn ghost sm" onClick={() => setOpen(false)}>Cancelar</button>
+        <button
+          className="btn sm"
+          disabled={!by.trim()}
+          onClick={() => {
+            update((d) => { d.proDose = { g, by: by.trim(), at: todayKey() }; });
+            toast('Dose do profissional guardada.');
+            setOpen(false);
+          }}
+        >
+          Confirmar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, openScience }: Props) {
   const { S } = useStore();
   if (!a)
@@ -28,7 +83,8 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
       </section>
     );
 
-  const c = calcPlan(a);
+  const c = calcPlan(a, { format: S.format, pro: S.proDose });
+  const dt = (units: number) => doseText(units, c.format);
   const sc = scores(a);
   const ix = indexOf(sc);
   const prevEv = isNew ? S.evals[S.evals.length - 1] : S.evals[S.evals.length - 2];
@@ -97,7 +153,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
 
   const day = !isNew && S.planStart ? daysSince(S.planStart) + 1 : 1;
   const cur = c.start && day <= 7 ? 0 : day < 30 ? 1 : day <= 31 ? 2 : 3;
-  const split = splitDose(c.caps, goal);
+  const split = splitDose(c.caps, goal, c.format);
 
   return (
     <>
@@ -106,20 +162,26 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>A sua dose de Spirulina</p>
         <div className="dose" style={{ marginTop: 6 }}>{fmtNum(c.g)} g <small>/ dia</small></div>
         <p style={{ margin: '10px 0 0' }}>
-          = <b>{c.caps} cápsulas</b> de Pure Spirulina ({CAPSULE_MG} mg)
-          <br />
-          <span className="small" style={{ opacity: 0.8 }}>ou {fmtNum(c.g)} g de Spirulina em palhinha (Nibs)</span>
+          = <b>{dt(c.caps)}</b> de {PRODUCTS[c.format].name.toLowerCase()}
         </p>
         <p className="small" style={{ margin: '10px 0 0' }}>
           {c.when}
           {split.length > 1 ? ` · ${split.map((s) => s.n).join(' + ')} cápsulas` : ''}
         </p>
+        <p className="small" style={{ margin: '14px 0 6px', opacity: 0.8 }}>Como vai tomar?</p>
+        <FormatPicker />
+        {c.capped && (
+          <p className="small" style={{ margin: '12px 0 0' }}>
+            Os estudos usaram doses mais altas para o seu objetivo ({fmtNum(c.gStudy)} g). A NEFESH respeita a recomendação do rótulo; acima dela, só com orientação de um profissional.
+          </p>
+        )}
+        <ProDoseForm />
       </section>
 
       <section className="card">
         <h2>Como calculamos a sua dose</h2>
-        <p className="small mute">Cada passo indica se vem de um <b>estudo</b> ou de um <b>critério NEFESH</b>, para saber sempre o que é ciência e o que é uma escolha nossa.</p>
-        <DoseSteps steps={c.why} total={`${fmtNum(c.g)} g · ${c.caps} cápsulas`} gPerKg={fmtNum(c.gPerKg.toFixed(3))} />
+        <p className="small mute">Cada passo indica de onde vem: de um <b>estudo</b>, de um <b>critério NEFESH</b>, do <b>rótulo</b> do produto ou do <b>seu profissional</b>.</p>
+        <DoseSteps steps={c.why} total={`${fmtNum(c.g)} g · ${dt(c.caps)}`} gPerKg={fmtNum(c.gPerKg.toFixed(3))} />
       </section>
 
       <section className="card">
@@ -128,12 +190,12 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
           {c.start && (
             <li className={cur === 0 ? 'now' : ''}>
               <h3>Semana 1 · adaptação</h3>
-              <p className="small mute" style={{ margin: 0 }}>{Math.ceil(c.caps / 2)} cápsulas por dia, para o corpo se habituar.</p>
+              <p className="small mute" style={{ margin: 0 }}>{dt(Math.ceil(c.caps / 2))} por dia, para o corpo se habituar.</p>
             </li>
           )}
           <li className={cur === 1 ? 'now' : ''}>
             <h3>{c.start ? 'Semanas 2 a 4' : 'Semanas 1 a 4'} · dose completa</h3>
-            <p className="small mute" style={{ margin: 0 }}>{c.caps} cápsulas por dia e check-in diário.</p>
+            <p className="small mute" style={{ margin: 0 }}>{dt(c.caps)} por dia e check-in diário.</p>
           </li>
           <li className={cur === 2 ? 'now' : ''}>
             <h3>Dia 30 · reavaliação</h3>

@@ -5,7 +5,7 @@ import { ReportSheet } from './components/ReportSheet';
 import { ScienceSheet } from './components/Science';
 import { BottleSheet } from './components/Bottle';
 import { Recipes } from './screens/Recipes';
-import { calcPlan } from './domain/plan';
+import { planFor } from './domain/plan';
 import { QUESTIONS } from './domain/content';
 import { todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
@@ -144,7 +144,7 @@ export function App() {
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} />}
       {scienceOpen && <ScienceSheet onClose={() => setScienceOpen(false)} />}
-      {bottleOpen && <BottleSheet onClose={() => setBottleOpen(false)} doseGrams={S.ans ? calcPlan(S.ans).g : undefined} />}
+      {bottleOpen && <BottleSheet onClose={() => setBottleOpen(false)} doseGrams={S.ans ? planFor(S).g : undefined} />}
       <div className={`toast ${toastMsg ? 'show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>
     </>
   );
