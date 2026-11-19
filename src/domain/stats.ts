@@ -17,8 +17,9 @@ export function stock(S: AppState, now = new Date()) {
   let used = 0;
   for (const k in S.logs) {
     if (k < S.stockStart) continue;
+    const viaRecipe = S.logs[k].viaRecipe || {};
     (S.logs[k].doses || []).forEach((d, i) => {
-      if (d) used += (sl[i] || sl[0] || { n: 0 }).n;
+      if (d && !viaRecipe[i]) used += (sl[i] || sl[0] || { n: 0 }).n;
     });
   }
   const per = sl.reduce((t, s) => t + s.n, 0) || 1;

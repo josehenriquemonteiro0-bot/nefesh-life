@@ -3,6 +3,9 @@ import { Icon, type IconName } from './components/Icon';
 import { Intro } from './components/Intro';
 import { ReportSheet } from './components/ReportSheet';
 import { ScienceSheet } from './components/Science';
+import { BottleSheet } from './components/Bottle';
+import { Recipes } from './screens/Recipes';
+import { calcPlan } from './domain/plan';
 import { QUESTIONS } from './domain/content';
 import { todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
@@ -17,7 +20,7 @@ import { Pros } from './screens/Pros';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'evo' | 'pros';
+export type Tab = 'home' | 'quiz' | 'check' | 'evo' | 'recipes' | 'pros';
 export type Nav = (t: Tab) => void;
 
 const TABS: [Tab, string][] = [
@@ -25,7 +28,8 @@ const TABS: [Tab, string][] = [
   ['quiz', 'Plano'],
   ['check', 'Check-in'],
   ['evo', 'Evolução'],
-  ['pros', 'Profissionais'],
+  ['recipes', 'Receitas'],
+  ['pros', 'Saúde'],
 ];
 
 export function App() {
@@ -36,6 +40,8 @@ export function App() {
   const [reportOpen, setReportOpen] = useState(false);
   const [scienceOpen, setScienceOpen] = useState(false);
   const openScience = () => setScienceOpen(true);
+  const [bottleOpen, setBottleOpen] = useState(false);
+  const openBottle = () => setBottleOpen(true);
 
   // lembrete diário enquanto a app está aberta
   useEffect(() => {
@@ -86,13 +92,14 @@ export function App() {
     if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={startQuiz} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={startQuiz} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros') {
-    screen = <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} />;
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes') {
+    screen = <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} />,
+      home: <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} />,
+      recipes: <Recipes />,
       pros: <Pros openReport={() => setReportOpen(true)} />,
     }[tab];
   }
@@ -137,6 +144,7 @@ export function App() {
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} />}
       {scienceOpen && <ScienceSheet onClose={() => setScienceOpen(false)} />}
+      {bottleOpen && <BottleSheet onClose={() => setBottleOpen(false)} doseGrams={S.ans ? calcPlan(S.ans).g : undefined} />}
       <div className={`toast ${toastMsg ? 'show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>
     </>
   );

@@ -168,7 +168,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
         <h2>Segurança e tolerância</h2>
         <ul className="list small">
           <li><span className="neon">•</span><span>Os efeitos adversos relatados são raros e sobretudo digestivos (náusea, inchaço). A semana de adaptação existe para os reduzir.</span></li>
-          <li><span className="neon">•</span><span>A segurança depende da pureza: cada lote NEFESH é analisado para microcistinas e metais pesados, e o laudo está no QR code do frasco.</span></li>
+          <li><span className="neon">•</span><span>A segurança depende da pureza, ou seja, da ausência de microcistinas e metais pesados. Leia o QR code do frasco para ver as análises do seu lote.</span></li>
           <li><span className="neon">•</span><span>A Spirulina não é fonte fiável de vitamina B12. Em alimentação vegana mantenha o suplemento de B12.</span></li>
           <li><span className="neon">•</span><span>Se tiver uma doença crónica ou tomar medicação, confirme a dose com um profissional.</span></li>
         </ul>

@@ -34,6 +34,15 @@ export interface DayLog {
   d?: number;
   /** treino: 0 nenhum, 1 leve, 2 moderado, 3 intenso */
   t?: number;
+  /** tomas feitas através de uma receita (índices), que não gastam cápsulas */
+  viaRecipe?: Record<number, string>;
+}
+
+export interface Bottle {
+  at: string;
+  product: 'caps' | 'po' | 'nibs';
+  code: string | null;
+  url: string | null;
 }
 
 export interface Evaluation {
@@ -53,6 +62,7 @@ export interface AppState {
   stockCaps: number;
   logs: Record<string, DayLog>;
   evals: Evaluation[];
+  bottles?: Bottle[];
 }
 
 /** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */

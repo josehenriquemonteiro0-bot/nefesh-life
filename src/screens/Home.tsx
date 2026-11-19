@@ -1,11 +1,13 @@
 import { Bar, Glass, Ring } from '../components/Charts';
 import { Icon } from '../components/Icon';
-import { CAPS_PER_BOTTLE, GLASS_ML, HABITS, SHOP_URL, STEP_GOAL, TIPS } from '../domain/content';
+import { GLASS_ML, HABITS, SHOP_URL, STEP_GOAL, TIPS } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
 import { healthProvider } from '../domain/health';
 import { calcPlan, inAdaptation, indexOf, slotsFor } from '../domain/plan';
 import { adherence, habitOn, stock, streak, took } from '../domain/stats';
 import { useStore } from '../state/store';
+import { lotFor } from '../domain/lots';
+import { recipeOfDay } from '../domain/recipes';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import type { Nav } from '../App';
 
@@ -72,7 +74,7 @@ function HealthCard() {
   );
 }
 
-export function Home({ go, startQuiz, onReset, replayIntro }: { go: Nav; startQuiz: () => void; onReset: () => void; replayIntro: () => void }) {
+export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: Nav; startQuiz: () => void; onReset: () => void; replayIntro: () => void; openBottle: () => void }) {
   const { S, update, updateToday, todayLog: l, toast } = useStore();
 
   if (!S.ans)
@@ -99,6 +101,9 @@ export function Home({ go, startQuiz, onReset, replayIntro }: { go: Nav; startQu
   const tip = TIPS[((daysSince('2026-01-01') % TIPS.length) + TIPS.length) % TIPS.length];
   const totalCaps = sl.reduce((t, s) => t + s.n, 0);
   const low = st.days <= 7;
+  const bottles = S.bottles || [];
+  const lastLot = lotFor([...bottles].reverse().find((b) => b.code)?.code);
+  const rd = recipeOfDay(S.ans.goal, daysSince('2026-01-01'));
 
   const toggleDose = (i: number) => {
     const next = [...doses];
@@ -211,6 +216,25 @@ export function Home({ go, startQuiz, onReset, replayIntro }: { go: Nav; startQu
         </section>
       )}
 
+      {lastLot && (
+        <section className="card">
+          <div className="row">
+            <h2 style={{ margin: 0 }}>O seu lote</h2>
+            <span className="src">Laudo {lastLot.code}</span>
+          </div>
+          <p className="small mute" style={{ margin: '8px 0 10px' }}>
+            {lastLot.values.filter((v) => v.pos === 'acima').map((v) => v.label).join(', ')} acima da referência da literatura.
+          </p>
+          <button className="btn ghost sm" onClick={openBottle}>Ver análises</button>
+        </section>
+      )}
+
+      <button className="card recipe-day" style={{ background: `linear-gradient(135deg, ${rd.hue[0]}, ${rd.hue[1]})` }} onClick={() => go('recipes')}>
+        <span className="rtag">Receita do dia · Spirulina {rd.form}</span>
+        <h2 style={{ margin: '8px 0 4px' }}>{rd.title}</h2>
+        <span className="small">{fmtNum(rd.grams)} g por porção · {rd.minutes} min · ver receitas →</span>
+      </button>
+
       <section className="card tip">
         <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>
         <p style={{ margin: 0 }}>{tip}</p>
@@ -235,14 +259,8 @@ export function Home({ go, startQuiz, onReset, replayIntro }: { go: Nav; startQu
         </p>
         <div className="row" style={{ justifyContent: 'flex-start' }}>
           <a className="btn sm" href={SHOP_URL} target="_blank" rel="noopener">Encomendar</a>
-          <button
-            className="btn ghost sm"
-            onClick={() => {
-              update((d) => { d.stockCaps += CAPS_PER_BOTTLE; });
-              toast(`Mais ${CAPS_PER_BOTTLE} cápsulas adicionadas.`);
-            }}
-          >
-            Recebi um frasco novo
+<button className="btn ghost sm" onClick={openBottle}>
+            <Icon name="qr" /> Ler QR do frasco
           </button>
         </div>
       </section>

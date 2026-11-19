@@ -34,6 +34,10 @@ export function sampleState(now = new Date()): AppState {
     stockStart: keyDaysAgo(30, now),
     stockCaps: CAPS_PER_BOTTLE * 2,
     logs,
+    bottles: [
+      { at: keyDaysAgo(30, now), product: 'caps', code: 'GCL_26_1372', url: null },
+      { at: keyDaysAgo(12, now), product: 'caps', code: 'GCL_26_1372', url: null },
+    ],
     evals: [
       { date: keyDaysAgo(30, now), sc: { energia: 35, sono: 55, nutricao: 57, hidratacao: 40, movimento: 50 } },
       { date: todayKey(now), sc: scores(ans) },
