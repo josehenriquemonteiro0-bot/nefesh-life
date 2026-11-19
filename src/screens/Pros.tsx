@@ -1,4 +1,4 @@
-import { PROS } from '../domain/content';
+import { PROS, WHATSAPP_URL } from '../domain/content';
 import { useStore } from '../state/store';
 
 export function Pros({ openReport }: { openReport: () => void }) {
@@ -15,13 +15,13 @@ export function Pros({ openReport }: { openReport: () => void }) {
             <p className="small" style={{ margin: '0 0 4px' }}>{p.a}</p>
             <p className="small mute">{p.m}</p>
             <div className="row" style={{ justifyContent: 'flex-start' }}>
-              <button className="btn sm" onClick={() => toast('Pedido de contacto registado. A equipa NEFESH vai responder-lhe.')}>Pedir contacto</button>
+              <a className="btn sm" href={WHATSAPP_URL} target="_blank" rel="noopener" onClick={() => toast('A abrir o WhatsApp da NEFESH…')}>Pedir contacto</a>
               <button className="btn ghost sm" onClick={openReport}>Enviar relatório</button>
             </div>
           </div>
         </section>
       ))}
-      <p className="small mute">Perfis de exemplo. Na versão final, cada parceiro tem um painel para acompanhar os clientes que autorizarem a partilha.</p>
+      <p className="small mute">O pedido de contacto abre o WhatsApp da NEFESH, que o encaminha para o profissional certo. Para enviar o relatório, use "Enviar relatório" e partilhe-o na conversa.</p>
     </>
   );
 }

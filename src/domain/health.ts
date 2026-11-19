@@ -1,39 +1,23 @@
 /**
- * Fonte de dados de saúde (passos e sono).
+ * Dados de saúde (passos e sono).
  *
- * No browser não existe acesso ao Apple Saúde nem ao Google Health Connect,
- * por isso esta implementação é uma simulação determinística. Na app nativa
- * (Capacitor), basta substituir `healthProvider` por uma implementação que
- * leia os dados reais através de um plugin HealthKit / Health Connect.
+ * Na PWA a pessoa regista os valores à mão (copiados do app Saúde do iPhone ou
+ * do Google Fit), no registo do dia: `DayLog.steps` e `DayLog.sleepH`.
+ *
+ * Na app nativa (Capacitor), `nativeHealth` passa a ler o Apple Saúde / Health
+ * Connect e preenche os mesmos campos automaticamente, com autorização da pessoa.
  */
-export interface HealthProvider {
-  readonly simulated: boolean;
+export interface NativeHealth {
   readonly source: string;
-  /** Passos do dia `i` dias atrás (0 = hoje). */
-  steps(i: number): number;
-  /** Horas de sono na noite que terminou `i` dias atrás. */
-  sleep(i: number): number;
+  /** passos e horas de sono do dia `i` dias atrás (0 = hoje) */
+  read(i: number): Promise<{ steps?: number; sleepH?: number }>;
 }
 
-export const simulatedHealth: HealthProvider = {
-  simulated: true,
-  source: 'Apple Saúde · simulação',
-  steps(i) {
-    const t = Math.max(0, (29 - i) / 29);
-    let v = Math.round(4300 + t * 4200 + Math.sin(i * 2.3) * 1500);
-    if (i === 0) {
-      const n = new Date();
-      const hr = n.getHours() + n.getMinutes() / 60;
-      v = Math.round(v * Math.min(1, Math.max(0.06, (hr - 7) / 14)));
-    }
-    return Math.max(600, v);
-  },
-  sleep(i) {
-    return Math.round((6.5 + Math.sin(i * 1.1) * 0.6 + ((29 - Math.min(i, 29)) / 29) * 0.6) * 10) / 10;
-  },
+/** Não existe acesso a dados de saúde num browser: só a app nativa o preenche. */
+export let nativeHealth: NativeHealth | null = null;
+export const setNativeHealth = (h: NativeHealth | null) => {
+  nativeHealth = h;
 };
 
-export let healthProvider: HealthProvider = simulatedHealth;
-export const setHealthProvider = (p: HealthProvider) => {
-  healthProvider = p;
-};
+export const STEPS_HABIT = 6000;
+export const SLEEP_HABIT = 7;

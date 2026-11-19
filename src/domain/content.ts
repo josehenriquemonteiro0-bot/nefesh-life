@@ -2,7 +2,9 @@ import type { AreaKey, Goal, HabitKey, Question } from './types';
 import type { IconName } from '../components/Icon';
 
 export const STORAGE_KEY = 'nefesh-life-v2';
-export const SHOP_URL = 'https://www.nefeshglobal.shop';
+export const SHOP_URL = 'https://www.nefeshglobal.shop/produtos';
+export const WHATSAPP_URL = 'https://wa.me/message/VNVMZENCEQPUC1';
+export const APP_VERSION = '0.2.0';
 export const CAPS_PER_BOTTLE = 120;
 export const CAPSULE_MG = 500;
 export const STEP_GOAL = 8000;

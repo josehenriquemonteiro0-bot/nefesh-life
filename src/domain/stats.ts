@@ -1,6 +1,6 @@
 import { AREAS, CAPS_PER_BOTTLE, GLASS_ML, GOAL_LABEL } from './content';
 import { daysSince, fmtNum, keyDaysAgo } from './dates';
-import { healthProvider } from './health';
+import { SLEEP_HABIT, STEPS_HABIT } from './health';
 import { studiesFor } from './science';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
@@ -84,9 +84,9 @@ export function changeSinceStart(S: AppState, f: 'e' | 's' | 'd') {
   return Math.round(((b - a) / a) * 100);
 }
 
-export function habitOn(S: AppState, l: DayLog, k: string) {
-  if (S.health && k === 'passos') return healthProvider.steps(0) >= 6000;
-  if (S.health && k === 'sono') return healthProvider.sleep(0) >= 7;
+export function habitOn(_S: AppState, l: DayLog, k: string) {
+  if (k === 'passos' && l.steps !== undefined) return l.steps >= STEPS_HABIT;
+  if (k === 'sono' && l.sleepH !== undefined) return l.sleepH >= SLEEP_HABIT;
   return !!(l.hab || {})[k as keyof NonNullable<DayLog['hab']>];
 }
 
@@ -113,6 +113,12 @@ export function badges(S: AppState, now = new Date()): Badge[] {
   ];
 }
 
+/** Média dos últimos 7 dias de um valor registado, ou null se não houver registos. */
+export function meanOf(S: AppState, f: 'steps' | 'sleepH', now = new Date()) {
+  const v = Array.from({ length: 7 }, (_, i) => S.logs[keyDaysAgo(i, now)]?.[f]).filter((x): x is number => typeof x === 'number');
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
 /** Relatório em texto simples, para partilhar com um profissional. */
 export function report(S: AppState, now = new Date()) {
   if (!S.ans) return 'Ainda sem avaliação.';
@@ -130,9 +136,8 @@ export function report(S: AppState, now = new Date()) {
     `Adesão: ${adherence(S, 14, now)}% em 14 dias · ${adherence(S, 30, now)}% em 30 dias`,
     `Médias última semana (1–5): energia ${f(average(S, 0, 6, 'e', now))}, sono ${f(average(S, 0, 6, 's', now))}, disposição ${f(average(S, 0, 6, 'd', now))}`,
     `Semana anterior: energia ${f(average(S, 7, 13, 'e', now))}, sono ${f(average(S, 7, 13, 's', now))}, disposição ${f(average(S, 7, 13, 'd', now))}`,
-    S.health
-      ? `Passos médios (7 dias): ${Math.round(Array.from({ length: 7 }, (_, i) => healthProvider.steps(i + 1)).reduce((a, b) => a + b, 0) / 7).toLocaleString('pt-PT')}`
-      : null,
+    meanOf(S, 'steps', now) !== null ? `Passos médios (7 dias): ${Math.round(meanOf(S, 'steps', now)!).toLocaleString('pt-PT')}` : null,
+    meanOf(S, 'sleepH', now) !== null ? `Sono médio (7 dias): ${fmtNum(meanOf(S, 'sleepH', now)!.toFixed(1))} h` : null,
     `Hidratação média (7 dias): ${f((water7 * GLASS_ML) / 1000)} L/dia`,
   ];
   return lines.filter(Boolean).join('\n');

@@ -1,14 +1,15 @@
+import { useState } from 'react';
 import { Bar, Glass, Ring } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { GLASS_ML, HABITS, SHOP_URL, STEP_GOAL, TIPS } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
-import { healthProvider } from '../domain/health';
 import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
 import { adherence, habitOn, stock, streak, took } from '../domain/stats';
 import { useStore } from '../state/store';
 import { doseText, lotFor, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
 import { RecipeArt } from '../components/RecipeArt';
+import { DataCard } from '../components/DataCard';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import type { Nav } from '../App';
 
@@ -25,52 +26,63 @@ export function SampleBanner({ onReset }: { onReset: () => void }) {
   );
 }
 
-function HealthCard() {
-  const { S, update, toast } = useStore();
-  if (!S.health)
-    return (
-      <section className="card">
-        <div className="row" style={{ alignItems: 'flex-start' }}>
-          <div style={{ flex: '1 1 220px' }}>
-            <h2 style={{ margin: '0 0 6px' }}>Ligar os dados de saúde</h2>
-            <p className="small mute" style={{ margin: 0 }}>
-              Passos, sono e minutos ativos lidos automaticamente do Apple Saúde ou do Google Health Connect, com a sua autorização.
-            </p>
-          </div>
-          <button
-            className="btn sm"
-            onClick={() => {
-              update((d) => { d.health = true; });
-              toast('Dados de saúde ligados (simulação).');
-            }}
-          >
-            Ligar
-          </button>
-        </div>
-      </section>
-    );
-  const s = healthProvider.steps(0);
-  const p = Math.min(1, s / STEP_GOAL);
+/** Campo de horas que aceita vírgula enquanto se escreve (só formata ao sair). */
+function SleepInput({ value, onChange }: { value?: number; onChange: (raw: string) => void }) {
+  const [text, setText] = useState(value !== undefined ? fmtNum(value) : '');
+  const [focus, setFocus] = useState(false);
+  const shown = focus ? text : value !== undefined ? fmtNum(value) : '';
+  return (
+    <input
+      inputMode="decimal"
+      placeholder="ex.: 7,5"
+      value={shown}
+      aria-label="Horas de sono"
+      onFocus={() => { setFocus(true); setText(value !== undefined ? fmtNum(value) : ''); }}
+      onBlur={() => setFocus(false)}
+      onChange={(e) => {
+        const t = e.target.value.replace(/[^\d.,]/g, '');
+        setText(t);
+        if (!/[.,]$/.test(t)) onChange(t);
+      }}
+    />
+  );
+}
+
+function ActivityCard() {
+  const { todayLog: l, updateToday } = useStore();
+  const steps = l.steps ?? 0;
+  const p = Math.min(1, steps / STEP_GOAL);
+  const setNum = (f: 'steps' | 'sleepH', raw: string) => {
+    const v = raw.trim() === '' ? undefined : Number(raw.replace(',', '.'));
+    updateToday((d) => {
+      if (v === undefined || Number.isNaN(v)) delete d[f];
+      else d[f] = f === 'steps' ? Math.max(0, Math.min(100000, Math.round(v))) : Math.max(0, Math.min(24, Math.round(v * 2) / 2));
+    });
+  };
   return (
     <section className="card">
       <div className="row" style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Atividade</h2>
-        <span className="src"><Icon name="pros" />{healthProvider.source}</span>
+        <h2 style={{ margin: 0 }}>Atividade de hoje</h2>
+        <span className="src"><Icon name="steps" />registo manual</span>
       </div>
       <div className="health">
-        <Ring value={s} goal={STEP_GOAL} label="passos" />
+        <Ring value={steps} goal={STEP_GOAL} label="passos" />
         <div className="hm">
-          <div><b>{fmtNum(healthProvider.sleep(0))} h</b><span>sono esta noite</span></div>
-          <div><b>{Math.round(s / 110)} min</b><span>ativos hoje</span></div>
+          <label className="hin">
+            <span>Passos</span>
+            <input inputMode="numeric" placeholder="ex.: 7500" value={l.steps ?? ''} onChange={(e) => setNum('steps', e.target.value)} aria-label="Passos de hoje" />
+          </label>
+          <label className="hin">
+            <span>Sono (h)</span>
+            <SleepInput value={l.sleepH} onChange={(v) => setNum('sleepH', v)} />
+          </label>
           <div><b>{Math.round(p * 100)}%</b><span>meta {STEP_GOAL.toLocaleString('pt-PT')}</span></div>
-          <div><b>{fmtNum(Math.round(s * 0.0007 * 10) / 10)} km</b><span>percorridos</span></div>
+          <div><b>{fmtNum(Math.round(steps * 0.0007 * 10) / 10)} km</b><span>aprox.</span></div>
         </div>
       </div>
-      {healthProvider.simulated && (
-        <p className="small mute" style={{ margin: '12px 0 0' }}>
-          Na app instalada, estes dados chegam do telemóvel e marcam sozinhos os hábitos de passos e sono.
-        </p>
-      )}
+      <p className="small mute" style={{ margin: '12px 0 0' }}>
+        Copie os valores do app Saúde do iPhone. Os hábitos de passos e sono marcam-se sozinhos. Na versão da App Store, estes dados vão chegar automaticamente.
+      </p>
     </section>
   );
 }
@@ -87,6 +99,11 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
           <p>17 perguntas, cerca de 2 minutos. No fim recebe a sua pontuação de bem-estar e um plano de Spirulina feito para si.</p>
           <button className="btn" onClick={startQuiz}>Começar a avaliação</button>
         </section>
+        <section className="card">
+          <h2>Já usava a NEFESH Life?</h2>
+          <p className="small mute">Se guardou uma cópia dos seus dados, recupere-a em "Os meus dados", aqui em baixo.</p>
+        </section>
+        <DataCard />
       </>
     );
 
@@ -181,7 +198,7 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
         </div>
       </section>
 
-      <HealthCard />
+      <ActivityCard />
 
       <section className="card">
         <h2>Hábitos de hoje</h2>
@@ -194,7 +211,7 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
                 className={`habit ${on ? 'on' : ''}`}
                 aria-pressed={on}
                 onClick={() => {
-                  if (S.health && (k === 'passos' || k === 'sono')) return toast('Este hábito é marcado pelos dados de saúde.');
+                  if ((k === 'passos' && l.steps !== undefined) || (k === 'sono' && l.sleepH !== undefined)) return toast('Este hábito é marcado pelo valor que registou em Atividade.');
                   updateToday((d) => { d.hab = { ...d.hab, [k]: !d.hab?.[k] }; });
                 }}
               >
@@ -304,6 +321,8 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
           </button>
         )}
       </section>
+
+      <DataCard />
 
       <p style={{ textAlign: 'center' }}>
         <button className="skip" onClick={replayIntro}>Rever as boas-vindas</button>

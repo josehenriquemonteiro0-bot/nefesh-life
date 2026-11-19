@@ -34,6 +34,10 @@ export interface DayLog {
   d?: number;
   /** treino: 0 nenhum, 1 leve, 2 moderado, 3 intenso */
   t?: number;
+  /** passos do dia (registados ou lidos do app Saúde) */
+  steps?: number;
+  /** horas de sono na noite anterior */
+  sleepH?: number;
   /** tomas feitas através de uma receita (índices), que não gastam cápsulas */
   viaRecipe?: Record<number, string>;
 }
@@ -68,6 +72,8 @@ export interface AppState {
   proDose?: ProDose | null;
   /** a pessoa prefere seguir a recomendação geral do rótulo */
   followLabel?: boolean;
+  /** data em que aceitou o aviso de privacidade */
+  consent?: string;
 }
 
 /** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */

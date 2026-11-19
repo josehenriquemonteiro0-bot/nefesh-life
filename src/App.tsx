@@ -5,6 +5,7 @@ import { ReportSheet } from './components/ReportSheet';
 import { ScienceSheet } from './components/Science';
 import { BottleSheet } from './components/Bottle';
 import { Recipes } from './screens/Recipes';
+import { Consent } from './components/Consent';
 import { planFor } from './domain/plan';
 import { QUESTIONS } from './domain/content';
 import { todayKey } from './domain/dates';
@@ -73,7 +74,7 @@ export function App() {
     const ev = { date: todayKey(), sc: scores(ans) };
     if (S.sample || !S.ans) {
       const fresh = blankState();
-      replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications });
+      replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications, consent: S.consent });
     } else {
       update((d) => {
         d.ans = ans;
@@ -89,7 +90,8 @@ export function App() {
 
   let screen: JSX.Element | null;
   if (tab === 'quiz') {
-    if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
+    if (quiz && !S.consent) screen = <Consent onAccept={() => setQuiz({ ...quiz })} onCancel={cancelQuiz} />;
+    else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={startQuiz} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={startQuiz} openScience={openScience} />;
   } else if (!S.ans && tab !== 'pros' && tab !== 'recipes') {

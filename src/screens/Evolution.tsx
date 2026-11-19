@@ -3,7 +3,6 @@ import { Bar, Columns, LineChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { STEP_GOAL } from '../domain/content';
 import { daysSince, keyDaysAgo, shortDate } from '../domain/dates';
-import { healthProvider } from '../domain/health';
 import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
@@ -73,10 +72,16 @@ export function Evolution({ openReport }: { openReport: () => void }) {
         <Columns values={range(14).map((l) => l?.water || 0)} goal={gw} label={(v) => `${v} copos`} />
       </section>
 
-      {S.health && (
+      {range(14).some((l) => l?.steps !== undefined) && (
         <section className="card">
           <div className="row"><h2 style={{ margin: 0 }}>Passos</h2><span className="small mute">meta {STEP_GOAL.toLocaleString('pt-PT')}</span></div>
-          <Columns values={Array.from({ length: 14 }, (_, i) => healthProvider.steps(13 - i))} goal={STEP_GOAL} variant="steps" label={(v) => `${v} passos`} />
+          <Columns values={range(14).map((l) => l?.steps || 0)} goal={STEP_GOAL} variant="steps" label={(v) => `${v} passos`} />
+        </section>
+      )}
+      {range(14).some((l) => l?.sleepH !== undefined) && (
+        <section className="card">
+          <div className="row"><h2 style={{ margin: 0 }}>Sono</h2><span className="small mute">meta 7 h</span></div>
+          <Columns values={range(14).map((l) => l?.sleepH || 0)} goal={7} label={(v) => `${v} h`} />
         </section>
       )}
 
