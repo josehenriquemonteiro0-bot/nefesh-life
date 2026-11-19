@@ -55,10 +55,21 @@ export interface AppState {
   evals: Evaluation[];
 }
 
+/** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */
+export interface WhyStep {
+  label: string;
+  value: string;
+  kind: 'evidencia' | 'criterio';
+  note: string;
+  studies?: string[];
+}
+
 export interface Plan {
   g: number;
   caps: number;
-  why: [string, string][];
+  /** dose em g por kg de peso */
+  gPerKg: number;
+  why: WhyStep[];
   flags: string[];
   start: boolean;
   when: string;

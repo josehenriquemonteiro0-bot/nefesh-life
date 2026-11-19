@@ -1,5 +1,7 @@
 import { Bar, Radar } from '../components/Charts';
-import { ADVICE, AREAS, CAPSULE_MG, EXPECT, REFS } from '../domain/content';
+import { DoseSteps, LevelTag, StudyCard } from '../components/Science';
+import { ADVICE, AREAS, CAPSULE_MG, EXPECT } from '../domain/content';
+import { GOAL_EVIDENCE, LEVELS, SAFETY_REASONS, studiesFor } from '../domain/science';
 import { daysSince, fmtNum } from '../domain/dates';
 import { calcPlan, indexOf, scores, splitDose } from '../domain/plan';
 import type { Answers } from '../domain/types';
@@ -13,9 +15,10 @@ interface Props {
   onAdopt?: () => void;
   onCancel?: () => void;
   onReassess: () => void;
+  openScience: () => void;
 }
 
-export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess }: Props) {
+export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, openScience }: Props) {
   const { S } = useStore();
   if (!a)
     return (
@@ -33,6 +36,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess }: P
   const delta = prev ? ix - indexOf(prev) : null;
   const weak = AREAS.slice().sort((x, y) => sc[x[0]] - sc[y[0]])[0];
   const goal = a.goal ?? 'energia';
+  const ev = GOAL_EVIDENCE[goal];
 
   const foot = isNew ? (
     <>
@@ -81,6 +85,9 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess }: P
           <p style={{ margin: 0 }}>
             Na sua situação, a Spirulina pode não ser indicada ou precisar de acompanhamento. A dose deve ser definida por um profissional de saúde.
           </p>
+          <ul className="small" style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+            {c.flags.map((f) => <li key={f} style={{ marginBottom: 4 }}>{SAFETY_REASONS[f]}</li>)}
+          </ul>
         </section>
         <button className="btn full" onClick={() => go('pros')}>Ver profissionais NEFESH</button>
         <p />
@@ -110,15 +117,9 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess }: P
       </section>
 
       <section className="card">
-        <h2>Porquê {c.caps} cápsulas?</h2>
-        <div className="why">
-          {c.why.map(([t, v]) => (
-            <div key={t} style={{ display: 'contents' }}><span>{t}</span><b>{v}</b></div>
-          ))}
-          <span className="tot">A sua dose diária</span>
-          <b className="tot">{fmtNum(c.g)} g</b>
-        </div>
-        <p className="small mute" style={{ margin: '10px 0 0' }}>As doses usadas nos estudos ficam geralmente entre 1 e 10 g por dia.</p>
+        <h2>Como calculamos a sua dose</h2>
+        <p className="small mute">Cada passo indica se vem de um <b>estudo</b> ou de um <b>critério NEFESH</b>, para saber sempre o que é ciência e o que é uma escolha nossa.</p>
+        <DoseSteps steps={c.why} total={`${fmtNum(c.g)} g · ${c.caps} cápsulas`} gPerKg={fmtNum(c.gPerKg.toFixed(3))} />
       </section>
 
       <section className="card">
@@ -152,9 +153,25 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess }: P
       </section>
 
       <section className="card">
-        <h2>O que dizem os estudos</h2>
-        <p className="small mute">{REFS[goal]}</p>
-        <p className="small mute" style={{ margin: 0 }}>Referências a validar pela equipa científica antes do lançamento.</p>
+        <h2>A ciência por trás do seu plano</h2>
+        <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginBottom: 8 }}>
+          <span className="small mute">Força da evidência:</span>
+          <LevelTag level={ev.level} />
+        </div>
+        <p className="small">{ev.text}</p>
+        <p className="small mute">{LEVELS[ev.level].text}</p>
+        {studiesFor(goal).map((st) => <StudyCard key={st.id} s={st} />)}
+        <button className="btn ghost full" onClick={openScience}>Ver a biblioteca científica completa</button>
+      </section>
+
+      <section className="card">
+        <h2>Segurança e tolerância</h2>
+        <ul className="list small">
+          <li><span className="neon">•</span><span>Os efeitos adversos relatados são raros e sobretudo digestivos (náusea, inchaço). A semana de adaptação existe para os reduzir.</span></li>
+          <li><span className="neon">•</span><span>A segurança depende da pureza: cada lote NEFESH é analisado para microcistinas e metais pesados, e o laudo está no QR code do frasco.</span></li>
+          <li><span className="neon">•</span><span>A Spirulina não é fonte fiável de vitamina B12. Em alimentação vegana mantenha o suplemento de B12.</span></li>
+          <li><span className="neon">•</span><span>Se tiver uma doença crónica ou tomar medicação, confirme a dose com um profissional.</span></li>
+        </ul>
       </section>
 
       <p className="small mute">

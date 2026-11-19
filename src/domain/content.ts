@@ -67,21 +67,12 @@ export const AREAS: [AreaKey, string][] = [
   ['movimento', 'Movimento'],
 ];
 
-export const REFS: Record<Goal, string> = {
-  desporto: 'Kalafati et al., 2010 (Med Sci Sports Exerc): 6 g/dia durante 4 semanas em homens treinados.',
-  energia: 'Johnson et al., 2016 (Nutrition and Health): 3 g/dia e perceção de fadiga.',
-  imunidade: 'Selmi et al., 2011 (Cell Mol Immunol): suplementação de 12 semanas em adultos seniores.',
-  foco: 'Johnson et al., 2016 (Nutrition and Health): 3 g/dia e fadiga mental.',
-  nutricao: 'Revisões sobre a composição nutricional da Spirulina: proteína, ferro e vitaminas do complexo B.',
-  peso: 'Meta-análises recentes sobre peso e perfil lipídico, com doses de 1 a 10 g/dia.',
-};
-
 export const EXPECT: Record<Goal, string> = {
   energia: 'Use o check-in diário para acompanhar a energia e a disposição semana a semana.',
   desporto: 'Registe os treinos no check-in para ver a dose ao lado da sua recuperação.',
   imunidade: 'O foco está na regularidade: a Spirulina entra na rotina como parte de uma alimentação equilibrada.',
   foco: 'Acompanhe a disposição e o sono: são os dois indicadores mais ligados à clareza mental.',
-  nutricao: 'A Spirulina junta proteína vegetal e micronutrientes a uma alimentação à base de plantas.',
+  nutricao: 'A Spirulina junta proteína vegetal, ferro e pigmentos antioxidantes a uma alimentação à base de plantas. Não conta como fonte de vitamina B12.',
   peso: 'Tomada antes das refeições, entra num plano com alimentação e movimento, não em substituição.',
 };
 

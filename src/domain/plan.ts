@@ -1,6 +1,7 @@
 import { AREAS, GOAL_LABEL } from './content';
 import { daysSince, fmtNum } from './dates';
-import type { Answers, AppState, Goal, Plan, Scores, Slot } from './types';
+import { DOSE_BASIS } from './science';
+import type { Answers, AppState, Goal, Plan, Scores, Slot, WhyStep } from './types';
 
 const scale = (v: number | undefined) => Math.round((((v ?? 3) || 3) - 1) / 4 * 100);
 const pick = <T extends string>(map: Record<string, number>, k: T | undefined, def = 50) =>
@@ -31,31 +32,43 @@ const WHEN: Record<Goal, string> = {
   peso: 'Antes das duas maiores refeições',
 };
 
-/** Dose diária de Spirulina e a sua justificação. */
+/** Dose diária de Spirulina e a justificação de cada passo. */
 export function calcPlan(a: Answers): Plan {
   const goal: Goal = a.goal ?? 'energia';
   const base = BASE_DOSE[goal];
   const p = a.peso || 70;
   let g = base;
-  const why: [string, string][] = [['Objetivo: ' + GOAL_LABEL[goal], fmtNum(base) + ' g']];
+  const why: WhyStep[] = [
+    { label: 'Ponto de partida: ' + GOAL_LABEL[goal], value: fmtNum(base) + ' g', kind: 'evidencia', note: DOSE_BASIS[goal].text, studies: DOSE_BASIS[goal].studies },
+  ];
+  const weightNote = 'Os estudos usam doses fixas, iguais para todos. A NEFESH ajusta ao peso para que a dose por kg seja parecida entre pessoas diferentes.';
   if (p < 60) {
     g -= 0.5;
-    why.push([`Peso: ${p} kg`, '−0,5 g']);
+    why.push({ label: `Peso: ${p} kg`, value: '−0,5 g', kind: 'criterio', note: weightNote });
   } else if (p >= 100) {
     g += 2;
-    why.push([`Peso: ${p} kg`, '+2 g']);
+    why.push({ label: `Peso: ${p} kg`, value: '+2 g', kind: 'criterio', note: weightNote });
   } else if (p >= 80) {
     g += 1;
-    why.push([`Peso: ${p} kg`, '+1 g']);
-  } else why.push([`Peso: ${p} kg`, 'sem ajuste']);
+    why.push({ label: `Peso: ${p} kg`, value: '+1 g', kind: 'criterio', note: weightNote });
+  } else why.push({ label: `Peso: ${p} kg`, value: 'sem ajuste', kind: 'criterio', note: 'Entre 60 e 79 kg é a faixa de referência da NEFESH, por isso não ajustamos. Acima ou abaixo, a dose sobe ou desce.' });
   if (goal === 'desporto' && a.ativ === '5+') {
     g += 1;
-    why.push(['Treina 5 ou mais vezes por semana', '+1 g']);
+    why.push({ label: 'Treina 5 ou mais vezes por semana', value: '+1 g', kind: 'criterio', note: 'Com mais volume de treino aproximamo-nos dos 6 g/dia usados no ensaio com atletas.', studies: ['kalafati2010'] });
   }
+  const raw = g;
   g = Math.max(2, Math.min(8, Math.round(g * 2) / 2));
+  why.push({
+    label: 'Limites de segurança',
+    value: g === raw ? 'dentro' : `${fmtNum(g)} g`,
+    kind: 'criterio',
+    note: 'Arredondamos a 0,5 g (1 cápsula) e mantemos a dose entre 2 e 8 g/dia, dentro do intervalo usado nos ensaios clínicos.',
+    studies: ['marles2011'],
+  });
   return {
     g,
     caps: Math.round(g * 2),
+    gPerKg: Math.round((g / p) * 1000) / 1000,
     why,
     flags: (a.safe || []).filter((x) => x !== 'nenhuma'),
     start: a.prior !== 'regular',

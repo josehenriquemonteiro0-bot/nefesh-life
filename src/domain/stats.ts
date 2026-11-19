@@ -1,6 +1,7 @@
 import { AREAS, CAPS_PER_BOTTLE, GLASS_ML, GOAL_LABEL } from './content';
 import { daysSince, fmtNum, keyDaysAgo } from './dates';
 import { healthProvider } from './health';
+import { studiesFor } from './science';
 import { calcPlan, indexOf, slotsFor } from './plan';
 import type { AppState, DayLog } from './types';
 import type { IconName } from '../components/Icon';
@@ -122,7 +123,8 @@ export function report(S: AppState, now = new Date()) {
     S.ans.name ? `Nome: ${S.ans.name}` : null,
     `Objetivo: ${GOAL_LABEL[S.ans.goal ?? 'energia']}`,
     `Índice NEFESH: ${ev ? `${indexOf(ev.sc)}/100 (${AREAS.map(([k, t]) => `${t} ${ev.sc[k]}`).join(', ')})` : '—'}`,
-    `Dose atual: ${fmtNum(c.g)} g/dia (${c.caps} cápsulas)`,
+    `Dose atual: ${fmtNum(c.g)} g/dia (${c.caps} cápsulas · ${fmtNum(c.gPerKg.toFixed(3))} g/kg)`,
+    `Base científica: ${studiesFor(S.ans.goal ?? 'energia').filter((x) => x.level !== 'seguranca').map((x) => x.cite).join('; ')}`,
     `Adesão: ${adherence(S, 14, now)}% em 14 dias · ${adherence(S, 30, now)}% em 30 dias`,
     `Médias última semana (1–5): energia ${f(average(S, 0, 6, 'e', now))}, sono ${f(average(S, 0, 6, 's', now))}, disposição ${f(average(S, 0, 6, 'd', now))}`,
     `Semana anterior: energia ${f(average(S, 7, 13, 'e', now))}, sono ${f(average(S, 7, 13, 's', now))}, disposição ${f(average(S, 7, 13, 'd', now))}`,

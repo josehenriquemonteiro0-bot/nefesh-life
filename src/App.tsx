@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { Intro } from './components/Intro';
 import { ReportSheet } from './components/ReportSheet';
+import { ScienceSheet } from './components/Science';
 import { QUESTIONS } from './domain/content';
 import { todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
@@ -33,6 +34,8 @@ export function App() {
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   const [showIntro, setShowIntro] = useState(!S.intro);
   const [reportOpen, setReportOpen] = useState(false);
+  const [scienceOpen, setScienceOpen] = useState(false);
+  const openScience = () => setScienceOpen(true);
 
   // lembrete diário enquanto a app está aberta
   useEffect(() => {
@@ -81,8 +84,8 @@ export function App() {
   let screen: JSX.Element | null;
   if (tab === 'quiz') {
     if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
-    else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={startQuiz} />;
-    else screen = <Plan answers={S.ans} go={go} onReassess={startQuiz} />;
+    else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={startQuiz} openScience={openScience} />;
+    else screen = <Plan answers={S.ans} go={go} onReassess={startQuiz} openScience={openScience} />;
   } else if (!S.ans && tab !== 'pros') {
     screen = <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} />;
   } else {
@@ -133,6 +136,7 @@ export function App() {
         />
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} />}
+      {scienceOpen && <ScienceSheet onClose={() => setScienceOpen(false)} />}
       <div className={`toast ${toastMsg ? 'show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>
     </>
   );

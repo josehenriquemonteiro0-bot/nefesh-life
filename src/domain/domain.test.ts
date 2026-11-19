@@ -19,6 +19,12 @@ describe('calcPlan', () => {
     expect(calcPlan({ goal: 'energia', peso: 50 }).g).toBe(2.5);
     expect(calcPlan({ goal: 'peso', peso: 85 }).g).toBe(5);
   });
+  it('marca cada passo como estudo ou critério NEFESH e calcula g/kg', () => {
+    const c = calcPlan({ goal: 'desporto', peso: 85, ativ: '5+' });
+    expect(c.why.map((w) => w.kind)).toEqual(['evidencia', 'criterio', 'criterio', 'criterio']);
+    expect(c.why[0].studies).toEqual(['kalafati2010']);
+    expect(c.gPerKg).toBeCloseTo(7 / 85, 3);
+  });
   it('sinaliza situações que pedem um profissional', () => {
     expect(calcPlan({ goal: 'energia', safe: ['nenhuma'] }).flags).toEqual([]);
     expect(calcPlan({ goal: 'energia', safe: ['gravidez', 'renal'] }).flags).toEqual(['gravidez', 'renal']);
@@ -99,6 +105,7 @@ describe('estado de demonstração', () => {
     expect(changeSinceStart(S, 'e')).toBeGreaterThan(0);
     const r = report(S, NOW);
     expect(r).toContain('Nome: Ana');
-    expect(r).toContain('Dose atual: 3 g/dia (6 cápsulas)');
+    expect(r).toContain('Dose atual: 3 g/dia (6 cápsulas');
+    expect(r).toContain('Base científica: Johnson et al., 2016');
   });
 });
