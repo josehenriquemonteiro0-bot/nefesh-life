@@ -184,3 +184,4 @@ input[type=time]{background:var(--panel2);border:1px solid var(--line);border-ra
 .privacy p{margin:0 0 8px}.privacy p:last-child{margin:0}
 .check{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;margin-top:6px;cursor:pointer}
 .check input{width:24px;height:24px;accent-color:var(--neon);margin:2px 0 0}
+.steps code{font:600 12.5px ui-monospace,Menlo,monospace;background:var(--panel2);padding:1px 5px;border-radius:5px;color:var(--neon)}

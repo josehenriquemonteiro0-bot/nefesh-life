@@ -10,6 +10,7 @@ import { doseText, lotFor, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
 import { RecipeArt } from '../components/RecipeArt';
 import { DataCard } from '../components/DataCard';
+import { parseHealthPaste } from '../domain/healthPaste';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import type { Nav } from '../App';
 
@@ -48,8 +49,41 @@ function SleepInput({ value, onChange }: { value?: number; onChange: (raw: strin
   );
 }
 
+function ShortcutHelp() {
+  return (
+    <ol className="steps small" style={{ marginTop: 10 }}>
+      <li>Abra a app <b>Atalhos</b> do iPhone e toque em <b>+</b> para criar um atalho. Dê-lhe o nome <b>NEFESH Saúde</b>.</li>
+      <li>Adicione <b>Encontrar amostras de saúde</b>: tipo <b>Passos</b>, data de início <b>hoje</b>. A seguir, <b>Calcular estatísticas</b> → <b>Soma</b>.</li>
+      <li>Adicione outra vez <b>Encontrar amostras de saúde</b>: tipo <b>Análise do sono</b>, valor <b>A dormir</b>, data de início <b>nas últimas 24 horas</b>. A seguir, <b>Calcular estatísticas</b> → <b>Soma</b> da <b>duração</b>.</li>
+      <li>Adicione <b>Texto</b> e escreva: <code>NEFESH passos=</code>[soma dos passos]<code> sono=</code>[soma do sono]</li>
+      <li>Adicione <b>Copiar para a área de transferência</b>.</li>
+      <li>Na primeira vez, autorize o acesso ao app Saúde. Depois é só correr o atalho, abrir a NEFESH Life e tocar em <b>Colar do app Saúde</b>.</li>
+      <li>Opcional: em <b>Automação</b>, faça o atalho correr sozinho todas as manhãs, ou adicione-o ao ecrã principal como widget.</li>
+    </ol>
+  );
+}
+
 function ActivityCard() {
-  const { todayLog: l, updateToday } = useStore();
+  const { todayLog: l, updateToday, toast } = useStore();
+  const [help, setHelp] = useState(false);
+  const pasteHealth = async () => {
+    let text = '';
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      text = window.prompt('Cole aqui o texto copiado pelo atalho NEFESH Saúde:') || '';
+    }
+    const h = parseHealthPaste(text);
+    if (h.steps === undefined && h.sleepH === undefined) {
+      toast('Não encontrei dados do atalho. Corra o atalho NEFESH Saúde primeiro.');
+      return;
+    }
+    updateToday((d) => {
+      if (h.steps !== undefined) d.steps = h.steps;
+      if (h.sleepH !== undefined) d.sleepH = h.sleepH;
+    });
+    toast([h.steps !== undefined && `${h.steps.toLocaleString('pt-PT')} passos`, h.sleepH !== undefined && `${fmtNum(h.sleepH)} h de sono`].filter(Boolean).join(' e ') + ' registados.');
+  };
   const steps = l.steps ?? 0;
   const p = Math.min(1, steps / STEP_GOAL);
   const setNum = (f: 'steps' | 'sleepH', raw: string) => {
@@ -63,7 +97,7 @@ function ActivityCard() {
     <section className="card">
       <div className="row" style={{ marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Atividade de hoje</h2>
-        <span className="src"><Icon name="steps" />registo manual</span>
+        <span className="src"><Icon name="steps" />app Saúde ou manual</span>
       </div>
       <div className="health">
         <Ring value={steps} goal={STEP_GOAL} label="passos" />
@@ -80,8 +114,15 @@ function ActivityCard() {
           <div><b>{fmtNum(Math.round(steps * 0.0007 * 10) / 10)} km</b><span>aprox.</span></div>
         </div>
       </div>
-      <p className="small mute" style={{ margin: '12px 0 0' }}>
-        Copie os valores do app Saúde do iPhone. Os hábitos de passos e sono marcam-se sozinhos. Na versão da App Store, estes dados vão chegar automaticamente.
+      <button className="btn full" style={{ marginTop: 14 }} onClick={pasteHealth}>
+        <Icon name="steps" /> Colar do app Saúde
+      </button>
+      <button className="link small inline" style={{ marginTop: 10 }} onClick={() => setHelp((v) => !v)}>
+        {help ? 'Fechar instruções' : 'Como configurar o atalho (1 minuto, só uma vez)'}
+      </button>
+      {help && <ShortcutHelp />}
+      <p className="small mute" style={{ margin: '10px 0 0' }}>
+        Também pode escrever os valores à mão. Os hábitos de passos e sono marcam-se sozinhos. Na versão da App Store, os dados vão chegar automaticamente.
       </p>
     </section>
   );
