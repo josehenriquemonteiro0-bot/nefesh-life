@@ -35,9 +35,20 @@ const WHEN: Record<Goal, string> = {
 
 export interface PlanOptions {
   format?: ProductId;
-  /** dose indicada por um profissional de saúde, que substitui o limite do rótulo */
+  /** dose indicada por um profissional de saúde, que substitui a sugestão */
   pro?: ProDose | null;
+  /** a pessoa prefere seguir a recomendação geral do rótulo */
+  followLabel?: boolean;
 }
+
+/**
+ * Política de dose da app (decisão da NEFESH):
+ * - 'estudos': sugere a dose personalizada baseada nos estudos, mesmo acima do rótulo,
+ *   mostrando o rótulo como referência e permitindo à pessoa seguir o rótulo.
+ * - 'rotulo': a dose nunca passa a recomendação do rótulo sem indicação profissional.
+ * Rever com o departamento jurídico/regulatório antes do lançamento.
+ */
+export const DOSE_POLICY: 'estudos' | 'rotulo' = 'estudos';
 
 /** Limite máximo absoluto, mesmo com indicação profissional. */
 const ABS_MAX = 8;
@@ -46,8 +57,8 @@ const ABS_MAX = 8;
  * Dose diária de Spirulina e a justificação de cada passo.
  *
  * 1. Referência dos estudos, ajustada ao peso e ao treino (informativa).
- * 2. A dose final nunca passa a recomendação diária do rótulo do produto,
- *    exceto quando um profissional de saúde indica outra dose.
+ * 2. Aplica a política de dose (DOSE_POLICY), a preferência da pessoa
+ *    e a indicação de um profissional, se existir.
  */
 export function calcPlan(a: Answers, opts: PlanOptions = {}): Plan {
   const format: ProductId = opts.format ?? 'caps';
@@ -78,24 +89,36 @@ export function calcPlan(a: Answers, opts: PlanOptions = {}): Plan {
 
   let final: number;
   let capped = false;
+  const aboveLabel = gStudy > product.dailyMax;
+  const followLabel = DOSE_POLICY === 'rotulo' || !!opts.followLabel;
   if (opts.pro) {
     final = Math.max(0.5, Math.min(ABS_MAX, Math.round(opts.pro.g * 2) / 2));
     why.push({
       label: `Indicação: ${opts.pro.by || 'profissional de saúde'}`,
       value: `${fmtNum(final)} g`,
       kind: 'profissional',
-      note: 'A dose foi definida por um profissional de saúde para o seu caso e substitui a recomendação do rótulo, como o próprio rótulo prevê.',
+      note: 'A dose foi definida por um profissional de saúde para o seu caso e substitui a sugestão da NEFESH Life.',
     });
-  } else {
+  } else if (followLabel) {
     final = Math.min(gStudy, product.dailyMax);
-    capped = gStudy > product.dailyMax;
+    capped = aboveLabel;
     why.push({
       label: 'Recomendação do rótulo',
       value: capped ? `${fmtNum(final)} g` : 'dentro',
       kind: 'rotulo',
       note: capped
-        ? `O rótulo de ${product.name} recomenda no máximo ${product.dailyText} por dia. A referência dos estudos (${fmtNum(gStudy)} g) é superior: doses acima do rótulo só com orientação de um profissional de saúde.`
+        ? `Escolheu seguir o rótulo de ${product.name}: ${product.dailyText} por dia. A sugestão baseada nos estudos seria ${fmtNum(gStudy)} g.`
         : `Fica dentro da recomendação diária do rótulo de ${product.name} (${product.dailyText}).`,
+    });
+  } else {
+    final = gStudy;
+    why.push({
+      label: 'Recomendação geral do rótulo',
+      value: product.dailyText.replace(/ \(.*\)/, ''),
+      kind: 'rotulo',
+      note: aboveLabel
+        ? `O rótulo indica ${product.dailyText} por dia como uso geral, igual para todos. A sua sugestão é personalizada e segue as doses usadas nos estudos para o seu objetivo e o seu perfil.`
+        : `A sua sugestão fica dentro da recomendação geral do rótulo (${product.dailyText}).`,
     });
   }
   const units = Math.round(final * 2);
@@ -103,6 +126,7 @@ export function calcPlan(a: Answers, opts: PlanOptions = {}): Plan {
     g: final,
     gStudy,
     capped,
+    aboveLabel: !opts.pro && !followLabel && aboveLabel,
     format,
     caps: units,
     gPerKg: Math.round((final / p) * 1000) / 1000,
@@ -115,7 +139,7 @@ export function calcPlan(a: Answers, opts: PlanOptions = {}): Plan {
 }
 
 /** O plano da pessoa, com o formato e a indicação profissional guardados. */
-export const planFor = (S: AppState) => calcPlan(S.ans ?? {}, { format: S.format, pro: S.proDose });
+export const planFor = (S: AppState) => calcPlan(S.ans ?? {}, { format: S.format, pro: S.proDose, followLabel: S.followLabel });
 
 /** Divide a dose total em tomas, tendo em conta a semana de adaptação. */
 export function splitDose(caps: number, goal: Goal | undefined, format: ProductId = 'caps'): Slot[] {

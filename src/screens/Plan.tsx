@@ -34,6 +34,22 @@ function FormatPicker() {
   );
 }
 
+function LabelChoice({ gStudy, label, following }: { gStudy: number; label: string; following: boolean }) {
+  const { update } = useStore();
+  return (
+    <div className="labelnote">
+      <p className="small" style={{ margin: 0 }}>
+        {following
+          ? `Está a seguir a recomendação geral do rótulo (${label}). A sua sugestão personalizada, baseada nos estudos, é de ${fmtNum(gStudy)} g por dia.`
+          : `Sugestão personalizada, baseada nos estudos para o seu objetivo. A recomendação geral do rótulo é ${label} por dia. Se tiver dúvidas, fale com um profissional.`}
+      </p>
+      <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => update((d) => { d.followLabel = !following; })}>
+        {following ? 'Usar a sugestão personalizada' : 'Prefiro seguir o rótulo'}
+      </button>
+    </div>
+  );
+}
+
 function ProDoseForm() {
   const { S, update, toast } = useStore();
   const [open, setOpen] = useState(false);
@@ -83,7 +99,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
       </section>
     );
 
-  const c = calcPlan(a, { format: S.format, pro: S.proDose });
+  const c = calcPlan(a, { format: S.format, pro: S.proDose, followLabel: S.followLabel });
   const dt = (units: number) => doseText(units, c.format);
   const sc = scores(a);
   const ix = indexOf(sc);
@@ -162,19 +178,14 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>A sua dose de Spirulina</p>
         <div className="dose" style={{ marginTop: 6 }}>{fmtNum(c.g)} g <small>/ dia</small></div>
         <p style={{ margin: '10px 0 0' }}>
-          = <b>{dt(c.caps)}</b> de {PRODUCTS[c.format].name.toLowerCase()}
+          = <b>{dt(c.caps)}</b>{c.format === 'caps' ? ' de 500 mg' : ` de ${PRODUCTS[c.format].name.toLowerCase()}`}
         </p>
         <p className="small" style={{ margin: '10px 0 0' }}>
-          {c.when}
-          {split.length > 1 ? ` · ${split.map((s) => s.n).join(' + ')} cápsulas` : ''}
+          {split.length > 1 ? split.map((x) => `${x.l}: ${dt(x.n)}`).join(' · ') : c.when}
         </p>
         <p className="small" style={{ margin: '14px 0 6px', opacity: 0.8 }}>Como vai tomar?</p>
         <FormatPicker />
-        {c.capped && (
-          <p className="small" style={{ margin: '12px 0 0' }}>
-            Os estudos usaram doses mais altas para o seu objetivo ({fmtNum(c.gStudy)} g). A NEFESH respeita a recomendação do rótulo; acima dela, só com orientação de um profissional.
-          </p>
-        )}
+        {!S.proDose && (c.aboveLabel || c.capped) && <LabelChoice gStudy={c.gStudy} label={PRODUCTS[c.format].dailyText} following={c.capped} />}
         <ProDoseForm />
       </section>
 

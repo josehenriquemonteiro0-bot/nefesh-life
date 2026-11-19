@@ -176,3 +176,4 @@ input[type=time]{background:var(--panel2);border:1px solid var(--line);border-ra
 .kind.ro{background:#10232c;color:var(--water)}.kind.pr{background:#2a1530;color:#e0b3f0}
 .seg-wide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
 .seg-wide button{min-height:40px}
+.labelnote{margin-top:12px;padding:12px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08)}

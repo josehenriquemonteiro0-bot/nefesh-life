@@ -57,7 +57,7 @@ describe('receitas', () => {
     const S = { ...blankState(now), ans: { goal: 'energia' as const, peso: 70, prior: 'regular' }, stockStart: keyDaysAgo(5, now) };
     S.logs[keyDaysAgo(1, now)] = { doses: [true, true] };
     S.logs[keyDaysAgo(0, now)] = { doses: [true, true], viaRecipe: { 0: 'verde-tropical' } };
-    expect(stock(S, now).used).toBe(4);
+    expect(stock(S, now).used).toBe(9);
   });
   it('todas as receitas são frias e têm Spirulina por porção', () => {
     for (const r of RECIPES) {

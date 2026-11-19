@@ -11,7 +11,7 @@ export function sampleState(now = new Date()): AppState {
     const t = (29 - i) / 28;
     const miss = i === 17 || i === 9;
     logs[keyDaysAgo(i, now)] = {
-      doses: [!miss && i !== 22],
+      doses: [!miss, !miss && i !== 22],
       water: Math.max(3, Math.round(5 + t * 5.5 + Math.sin(i * 1.9) * 1.2)),
       hab: { sono: i % 3 !== 0, passos: i % 2 === 0, resp: i % 4 === 0 },
       e: w(2.7 + t * 1.6 + Math.sin(i * 1.7) * 0.6),
@@ -20,7 +20,7 @@ export function sampleState(now = new Date()): AppState {
       t: i % 2 === 0 ? 2 : 0,
     };
   }
-  logs[todayKey(now)] = { doses: [false], water: 3, hab: { sono: true, passos: false, resp: false } };
+  logs[todayKey(now)] = { doses: [true, false], water: 3, hab: { sono: true, passos: false, resp: false } };
   const ans: Answers = {
     name: 'Ana', goal: 'energia', sexo: 'f', idade: '30-44', peso: 68, ativ: '1-2', sonoh: '7-8', sonoq: 4,
     energia: 3, stress: 3, agua: '7-9', cafe: '1-2', veg: '2-3', proc: 'as-vezes', dieta: 'omni', prior: 'as-vezes', safe: ['nenhuma'],

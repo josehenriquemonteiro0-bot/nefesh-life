@@ -8,14 +8,14 @@ import type { AppState } from './types';
 const NOW = new Date(2026, 10, 19, 10, 0);
 
 describe('calcPlan', () => {
-  it('nunca passa a recomendação do rótulo sem indicação profissional', () => {
+  it('sugere a dose dos estudos e mostra quando fica acima do rótulo', () => {
     const c = calcPlan({ goal: 'energia', peso: 70 });
-    expect(c.gStudy).toBe(3);
-    expect(c.g).toBe(2);
-    expect(c.caps).toBe(4);
-    expect(c.capped).toBe(true);
-    expect(c.water).toBe(10);
-    expect(calcPlan({ goal: 'energia', peso: 70 }, { format: 'po' })).toMatchObject({ g: 3, capped: false });
+    expect(c).toMatchObject({ g: 3, caps: 6, gStudy: 3, aboveLabel: true, capped: false, water: 10 });
+    expect(calcPlan({ goal: 'energia', peso: 70 }, { format: 'po' })).toMatchObject({ g: 3, aboveLabel: false });
+  });
+  it('segue o rótulo quando a pessoa prefere', () => {
+    const c = calcPlan({ goal: 'energia', peso: 70 }, { followLabel: true });
+    expect(c).toMatchObject({ g: 2, caps: 4, capped: true, aboveLabel: false });
   });
   it('ajusta a referência dos estudos pelo peso e pelo treino', () => {
     expect(calcPlan({ goal: 'desporto', peso: 105, ativ: '5+' }).gStudy).toBe(8);
@@ -31,7 +31,7 @@ describe('calcPlan', () => {
     const c = calcPlan({ goal: 'desporto', peso: 85, ativ: '5+' });
     expect(c.why.map((w) => w.kind)).toEqual(['evidencia', 'criterio', 'criterio', 'rotulo']);
     expect(c.why[0].studies).toEqual(['kalafati2010']);
-    expect(c.gPerKg).toBeCloseTo(2 / 85, 3);
+    expect(c.gPerKg).toBeCloseTo(7 / 85, 3);
   });
   it('sinaliza situações que pedem um profissional', () => {
     expect(calcPlan({ goal: 'energia', safe: ['nenhuma'] }).flags).toEqual([]);
@@ -63,14 +63,15 @@ describe('splitDose', () => {
   });
   it('reduz para metade na primeira semana', () => {
     const S: AppState = { ...blankState(NOW), ans: { goal: 'energia', peso: 70, prior: 'nunca' }, planStart: keyDaysAgo(2, NOW) };
-    expect(slotsFor(S, NOW)).toEqual([{ l: 'Manhã', n: 2 }]);
+    expect(slotsFor(S, NOW)).toEqual([{ l: 'Manhã', n: 3 }]);
     S.planStart = keyDaysAgo(8, NOW);
-    expect(slotsFor(S, NOW).reduce((t, s) => t + s.n, 0)).toBe(4);
+    expect(slotsFor(S, NOW)).toEqual([{ l: 'Manhã', n: 3 }, { l: 'Almoço', n: 3 }]);
   });
 });
 
 describe('estatísticas', () => {
-  const base = (): AppState => ({ ...blankState(NOW), ans: { goal: 'energia', peso: 70, prior: 'regular' }, planStart: keyDaysAgo(20, NOW), stockStart: keyDaysAgo(20, NOW) });
+  // estes testes usam a dose do rótulo (4 cápsulas, 1 toma) para simplificar
+  const base = (): AppState => ({ ...blankState(NOW), followLabel: true, ans: { goal: 'energia', peso: 70, prior: 'regular' }, planStart: keyDaysAgo(20, NOW), stockStart: keyDaysAgo(20, NOW) });
 
   it('conta a sequência sem quebrar por hoje ainda não estar feito', () => {
     const S = base();
@@ -114,7 +115,7 @@ describe('estado de demonstração', () => {
     expect(changeSinceStart(S, 'e')).toBeGreaterThan(0);
     const r = report(S, NOW);
     expect(r).toContain('Nome: Ana');
-    expect(r).toContain('Dose atual: 2 g/dia (4 cápsulas');
+    expect(r).toContain('Dose atual: 3 g/dia (6 cápsulas');
     expect(r).toContain('Base científica: Johnson et al., 2016');
   });
 });

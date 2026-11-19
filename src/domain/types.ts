@@ -66,6 +66,8 @@ export interface AppState {
   /** formato em que a pessoa toma a Spirulina */
   format?: 'caps' | 'po' | 'nibs';
   proDose?: ProDose | null;
+  /** a pessoa prefere seguir a recomendação geral do rótulo */
+  followLabel?: boolean;
 }
 
 /** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */
@@ -90,6 +92,8 @@ export interface Plan {
   gStudy: number;
   /** true quando o rótulo limitou a dose */
   capped: boolean;
+  /** true quando a sugestão personalizada fica acima da recomendação geral do rótulo */
+  aboveLabel: boolean;
   format: 'caps' | 'po' | 'nibs';
   /** unidades de 0,5 g (= cápsulas) */
   caps: number;
