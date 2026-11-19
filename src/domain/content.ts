@@ -3,7 +3,9 @@ import type { IconName } from '../components/Icon';
 
 export const STORAGE_KEY = 'nefesh-life-v2';
 export const SHOP_URL = 'https://www.nefeshglobal.shop/produtos';
-export const WHATSAPP_URL = 'https://wa.me/message/VNVMZENCEQPUC1';
+export const WHATSAPP_NUMBER = '351926269243';
+/** Abre o WhatsApp da NEFESH com a mensagem já escrita. */
+export const whatsappLink = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 export const APP_VERSION = '0.2.0';
 export const CAPS_PER_BOTTLE = 120;
 export const CAPSULE_MG = 500;

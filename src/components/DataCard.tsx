@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { APP_VERSION, WHATSAPP_URL } from '../domain/content';
+import { APP_VERSION, whatsappLink } from '../domain/content';
 import { backupFileName, makeBackup, readBackup } from '../domain/backup';
 import { blankState } from '../domain/sample';
 import { useStore } from '../state/store';
@@ -63,7 +63,7 @@ export function DataCard() {
         />
       </div>
       <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 10 }}>
-        <a className="btn ghost sm" href={WHATSAPP_URL} target="_blank" rel="noopener">Dar a minha opinião</a>
+        <a className="btn ghost sm" href={whatsappLink(`Olá NEFESH! A minha opinião sobre a app NEFESH Life (versão ${APP_VERSION}):\n\n`)} target="_blank" rel="noopener">Dar a minha opinião</a>
         <button className="btn ghost sm" onClick={() => setShowPrivacy((v) => !v)}>{showPrivacy ? 'Fechar privacidade' : 'Privacidade'}</button>
       </div>
       {showPrivacy && <div style={{ marginTop: 12 }}><PrivacyText /></div>}

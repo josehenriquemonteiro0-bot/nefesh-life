@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { report } from '../domain/stats';
+import { whatsappLink } from '../domain/content';
 import { useStore } from '../state/store';
 
 export function ReportSheet({ onClose }: { onClose: () => void }) {
@@ -36,8 +37,9 @@ export function ReportSheet({ onClose }: { onClose: () => void }) {
         <pre>{text}</pre>
         <div className="row">
           <div className="row" style={{ gap: 8 }}>
-            {'share' in navigator && <button className="btn" onClick={share}>Partilhar</button>}
-            <button className={'share' in navigator ? 'btn ghost' : 'btn'} onClick={copy}>Copiar</button>
+            <a className="btn" href={whatsappLink(`Olá NEFESH! Envio o meu relatório:\n\n${text}`)} target="_blank" rel="noopener">Enviar à NEFESH</a>
+            {'share' in navigator && <button className="btn ghost" onClick={share}>Partilhar</button>}
+            <button className="btn ghost" onClick={copy}>Copiar</button>
           </div>
           <button className="btn ghost" onClick={onClose}>Fechar</button>
         </div>
