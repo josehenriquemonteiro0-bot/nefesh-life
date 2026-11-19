@@ -166,11 +166,11 @@ input[type=time]{background:var(--panel2);border:1px solid var(--line);border-ra
 .rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .rcard{text-align:left;padding:0;border-radius:18px;overflow:hidden;background:var(--panel);border:1px solid var(--line);cursor:pointer}
 .rcard h3{font-size:14px}
-.rimg{height:92px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:10px}
+.rimg{position:relative;height:104px;overflow:hidden}.rtags{position:absolute;top:8px;left:8px;display:flex;flex-wrap:wrap;gap:6px}
 .rtag{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff}
 .gold-t{color:#f0dca6}
-.rhero{border-radius:20px;padding:20px 18px;margin-bottom:14px}
-.recipe-day{display:block;width:100%;text-align:left;border:0;cursor:pointer;color:var(--ink)}
+.rhero{border-radius:20px;overflow:hidden;margin-bottom:14px}.rhero svg{border-radius:20px}.rtag.solid{background:var(--panel2);color:var(--gold)}
+.recipe-day{display:block;width:100%;text-align:left;cursor:pointer;color:var(--ink);padding:0;overflow:hidden}
 .steps li:not(:has(.row)){font-size:15px}
 @media(max-width:360px){.rgrid{grid-template-columns:minmax(0,1fr)}.nrv{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .kind.ro{background:#10232c;color:var(--water)}.kind.pr{background:#2a1530;color:#e0b3f0}

@@ -3,6 +3,7 @@ import { fmtNum } from '../domain/dates';
 import { slotsFor } from '../domain/plan';
 import { GOLDEN_RULES, RECIPES, type Recipe } from '../domain/recipes';
 import { useStore } from '../state/store';
+import { RecipeArt } from '../components/RecipeArt';
 
 const FILTERS = ['Todas', 'Smoothie', 'Pequeno-almoço', 'Refeição', 'Snack', 'Bebida'] as const;
 
@@ -16,10 +17,13 @@ function RecipeDetail({ r, onBack }: { r: Recipe; onBack: () => void }) {
   return (
     <>
       <button className="btn ghost sm" onClick={onBack}>← Receitas</button>
-      <div className="rhero" style={{ background: `linear-gradient(135deg, ${r.hue[0]}, ${r.hue[1]})`, marginTop: 14 }}>
-        <span className="rtag">{r.kind} · Spirulina {r.form}</span>
-        <h1 style={{ margin: '8px 0 6px' }}>{r.title}</h1>
-        <p className="small" style={{ margin: 0 }}>{r.minutes} min · {r.serves}</p>
+      <div className="rhero" style={{ marginTop: 14 }}>
+        <RecipeArt r={r} height={210} />
+        <div style={{ padding: '14px 4px 0' }}>
+          <span className="rtag solid">{r.kind} · Spirulina {r.form}</span>
+          <h1 style={{ margin: '8px 0 6px' }}>{r.title}</h1>
+          <p className="small mute" style={{ margin: 0 }}>{r.minutes} min · {r.serves}</p>
+        </div>
       </div>
 
       <section className="card">
@@ -106,9 +110,12 @@ export function Recipes() {
       <div className="rgrid">
         {list.map((r) => (
           <button key={r.id} className="rcard" onClick={() => { setOpen(r); window.scrollTo(0, 0); }}>
-            <div className="rimg" style={{ background: `linear-gradient(135deg, ${r.hue[0]}, ${r.hue[1]})` }}>
-              <span className="rtag">{r.form}</span>
-              {goal && r.goals.includes(goal) && <span className="rtag gold-t">Para o seu objetivo</span>}
+            <div className="rimg">
+              <RecipeArt r={r} height={104} />
+              <div className="rtags">
+                <span className="rtag">{r.form}</span>
+                {goal && r.goals.includes(goal) && <span className="rtag gold-t">Para si</span>}
+              </div>
             </div>
             <div style={{ padding: '10px 12px 12px' }}>
               <h3 style={{ margin: '0 0 4px' }}>{r.title}</h3>

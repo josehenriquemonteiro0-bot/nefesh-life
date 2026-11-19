@@ -120,7 +120,7 @@ export function App() {
             <img src={`${import.meta.env.BASE_URL}brand/logo-header.png`} alt="nefesh" width={130} height={30} />
             <small>LIFE</small>
           </div>
-          <button className="btn ghost sm" onClick={startQuiz}>Reavaliar</button>
+          <button className="btn ghost sm" onClick={startQuiz}>{S.ans ? 'Reavaliar' : 'Avaliar'}</button>
         </header>
         <main key={tab + (quiz ? quiz.qi : '')} className="view">{screen}</main>
       </div>

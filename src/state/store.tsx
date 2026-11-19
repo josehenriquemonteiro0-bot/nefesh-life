@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { STORAGE_KEY } from '../domain/content';
 import { todayKey } from '../domain/dates';
-import { sampleState } from '../domain/sample';
+import { blankState } from '../domain/sample';
 import type { AppState, DayLog } from '../domain/types';
 
 function load(): AppState | null {
@@ -38,7 +38,11 @@ interface Store {
 const Ctx = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [S, setS] = useState<AppState>(() => load() || sampleState());
+  // primeira utilização: começa vazia, com as boas-vindas. Estados antigos de demonstração são descartados.
+  const [S, setS] = useState<AppState>(() => {
+    const saved = load();
+    return saved && !saved.sample ? saved : { ...blankState(), intro: false };
+  });
   const [toastMsg, setToast] = useState<string | null>(null);
   const timer = useRef<number>();
 

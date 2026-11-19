@@ -8,6 +8,7 @@ import { adherence, habitOn, stock, streak, took } from '../domain/stats';
 import { useStore } from '../state/store';
 import { doseText, lotFor, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
+import { RecipeArt } from '../components/RecipeArt';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import type { Nav } from '../App';
 
@@ -230,10 +231,13 @@ export function Home({ go, startQuiz, onReset, replayIntro, openBottle }: { go: 
         </section>
       )}
 
-      <button className="card recipe-day" style={{ background: `linear-gradient(135deg, ${rd.hue[0]}, ${rd.hue[1]})` }} onClick={() => go('recipes')}>
-        <span className="rtag">Receita do dia · Spirulina {rd.form}</span>
-        <h2 style={{ margin: '8px 0 4px' }}>{rd.title}</h2>
-        <span className="small">{fmtNum(rd.grams)} g por porção · {rd.minutes} min · ver receitas →</span>
+      <button className="card recipe-day" onClick={() => go('recipes')}>
+        <RecipeArt r={rd} height={120} />
+        <div style={{ padding: '12px 16px 14px' }}>
+          <span className="rtag solid">Receita do dia · Spirulina {rd.form}</span>
+          <h2 style={{ margin: '8px 0 4px' }}>{rd.title}</h2>
+          <span className="small mute">{fmtNum(rd.grams)} g por porção · {rd.minutes} min · ver receitas →</span>
+        </div>
       </button>
 
       <section className="card tip">

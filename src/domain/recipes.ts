@@ -1,4 +1,5 @@
 import type { Goal } from './types';
+import type { Art } from '../components/RecipeArt';
 
 export interface Recipe {
   id: string;
@@ -13,8 +14,10 @@ export interface Recipe {
   steps: string[];
   tip?: string;
   goals: Goal[];
-  /** duas cores para o cartão */
+  /** duas cores para o fundo do cartão */
   hue: [string, string];
+  /** ilustração */
+  art: Art;
 }
 
 export const RECIPES: Recipe[] = [
@@ -31,6 +34,7 @@ export const RECIPES: Recipe[] = [
     tip: 'O ananás e a lima disfarçam o sabor a mar da Spirulina. A vitamina C dos citrinos também ajuda a absorver o ferro de origem vegetal.',
     goals: ['energia', 'imunidade', 'foco'],
     hue: ['#0b5560', '#2fa36b'],
+    art: { type: 'glass', main: '#3fae4f', top: '#7fd36a', accent: '#f2c94c', garnish: 'lime' },
   },
   {
     id: 'cacau-banana',
@@ -45,6 +49,7 @@ export const RECIPES: Recipe[] = [
     tip: 'O cacau esconde quase por completo a cor verde. É uma boa porta de entrada para quem estranha o sabor.',
     goals: ['desporto', 'energia'],
     hue: ['#3b2a1d', '#0b5560'],
+    art: { type: 'glass', main: '#6b4a2f', top: '#8a6343', accent: '#f2d27a', garnish: 'fruit' },
   },
   {
     id: 'manga-gengibre',
@@ -58,6 +63,7 @@ export const RECIPES: Recipe[] = [
     steps: ['Descasque o gengibre e triture tudo junto.', 'Ajuste a espessura com mais água, se precisar.'],
     goals: ['imunidade', 'foco', 'peso'],
     hue: ['#b8862f', '#2fa36b'],
+    art: { type: 'glass', main: '#9fbf3a', top: '#f2b640', accent: '#f2b640', garnish: 'fruit' },
   },
   {
     id: 'limonada',
@@ -72,6 +78,7 @@ export const RECIPES: Recipe[] = [
     tip: 'Uma forma de juntar Spirulina à meta de água do dia.',
     goals: ['energia', 'peso', 'desporto'],
     hue: ['#1f7fa6', '#2fa36b'],
+    art: { type: 'glass', main: 'rgba(120,210,170,.75)', top: '#c8f0c0', accent: '#2fa36b', garnish: 'mint' },
   },
   {
     id: 'bowl-frutos-vermelhos',
@@ -85,6 +92,7 @@ export const RECIPES: Recipe[] = [
     steps: ['Triture a fruta, a bebida e o pó até ficar espesso, como um gelado.', 'Passe para uma taça e junte os toppings.', 'Espalhe os Nibs por cima no fim, para ficarem crocantes.'],
     goals: ['energia', 'nutricao', 'imunidade'],
     hue: ['#7a2047', '#0b5560'],
+    art: { type: 'bowl', main: '#2f8f5a', accent: '#c0392b', toppings: ['#b0233a', '#3a2a7a', '#d9b26a', '#f4f1e6', '#b0233a', '#e07a2f'], nibs: true },
   },
   {
     id: 'overnight-oats',
@@ -99,6 +107,7 @@ export const RECIPES: Recipe[] = [
     tip: 'Junte os Nibs na hora, para manterem a textura.',
     goals: ['energia', 'peso', 'nutricao'],
     hue: ['#8a7034', '#2fa36b'],
+    art: { type: 'jar', main: '#e2cfa5', accent: '#c0453a' },
   },
   {
     id: 'salada-quinoa',
@@ -113,6 +122,7 @@ export const RECIPES: Recipe[] = [
     tip: 'Não junte Spirulina a pratos quentes: acima de cerca de 40 °C a ficocianina degrada-se. Adicione-a sempre depois de cozinhar.',
     goals: ['nutricao', 'peso', 'desporto'],
     hue: ['#4a6b2a', '#0b5560'],
+    art: { type: 'plate', main: '#e8dcb5', accent: '#6aa84f', toppings: ['#e74c3c', '#7cb342', '#a5d66a', '#e74c3c', '#4f8a3a', '#d4b483'], nibs: true },
   },
   {
     id: 'guacamole',
@@ -126,6 +136,7 @@ export const RECIPES: Recipe[] = [
     steps: ['Esmague os abacates com o sumo de lima.', 'Junte o resto e misture bem.', 'Sirva com palitos de cenoura e pepino.'],
     goals: ['nutricao', 'peso'],
     hue: ['#2f6b2a', '#2fa36b'],
+    art: { type: 'bowl', main: '#7cb342', accent: '#e8c46a', bowl: '#d9c7a0', toppings: ['#c0392b', '#f4f1e6', '#4f8a3a'], chips: true },
   },
   {
     id: 'bolinhas',
@@ -140,6 +151,7 @@ export const RECIPES: Recipe[] = [
     tip: 'Cada bolinha tem 0,5 g, o mesmo que uma cápsula. Um snack fácil para levar para o trabalho ou para o treino.',
     goals: ['desporto', 'energia', 'foco'],
     hue: ['#5a3a20', '#2fa36b'],
+    art: { type: 'balls', main: '#3d4a2a', accent: '#f4f1e6' },
   },
   {
     id: 'tosta-abacate',
@@ -153,6 +165,7 @@ export const RECIPES: Recipe[] = [
     steps: ['Torre o pão e deixe arrefecer 1 minuto.', 'Esmague o abacate com limão, sal e pimenta e barre o pão.', 'Termine com sésamo e Nibs.'],
     goals: ['energia', 'foco', 'nutricao'],
     hue: ['#3d5a28', '#8a7034'],
+    art: { type: 'toast', main: '#8cc152', accent: '#f4f1e6' },
   },
 ];
 
