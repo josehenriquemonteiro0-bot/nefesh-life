@@ -400,3 +400,14 @@ code.key{flex:1 1 160px;background:var(--panel2);border:1px solid var(--line);bo
 .msgs li.new{color:var(--ink)}.msgs li.new b{color:var(--neon)}
 .community-cta{display:grid;gap:4px;text-align:left;width:100%;cursor:pointer}
 .badge-new{background:var(--neon);color:#00140d;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700}
+
+/* faixa de estado no Início */
+.status-strip{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px 8px;margin:0 0 14px;cursor:pointer;color:var(--ink);text-align:center}
+.status-strip span{display:grid;gap:2px}
+.status-strip b{font:600 17px Sora,sans-serif}
+.status-strip small{font-size:11px;color:var(--mute)}
+.status-strip .badge-new{position:absolute;top:-6px;right:-4px;font-style:normal}
+/* profissionais no Início */
+.pro-avs{display:flex;flex-wrap:wrap;gap:8px}
+.pro-avs span{display:flex;align-items:center;gap:6px;background:var(--panel2);border-radius:999px;padding:4px 10px 4px 4px;font-size:13px}
+.pro-avs i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--gold, #C9A85C);color:#1a1406;font:700 11px Sora,sans-serif;font-style:normal}

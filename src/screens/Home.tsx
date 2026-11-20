@@ -1,16 +1,15 @@
+import { useMemo } from 'react';
 import { Bar, Glass, Ring } from '../components/Charts';
 import { Icon } from '../components/Icon';
-import { GLASS_ML, HABITS, SHOP_URL, STEP_GOAL, TIPS } from '../domain/content';
+import { GLASS_ML, HABITS, PROS, SHOP_URL, STEP_GOAL, TIPS, whatsappLink } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
 import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
-import { adherence, habitOn, stock, streak, took } from '../domain/stats';
+import { habitOn, stock, streak, took } from '../domain/stats';
 import { useStore } from '../state/store';
 import { doseText, stockText } from '../domain/lots';
-import { recipeOfDay } from '../domain/recipes';
-import { RecipeArt } from '../components/RecipeArt';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
-import { dayScore } from '../domain/points';
+import { activityStreak, dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
 import { mealForSlot, nextReassessment, spirulinaEntry, weeklySummary } from '../domain/progress';
 import type { Nav } from '../App';
@@ -71,32 +70,49 @@ function ActivityCard({ openHealth }: { openHealth: () => void }) {
   );
 }
 
-/** Pontos de hoje e posição na liga (ou convite para a comunidade). */
-function CommunityCard({ go }: { go: Nav }) {
+/** Faixa no topo: sequência, pontos de hoje e liga (abre a Comunidade). */
+function StatusStrip({ go }: { go: Nav }) {
   const { S } = useStore();
   const auth = useAuth();
   const joined = !!auth && !!S.community;
   const { state: st } = useSocial(joined ? 120_000 : Infinity);
   const pts = dayScore(S, todayKey()).points;
-  if (!joined)
-    return (
-      <button className="card community-cta" onClick={() => go('social')}>
-        <b>🏆 Comunidade NEFESH</b>
-        <span className="small mute">Ganhe pontos com os seus hábitos, suba de liga e incentive os seus amigos.</span>
-      </button>
-    );
+  const streakN = useMemo(() => activityStreak(S), [S]);
   const me = st?.league?.find((m) => m.me);
   const unread = unreadCount(st);
   return (
-    <button className="card community-cta" onClick={() => go('social')}>
-      <div className="row">
-        <b>🏆 Hoje: {pts} pontos</b>
-        {unread > 0 && <span className="badge-new">{unread} {unread === 1 ? 'mensagem' : 'mensagens'}</span>}
-      </div>
-      <span className="small mute">
-        {me ? `Liga ${LEAGUES[st?.me?.league ?? 0]} · ${me.rank}.º lugar com ${me.points} pontos esta semana` : 'Ver a liga e os amigos →'}
-      </span>
+    <button className="status-strip" onClick={() => go('social')} aria-label="Abrir a Comunidade">
+      <span><b>🔥 {streakN}</b><small>{streakN === 1 ? 'dia seguido' : 'dias seguidos'}</small></span>
+      <span><b>⭐ {pts}</b><small>pontos hoje</small></span>
+      {joined ? (
+        <span><b>🏆 {me ? `${me.rank}.º` : '—'}</b><small>liga {LEAGUES[st?.me?.league ?? 0]}</small></span>
+      ) : (
+        <span><b>🏆</b><small>entrar na liga</small></span>
+      )}
+      {unread > 0 && <i className="badge-new">{unread}</i>}
     </button>
+  );
+}
+
+/** Acompanhamento por profissionais de saúde parceiros. */
+function ProsCard({ go }: { go: Nav }) {
+  const { S } = useStore();
+  return (
+    <section className="card">
+      <h2 style={{ marginTop: 0 }}>Acompanhamento profissional</h2>
+      <p className="small mute" style={{ marginTop: 0 }}>
+        Nutricionistas, médicos, profissionais de exercício e psicólogos parceiros da NEFESH ajustam o plano ao seu caso.
+      </p>
+      <div className="pro-avs">
+        {PROS.map((p) => (
+          <span key={p.i} title={p.n}><i>{p.i}</i>{({ NU: 'Nutricionista', MI: 'Médico', PE: 'Exercício', PS: 'Psicólogo' } as Record<string, string>)[p.i] ?? p.n}</span>
+        ))}
+      </div>
+      <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 12 }}>
+        <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de ter acompanhamento profissional${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener">Pedir acompanhamento</a>
+        <button className="btn ghost sm" onClick={() => go('pros')}>Ver profissionais</button>
+      </div>
+    </section>
   );
 }
 
@@ -165,7 +181,6 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   const totalCaps = sl.reduce((t, s) => t + s.n, 0);
   const low = st.days <= 7;
   const re = nextReassessment(S);
-  const rd = recipeOfDay(S.ans.goal, daysSince('2026-01-01'));
 
   const toggleDose = (i: number) => {
     const next = [...doses];
@@ -196,6 +211,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       <SampleBanner onReset={onReset} />
       <p className="mute small" style={{ margin: 0 }}>{longToday()} · dia {day} do ritual</p>
       <h1>{greeting()}{S.ans.name ? `, ${S.ans.name}` : ''}</h1>
+      <StatusStrip go={go} />
 
       {re?.due && !S.sample && (
         <section className="card due">
@@ -262,6 +278,18 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </div>
       </section>
 
+      {!l.e && (
+        <section className="card">
+          <div className="row">
+            <div>
+              <h2 style={{ margin: 0 }}>Como se sente hoje?</h2>
+              <p className="mute small" style={{ margin: '4px 0 0' }}>30 segundos: energia, sono, disposição e treino.</p>
+            </div>
+            <button className="btn ghost sm" onClick={() => go('check')}>Check-in</button>
+          </div>
+        </section>
+      )}
+
       <ActivityCard openHealth={openHealth} />
 
       <section className="card">
@@ -287,41 +315,9 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </div>
       </section>
 
-      {!l.e && (
-        <section className="card">
-          <div className="row">
-            <div>
-              <h2 style={{ margin: 0 }}>Como se sente hoje?</h2>
-              <p className="mute small" style={{ margin: '4px 0 0' }}>30 segundos: energia, sono, disposição e treino.</p>
-            </div>
-            <button className="btn ghost sm" onClick={() => go('check')}>Check-in</button>
-          </div>
-        </section>
-      )}
-
-      <button className="card recipe-day" onClick={() => go('recipes')}>
-        <RecipeArt r={rd} height={120} />
-        <div style={{ padding: '12px 16px 14px' }}>
-          <span className="rtag solid">Receita do dia · Spirulina {rd.form}</span>
-          <h2 style={{ margin: '8px 0 4px' }}>{rd.title}</h2>
-          <span className="small mute">{fmtNum(rd.grams)} g por porção · {rd.minutes} min · ver receitas →</span>
-        </div>
-      </button>
-
-      <section className="card tip">
-        <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>
-        <p style={{ margin: 0 }}>{tip}</p>
-      </section>
-
-      <CommunityCard go={go} />
+      <ProsCard go={go} />
 
       <WeekCard go={go} />
-
-      <div className="stats">
-        <div className="stat"><b>{streak(S)}</b><span>dias seguidos</span></div>
-        <div className="stat"><b>{adherence(S)}%</b><span>adesão 14 dias</span></div>
-        <div className="stat"><b>{st.days}</b><span>dias de stock</span></div>
-      </div>
 
       {low && (
         <section className="card">
@@ -337,6 +333,12 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           </div>
         </section>
       )}
+
+      <section className="card tip">
+        <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>
+        <p style={{ margin: 0 }}>{tip}</p>
+      </section>
+
     </>
   );
 }
