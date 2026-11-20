@@ -6,6 +6,7 @@ import { GOAL_LABEL } from '../domain/content';
 import { BODY_GOAL_LABEL } from '../domain/body';
 import { PlanUpload } from '../components/PlanUpload';
 import { PremiumTag } from '../components/PremiumTag';
+import { ExerciseAnim } from '../components/ExerciseAnim';
 import { TrainPlanCard } from '../components/TrainPlan';
 import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
 import { useStore } from '../state/store';
@@ -27,6 +28,7 @@ function ExerciseItem({ e, level, done, onToggle }: { e: Exercise; level: Level;
       </div>
       {open && (
         <div className="ex-body">
+          <ExerciseAnim id={e.id} />
           <ol className="small">{e.how.map((h) => <li key={h}>{h}</li>)}</ol>
           {e.easier && <p className="small" style={{ margin: '6px 0 0' }}><b>Mais fácil:</b> {e.easier}</p>}
           {e.caution && <p className="small warn-t" style={{ margin: '6px 0 0' }}>{e.caution}</p>}

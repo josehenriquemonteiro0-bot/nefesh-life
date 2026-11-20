@@ -16,6 +16,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { LIMIT_MESSAGES, check, cleanDeviceId, count, type Limits } from './limits';
 import { handlePlan, type PlanBody } from './plan';
+import { handleTip } from './tips';
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -108,7 +109,7 @@ export default {
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
 
-    let body: { image?: string; media_type?: string; device?: string; hint?: string } & PlanBody;
+    let body: { image?: string; media_type?: string; device?: string; hint?: string; notes?: string } & PlanBody;
     try {
       body = await req.json();
     } catch {
@@ -119,6 +120,14 @@ export default {
 
     // leitura do plano alimentar do nutricionista
     const path = new URL(req.url).pathname;
+    if (path === '/dica') {
+      try {
+        const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+        return await handleTip(body as { name?: string; notes?: string }, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+      } catch (err) {
+        return apiError(err, h);
+      }
+    }
     if (path === '/plano' || path === '/treino') {
       try {
         const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });

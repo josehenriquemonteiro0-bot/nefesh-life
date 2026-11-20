@@ -98,6 +98,8 @@ export interface AppState {
   nutriPro?: { kcal?: number; protein?: number; by: string; at: string } | null;
   /** assinatura Premium (para o lançamento; na fase de testes está tudo aberto) */
   premium?: boolean;
+  /** dicas de execução já pedidas, por nome do exercício */
+  exerciseTips?: Record<string, import('./tips').ExerciseTip>;
   /** plano de treino do personal lido pela IA */
   trainPlan?: (import('./planRead').ParsedWorkoutPlan & { at: string; name: string }) | null;
   /** plano do nutricionista lido pela IA */

@@ -9,6 +9,7 @@ import { useStore } from '../state/store';
 import { Bar } from './Charts';
 import { DecimalInput } from './DecimalInput';
 import { PremiumTag } from './PremiumTag';
+import { ExerciseHelp } from './ExerciseHelp';
 
 const STATUS: Record<TrainSessionLog['status'], string> = { seguido: 'Feito como planeado', alterado: 'Feito com alterações', saltado: 'Não fiz' };
 
@@ -110,6 +111,7 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
                 {isOpen && (
                   <div className="ex-body">
                     {e.notes && <p className="small" style={{ margin: '6px 0' }}>{e.notes}</p>}
+                    <ExerciseHelp name={e.name} notes={e.notes} />
                     {last[i] && (
                       <p className="small neon" style={{ margin: '6px 0' }}>
                         Da última vez ({shortDate(last[i]!.date)}): {[last[i]!.load, last[i]!.reps && `× ${last[i]!.reps}`].filter(Boolean).join(' ')} · {last[i]!.sets} {last[i]!.sets === 1 ? 'série' : 'séries'}

@@ -281,3 +281,17 @@ header{padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
 .setin{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:600 15px Manrope,sans-serif;color:var(--ink)}
 .mini-bars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
 .mini-bars .bar{margin:4px 0 0;height:8px}
+/* animações dos exercícios */
+.exanim{margin:8px 0 4px;display:grid;justify-items:center;gap:4px}
+.exanim svg{width:100%;max-width:260px;height:auto;background:radial-gradient(circle at 50% 40%,#0b2a21,var(--panel2) 70%);border-radius:14px}
+.exanim.sm svg{max-width:84px;border-radius:10px}
+.exanim .fig{stroke:var(--neon);stroke-width:5;stroke-linecap:round}
+.exanim .fig.far{stroke:#0f8f57}
+.exanim .head{fill:var(--neon)}
+.exanim .ground{stroke:#2a3d3f;stroke-width:1.5}
+.exanim .mat{fill:#1d4556}
+.exanim .door{fill:none;stroke:#8a7034;stroke-width:3}
+.exanim .bag{fill:var(--gold)}
+.exhelp{margin:6px 0 10px}
+.tipbox{margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.tipbox ol{margin:0 0 8px;padding-left:18px}.tipbox p{margin:0 0 6px}

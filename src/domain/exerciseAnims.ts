@@ -1,0 +1,133 @@
+/**
+ * Animações dos exercícios: uma figura de traços que alterna entre duas posições.
+ * Coordenadas numa área de 120 × 100 (chão em y = 92). Vista de lado, exceto os polichinelos.
+ * N = membro mais próximo (desenhado por cima), F = membro mais afastado (mais claro).
+ */
+export type Joint = 'head' | 'neck' | 'mid' | 'hip' | 'kN' | 'aN' | 'kF' | 'aF' | 'eN' | 'hN' | 'eF' | 'hF';
+export type Pose = Partial<Record<Joint, [number, number]>>;
+
+export interface Anim {
+  a: Pose;
+  b: Pose;
+  /** duração de um ciclo completo, em segundos */
+  dur: number;
+  /** elementos de cenário */
+  props?: ('door' | 'mat' | 'bag')[];
+  /** texto curto do ritmo, ex.: "desce 2 s, sobe 1 s" */
+  cue: string;
+}
+
+/** Preenche membros afastados que não foram indicados, desviando um pouco os mais próximos. */
+export function complete(p: Pose, dx = -3): Required<Omit<Pose, 'mid'>> & Pose {
+  const off = (v?: [number, number]): [number, number] => (v ? [v[0] + dx, v[1]] : [0, 0]);
+  return {
+    ...p,
+    kF: p.kF ?? off(p.kN),
+    aF: p.aF ?? off(p.aN),
+    eF: p.eF ?? off(p.eN),
+    hF: p.hF ?? off(p.hN),
+  } as Required<Omit<Pose, 'mid'>> & Pose;
+}
+
+export const ANIMS: Record<string, Anim> = {
+  agachamento: {
+    a: { head: [60, 16], neck: [60, 27], hip: [60, 54], kN: [61, 73], aN: [60, 92], eN: [70, 36], hN: [82, 38] },
+    b: { head: [66, 33], neck: [63, 43], hip: [46, 66], kN: [68, 71], aN: [60, 92], eN: [76, 47], hN: [89, 47] },
+    dur: 3,
+    cue: 'Desce em 2 s, sobe em 1 s',
+  },
+  flexoes: {
+    a: { head: [93, 52], neck: [85, 58], hip: [53, 69], kN: [36, 79], aN: [18, 89], eN: [86, 75], hN: [86, 91] },
+    b: { head: [93, 76], neck: [85, 80], hip: [53, 84], kN: [36, 87], aN: [18, 89], eN: [74, 83], hN: [86, 91] },
+    dur: 2.6,
+    props: ['mat'],
+    cue: 'Desce em 2 s, empurra em 1 s',
+  },
+  ponte: {
+    a: { head: [18, 85], neck: [27, 86], hip: [55, 88], kN: [70, 72], aN: [80, 91], eN: [40, 90], hN: [52, 91] },
+    b: { head: [18, 85], neck: [28, 84], hip: [56, 68], kN: [77, 69], aN: [80, 91], eN: [40, 90], hN: [52, 91] },
+    dur: 3,
+    props: ['mat'],
+    cue: 'Sobe, aperta 2 s, desce devagar',
+  },
+  prancha: {
+    a: { head: [93, 73], neck: [85, 77], hip: [53, 81], kN: [36, 85], aN: [18, 89], eN: [85, 91], hN: [100, 91] },
+    b: { head: [93, 72], neck: [85, 76], hip: [53, 80], kN: [36, 84], aN: [18, 89], eN: [85, 91], hN: [100, 91] },
+    dur: 3,
+    props: ['mat'],
+    cue: 'Corpo em linha reta, respira normalmente',
+  },
+  afundos: {
+    a: { head: [60, 16], neck: [60, 27], hip: [60, 54], kN: [66, 73], aN: [72, 92], kF: [54, 73], aF: [46, 92], eN: [66, 42], hN: [63, 53] },
+    b: { head: [60, 31], neck: [60, 42], hip: [60, 68], kN: [77, 71], aN: [77, 92], kF: [55, 90], aF: [40, 92], eN: [66, 56], hN: [63, 67] },
+    dur: 3,
+    cue: 'Desce até os joelhos a 90°, volta e troca',
+  },
+  remada: {
+    a: { head: [89, 35], neck: [81, 41], hip: [55, 58], kN: [60, 74], aN: [56, 92], eN: [81, 57], hN: [81, 72] },
+    b: { head: [89, 35], neck: [81, 41], hip: [55, 58], kN: [60, 74], aN: [56, 92], eN: [69, 45], hN: [78, 56] },
+    dur: 2.6,
+    props: ['bag'],
+    cue: 'Puxa até à barriga, desce em 2 s',
+  },
+  superman: {
+    a: { head: [93, 86], neck: [85, 88], hip: [54, 89], kN: [36, 89], aN: [18, 89], eN: [97, 88], hN: [109, 88] },
+    b: { head: [95, 80], neck: [85, 84], hip: [54, 89], kN: [36, 86], aN: [18, 81], eN: [98, 81], hN: [109, 77] },
+    dur: 3,
+    props: ['mat'],
+    cue: 'Levanta braços e pernas, segura 2 s',
+  },
+  escalador: {
+    a: { head: [93, 52], neck: [85, 58], hip: [55, 66], kN: [70, 78], aN: [58, 89], kF: [37, 78], aF: [19, 89], eN: [86, 75], hN: [86, 91] },
+    b: { head: [93, 52], neck: [85, 58], hip: [55, 66], kN: [37, 78], aN: [19, 89], kF: [70, 78], aF: [58, 89], eN: [86, 75], hN: [86, 91] },
+    dur: 1,
+    props: ['mat'],
+    cue: 'Joelhos ao peito, em ritmo',
+  },
+  polichinelos: {
+    a: { head: [60, 15], neck: [60, 26], hip: [60, 54], kN: [58, 73], aN: [57, 92], kF: [62, 73], aF: [63, 92], eN: [53, 39], hN: [51, 52], eF: [67, 39], hF: [69, 52] },
+    b: { head: [60, 12], neck: [60, 23], hip: [60, 51], kN: [51, 70], aN: [42, 89], kF: [69, 70], aF: [78, 89], eN: [47, 17], hN: [43, 6], eF: [73, 17], hF: [77, 6] },
+    dur: 1.1,
+    cue: 'Abre e fecha, aterra com suavidade',
+  },
+  gato_vaca: {
+    a: { head: [89, 74], neck: [80, 64], mid: [62, 52], hip: [44, 63], kN: [44, 91], aN: [26, 91], eN: [80, 78], hN: [80, 91] },
+    b: { head: [91, 55], neck: [80, 62], mid: [62, 70], hip: [44, 61], kN: [44, 91], aN: [26, 91], eN: [80, 77], hN: [80, 91] },
+    dur: 4,
+    props: ['mat'],
+    cue: 'Arredonda a expirar, arqueia a inspirar',
+  },
+  anca: {
+    a: { head: [56, 25], neck: [56, 36], hip: [56, 64], kN: [74, 72], aN: [76, 91], kF: [47, 91], aF: [29, 91], eN: [63, 50], hN: [58, 61] },
+    b: { head: [61, 28], neck: [60, 39], hip: [62, 67], kN: [77, 73], aN: [76, 91], kF: [47, 91], aF: [29, 91], eN: [67, 53], hN: [63, 64] },
+    dur: 4,
+    props: ['mat'],
+    cue: 'Empurra a anca à frente e respira fundo',
+  },
+  peito_porta: {
+    a: { head: [52, 17], neck: [52, 28], hip: [52, 55], kN: [52, 73], aN: [52, 92], eN: [70, 28], hN: [70, 13], eF: [48, 42], hF: [46, 54] },
+    b: { head: [62, 19], neck: [60, 30], hip: [55, 56], kN: [53, 74], aN: [52, 92], eN: [70, 28], hN: [70, 13], eF: [56, 44], hF: [54, 56] },
+    dur: 4,
+    props: ['door'],
+    cue: 'Avança o corpo até sentir o peito a alongar',
+  },
+};
+
+/** Palavras-chave para reconhecer exercícios de planos de personal (ex.: MyFit). */
+const MATCH: [RegExp, string][] = [
+  [/agachamento|squat/i, 'agachamento'],
+  [/afundo|avan[cç]o|lunge|passada/i, 'afundos'],
+  [/flex[aã]o|flexões|push.?up/i, 'flexoes'],
+  [/prancha|plank/i, 'prancha'],
+  [/eleva[cç][aã]o p[eé]lvica|ponte|glute bridge|hip thrust/i, 'ponte'],
+  [/remada curvada|remada com halter|remada unilateral|bent.?over/i, 'remada'],
+  [/super.?(man|homem)|hiperextens[aã]o de lombar solo/i, 'superman'],
+  [/escalador|mountain climber/i, 'escalador'],
+  [/polichinelo|jumping jack/i, 'polichinelos'],
+];
+
+/** Animação para um nome de exercício qualquer, se houver correspondência. */
+export function animFor(name: string): string | null {
+  for (const [re, id] of MATCH) if (re.test(name)) return id;
+  return null;
+}
