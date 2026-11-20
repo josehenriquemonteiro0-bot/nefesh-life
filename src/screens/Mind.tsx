@@ -165,7 +165,7 @@ export function Mind({ go }: { go: Nav }) {
         ) : (
           <p className="small mute" style={{ margin: 0 }}>Registe o humor durante uma ou duas semanas: a app mostra o que mais o ajuda (sono, movimento, respiração).</p>
         )}
-        <p className="small mute" style={{ margin: '6px 0 0' }}>Também pode pedir ao Coach: "estou stressado, ajuda-me a fazer uma pausa".</p>
+        <p className="small mute" style={{ margin: '6px 0 0' }}>Também pode pedir ao NEFESH Voice Assistant: "estou stressado, ajuda-me a fazer uma pausa".</p>
       </section>
     </>
   );

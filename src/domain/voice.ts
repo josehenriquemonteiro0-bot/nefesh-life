@@ -176,7 +176,7 @@ export function takeListenRequest() {
 }
 
 /** Último recurso, sem microfone na app: o ditado do teclado. */
-export const KEYBOARD_DICTATION_HINT = 'Toque no 🎤 do teclado e fale: o texto aparece aqui e o Coach regista da mesma forma.';
+export const KEYBOARD_DICTATION_HINT = 'Toque no 🎤 do teclado e fale: o texto aparece aqui e o assistente regista da mesma forma.';
 
 // ——— gravação (iPhone e navegadores sem reconhecimento de voz) ———
 

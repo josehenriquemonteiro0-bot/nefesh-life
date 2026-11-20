@@ -30,7 +30,7 @@ function MyData() {
     ['Frascos registados', `${(S.bottles ?? []).length}`],
     ['Conta', auth ? auth.email : 'sem conta (só neste telemóvel)'],
     ['Comunidade', S.community ? `alcunha "${S.community.nick}"` : 'não participa'],
-    ['Conversa com o Coach', 'só neste telemóvel'],
+    ['Conversa com o NEFESH Voice Assistant', 'só neste telemóvel'],
   ];
   return (
     <table className="mydata small">
@@ -94,7 +94,7 @@ export function DataCard({ startQuiz }: { startQuiz?: () => void }) {
       {showData && (
         <div style={{ marginBottom: 10 }}>
           <MyData />
-          <p className="small mute" style={{ margin: '6px 0 0' }}>Para corrigir um registo, toque nele no ecrã respetivo (diário, sono, check-in) ou peça ao Coach. A cópia em ficheiro tem todos os dados, em formato legível (JSON).</p>
+          <p className="small mute" style={{ margin: '6px 0 0' }}>Para corrigir um registo, toque nele no ecrã respetivo (diário, sono, check-in) ou peça ao NEFESH Voice Assistant. A cópia em ficheiro tem todos os dados, em formato legível (JSON).</p>
         </div>
       )}
       <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>

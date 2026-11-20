@@ -38,7 +38,7 @@ export const FEATURES = {
   metasProfissional: { label: 'Metas definidas pelo nutricionista', tier: 'free', enabled: true },
   planosProfissional: { label: 'Guardar os planos do profissional', tier: 'free', enabled: true },
   // premium
-  coach: { label: 'AI Coach', tier: 'premium', enabled: true, freeDaily: 5, freeNote: '5 mensagens por dia' },
+  coach: { label: 'NEFESH Voice Assistant', tier: 'premium', enabled: true, freeDaily: 5, freeNote: '5 mensagens por dia' },
   voz: { label: 'Voz: registos e conversa', tier: 'premium', enabled: true },
   fotoPrato: { label: 'Registo de refeição por foto', tier: 'premium', enabled: true },
   lerPlano: { label: 'Leitura do plano do profissional com IA', tier: 'premium', enabled: true },

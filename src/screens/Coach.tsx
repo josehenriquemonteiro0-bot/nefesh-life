@@ -201,7 +201,7 @@ export function Coach({ go }: { go: Nav }) {
   return (
     <>
       <div className="row">
-        <h1 style={{ margin: 0 }}>Coach NEFESH</h1>
+        <h1 style={{ margin: 0 }}>NEFESH Voice Assistant</h1>
         <PremiumTag f="coach" />
       </div>
 
@@ -210,7 +210,7 @@ export function Coach({ go }: { go: Nav }) {
           <button className={`coach-mic ${listening ? 'on' : ''}`} style={micScale} onClick={startVoice} aria-label={listening ? 'Parar de ouvir' : 'Toca para falar'}><Icon name="mic" width={2} /></button>
           <h2 style={{ margin: '12px 0 6px' }}>{listening ? 'A ouvir… fale à vontade' : busy ? 'Um momento…' : 'Toca para falar'}</h2>
           <p className="small" style={{ margin: 0, opacity: 0.9 }}>
-            Fale ou escreva como falaria com um amigo: "Dormi mal, comi dois ovos e pão, vou treinar à tarde e estou cansado." O Coach regista o sono, a refeição e a energia, e devolve uma sugestão para o seu dia.
+            Fale ou escreva como falaria com um amigo: "Dormi mal, comi dois ovos e pão, vou treinar à tarde e estou cansado." O assistente regista o sono, a refeição e a energia, e devolve uma sugestão para o seu dia.
           </p>
         </section>
       )}
@@ -272,7 +272,7 @@ export function Coach({ go }: { go: Nav }) {
           value={text}
           maxLength={1200}
           placeholder={listening ? 'A ouvir… quando parar de falar, eu envio' : busy ? 'A pensar…' : 'Fale ou escreva… ex.: almocei frango com arroz'}
-          aria-label="Mensagem para o Coach"
+          aria-label="Mensagem para o NEFESH Voice Assistant"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -309,14 +309,14 @@ export function Coach({ go }: { go: Nav }) {
             : ''}
       </p>
       <p className="small mute" style={{ margin: '4px 0 0' }}>
-        O Coach apoia, não substitui profissionais, e não faz diagnósticos. Os valores são estimativas. As mensagens vão à IA só para responder e a NEFESH não as guarda: o histórico fica neste telemóvel.
+        O NEFESH Voice Assistant apoia, não substitui profissionais, e não faz diagnósticos. Os valores são estimativas. As mensagens vão à IA só para responder e a NEFESH não as guarda: o histórico fica neste telemóvel.
         {hist.length > 0 && (
           <>
             {' '}
             <button
               className="link small inline"
               onClick={() => {
-                if (!confirm('Apagar a conversa com o Coach? Os registos feitos ficam no diário.')) return;
+                if (!confirm('Apagar a conversa com o NEFESH Voice Assistant? Os registos feitos ficam no diário.')) return;
                 clearHistory();
                 setHist([]);
               }}

@@ -55,7 +55,7 @@ export type Nav = (t: Tab) => void;
 const TABS: [Tab, string, IconName][] = [
   ['home', 'Início', 'home'],
   ['saude', 'Saúde', 'heart'],
-  ['coach', 'Coach', 'mic'],
+  ['coach', 'Assistant', 'mic'],
   ['evo', 'Evolução', 'evo'],
   ['social', 'Comunidade', 'pros'],
 ];

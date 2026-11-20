@@ -231,7 +231,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
               <p className="small mute" style={{ margin: 0 }}>{na.detail}</p>
             </div>
             {label && <div className="na-actions"><button className="btn sm" onClick={run}>{label}</button></div>}
-            <button className="btn ghost full talk talk-big" onClick={() => { requestListen(); go('coach'); }} aria-label="Toca para falar com o Coach">
+            <button className="btn ghost full talk talk-big" onClick={() => { requestListen(); go('coach'); }} aria-label="Toca para falar com o NEFESH Voice Assistant">
               <Icon name="mic" /> Toca para falar
             </button>
           </section>

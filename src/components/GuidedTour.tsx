@@ -22,7 +22,7 @@ export const TOUR: Step[] = [
   { tab: 'quiz', target: 'saude-tabs', title: 'Saúde', text: 'Toda a sua saúde num só separador: Plano, Nutrição, Treino, Sono, Mente, Corpo, Cuidados (medicação, prevenção e análises) e Ciclo. Toque nos ícones de cima para mudar.' },
   { tab: 'nutri', target: 'foto-prato', title: 'Fotografe o prato', text: 'A IA estima os alimentos e as calorias. Aqui também carrega o plano do seu nutricionista e encontra as receitas.' },
   { tab: 'treino', target: 'treino-onde', title: 'Treine onde quiser', text: 'Com o plano do seu personal, no ginásio ou em casa, com exercícios animados. Escolha o nível: iniciante ou intermediário.' },
-  { tab: 'home', target: 'nav-coach', title: 'Coach NEFESH', text: 'O botão do centro: fale ou escreva como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz") e o Coach regista por si e responde com uma sugestão.' },
+  { tab: 'home', target: 'nav-coach', title: 'NEFESH Voice Assistant', text: 'O botão do centro: toque e fale (ou escreva) como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz"). O assistente regista por si e responde com uma sugestão.' },
   { tab: 'evo', target: 'spirulina-voce', title: 'A sua evolução', text: 'Aqui vê como se sente nos dias com e sem ritual, o antes e depois das reavaliações e o relatório em PDF.' },
   { tab: 'social', target: 'comunidade', title: 'Comunidade', text: 'Pontos, ligas semanais, o NEFESH 21 Day Reset, Circles com a família e os amigos, parceiro de ritual e momentos com foto. Juntos é mais fácil.' },
   { tab: 'home', target: 'perfil', title: 'O seu perfil', text: 'Conta, notificações, lembrete da toma, frascos, reavaliação e o tutorial outra vez, se precisar. Bom ritual! 🌿' },
@@ -123,12 +123,12 @@ export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
 
 /** Dica curta na primeira visita a cada separador (fecha-se com um toque e não volta). */
 export const TAB_TIPS: Partial<Record<Tab, string>> = {
-  mente: 'Como está o humor e o stress? Uma pausa de respiração de 2 a 5 minutos e três coisas boas do dia fazem diferença. O Coach também guia uma pausa.',
+  mente: 'Como está o humor e o stress? Uma pausa de respiração de 2 a 5 minutos e três coisas boas do dia fazem diferença. O NEFESH Voice Assistant também guia uma pausa.',
   corpo: 'Peso e medidas uma vez por semana: veja a tendência mês a mês. As fotos de progresso ficam só neste telemóvel.',
   cuidados: 'A sua medicação com lembretes, os check-ups e vacinas para a sua idade, as análises com a evolução e as consultas. Tudo vai no relatório para o médico.',
   ciclo: 'Ciclo menstrual, gravidez ou menopausa, ligados à sua energia e ao sono. Fica só no telemóvel e na sua conta.',
   sono: 'Registe as horas de cada noite: veja a média, a regularidade e como o sono mexe com a sua energia.',
-  coach: 'Toque no microfone e fale, ou escreva, o que fez ou como se sente: o Coach regista a água, o sono, as refeições, o treino e a Spirulina, e responde com uma sugestão. Pode desfazer o último registo.',
+  coach: 'Toque no microfone e fale, ou escreva, o que fez ou como se sente: o assistente regista a água, o sono, as refeições, o treino e a Spirulina, e responde com uma sugestão. Pode desfazer o último registo.',
   quiz: 'O seu plano: a dose de Spirulina explicada passo a passo, o Índice NEFESH e as metas para o seu corpo. Em "Saber mais" está a ciência.',
   nutri: 'Diário de hoje, foto do prato com IA e o plano do seu nutricionista. Em "Receitas" há ideias com Spirulina para todos os dias.',
   treino: 'Escolha onde treina: com personal, no ginásio ou em casa. Toque num treino para ver os exercícios e registá-lo no fim.',
