@@ -19,7 +19,7 @@ export const TOUR: Step[] = [
   { tab: 'home', target: 'agua', title: 'Água', text: 'Um toque em "+ 1 copo" sempre que beber. A meta é calculada para o seu peso.' },
   { tab: 'home', target: 'checkin', title: 'Check-in de 30 segundos', text: 'Diga como se sente: energia, sono e disposição. Com isto, a app mostra-lhe o efeito do ritual em si.' },
   { tab: 'home', target: 'passos', title: 'Passos e relógio', text: 'Escreva os passos ou envie uma captura do app Saúde. Também pode ligar o iPhone e o Apple Watch.' },
-  { tab: 'quiz', target: 'saude-tabs', title: 'Saúde', text: 'O seu Plano, a Nutrição, o Treino e o Sono, num só separador. Toque nos ícones de cima para mudar.' },
+  { tab: 'quiz', target: 'saude-tabs', title: 'Saúde', text: 'Toda a sua saúde num só separador: Plano, Nutrição, Treino, Sono, Mente, Corpo, Cuidados (medicação, prevenção e análises) e Ciclo. Toque nos ícones de cima para mudar.' },
   { tab: 'nutri', target: 'foto-prato', title: 'Fotografe o prato', text: 'A IA estima os alimentos e as calorias. Aqui também carrega o plano do seu nutricionista e encontra as receitas.' },
   { tab: 'treino', target: 'treino-onde', title: 'Treine onde quiser', text: 'Com o plano do seu personal, no ginásio ou em casa, com exercícios animados. Escolha o nível: iniciante ou intermediário.' },
   { tab: 'home', target: 'nav-coach', title: 'Coach NEFESH', text: 'O botão do centro: fale ou escreva como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz") e o Coach regista por si e responde com uma sugestão.' },
@@ -123,6 +123,10 @@ export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
 
 /** Dica curta na primeira visita a cada separador (fecha-se com um toque e não volta). */
 export const TAB_TIPS: Partial<Record<Tab, string>> = {
+  mente: 'Como está o humor e o stress? Uma pausa de respiração de 2 a 5 minutos e três coisas boas do dia fazem diferença. O Coach também guia uma pausa.',
+  corpo: 'Peso e medidas uma vez por semana: veja a tendência mês a mês. As fotos de progresso ficam só neste telemóvel.',
+  cuidados: 'A sua medicação com lembretes, os check-ups e vacinas para a sua idade, as análises com a evolução e as consultas. Tudo vai no relatório para o médico.',
+  ciclo: 'Ciclo menstrual, gravidez ou menopausa, ligados à sua energia e ao sono. Fica só no telemóvel e na sua conta.',
   sono: 'Registe as horas de cada noite: veja a média, a regularidade e como o sono mexe com a sua energia.',
   coach: 'Toque no microfone e fale, ou escreva, o que fez ou como se sente: o Coach regista a água, o sono, as refeições, o treino e a Spirulina, e responde com uma sugestão. Pode desfazer o último registo.',
   quiz: 'O seu plano: a dose de Spirulina explicada passo a passo, o Índice NEFESH e as metas para o seu corpo. Em "Saber mais" está a ciência.',

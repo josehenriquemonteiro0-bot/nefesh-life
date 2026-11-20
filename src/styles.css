@@ -581,3 +581,8 @@ ul.plain li.row{gap:8px}
 .photo-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .photo-compare figure{margin:0;display:grid;gap:4px;justify-items:center}
 .photo-compare img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;background:var(--panel2)}
+/* timeline */
+.tl{position:relative;margin-top:6px}
+.tl-month{margin:12px 0 4px;color:var(--gold);font-weight:700;text-transform:capitalize}
+.tl-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
+.tl-icon{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);font-size:15px}

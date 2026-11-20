@@ -9,6 +9,7 @@ import { useStore } from '../state/store';
 import { weekAdherence, weekChanges } from '../domain/planAdherence';
 import { compareEvals, nextReassessment, spirulinaInsight } from '../domain/progress';
 import { WeeklyReport } from '../components/WeeklyReport';
+import { Timeline } from '../components/Timeline';
 
 /** A Spirulina e você: como se sentiu nos dias com e sem o ritual. */
 export function SpirulinaInsight() {
@@ -99,6 +100,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
         {go && <button className="btn sm" onClick={() => go('check')}>Check-in de hoje</button>}
       </div>
       <WeeklyReport />
+      <Timeline />
       <section className="card hero">
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>Resumo{S.planStart ? ` desde ${shortDate(S.planStart)}` : ''}</p>
         {de !== null ? (
