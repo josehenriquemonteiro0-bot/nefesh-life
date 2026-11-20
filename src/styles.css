@@ -411,3 +411,15 @@ code.key{flex:1 1 160px;background:var(--panel2);border:1px solid var(--line);bo
 .pro-avs{display:flex;flex-wrap:wrap;gap:8px}
 .pro-avs span{display:flex;align-items:center;gap:6px;background:var(--panel2);border-radius:999px;padding:4px 10px 4px 4px;font-size:13px}
 .pro-avs i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--gold, #C9A85C);color:#1a1406;font:700 11px Sora,sans-serif;font-style:normal}
+
+/* água compacta */
+.water-row{display:flex;align-items:center;gap:12px;margin:12px 0 10px}
+.water-row svg{width:30px;height:40px;flex:none}
+/* secções que se abrem (Plano) */
+.more-head{margin:22px 0 8px}
+details.more{padding:0}
+details.more summary{list-style:none;cursor:pointer;padding:16px 18px;font:600 16px Sora,sans-serif;display:flex;justify-content:space-between;align-items:center}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:'+';color:var(--neon);font-size:22px;line-height:1}
+details.more[open] summary::after{content:'−'}
+details.more .more-body{padding:0 18px 16px}

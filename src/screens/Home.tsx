@@ -259,18 +259,17 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           <h2 style={{ margin: 0 }}>Hidratação</h2>
           <span className="small mute">{litres(w)} de {litres(goalW)} L</span>
         </div>
-        <div className="glasses">
-          {Array.from({ length: Math.max(goalW, w) }, (_, i) => (
-            <button key={i} className="glass" onClick={() => setWater(w === i + 1 ? i : i + 1)} aria-label={`Copo ${i + 1}`}>
-              <Glass on={i < w} />
-            </button>
-          ))}
+        <div className="water-row">
+          <Glass on={w > 0} />
+          <div style={{ flex: 1 }}>
+            <Bar pct={(w / goalW) * 100} variant="water" />
+            <p className="small mute" style={{ margin: '4px 0 0' }}>
+              {w} de {goalW} copos · {w >= goalW ? 'meta cumprida hoje' : `faltam ${goalW - w}`}
+            </p>
+          </div>
         </div>
-        <Bar pct={(w / goalW) * 100} variant="water" />
         <div className="row">
-          <p className="small mute" style={{ margin: 0 }}>
-            {w >= goalW ? 'Meta cumprida hoje.' : `Faltam ${goalW - w} copos de 250 ml.`} Meta: 35 ml por kg.
-          </p>
+          <p className="small mute" style={{ margin: 0 }}>Copos de 250 ml · meta de 35 ml por kg.</p>
           <div className="row" style={{ gap: 6 }}>
             <button className="btn ghost sm" onClick={() => setWater(w - 1)} aria-label="Retirar um copo">−</button>
             <button className="btn sm" onClick={() => setWater(w + 1)}>+ 1 copo</button>
@@ -303,7 +302,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
                 className={`habit ${on ? 'on' : ''}`}
                 aria-pressed={on}
                 onClick={() => {
-                  if ((k === 'passos' && l.steps !== undefined) || (k === 'sono' && l.sleepH !== undefined)) return toast(k === 'sono' ? 'Este hábito marca-se pelas horas de sono do check-in.' : 'Este hábito marca-se pelos passos que registou.');
+                  if (k === 'sono' && l.sleepH !== undefined) return toast('Este hábito marca-se pelas horas de sono do check-in.');
                   updateToday((d) => { d.hab = { ...d.hab, [k]: !d.hab?.[k] }; });
                 }}
               >

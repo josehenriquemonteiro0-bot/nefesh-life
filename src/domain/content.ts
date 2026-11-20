@@ -132,7 +132,7 @@ export const PROS: Professional[] = [
 
 export const HABITS: [HabitKey, string, IconName][] = [
   ['sono', 'Dormi 7h+', 'moon'],
-  ['passos', '6 000 passos', 'steps'],
+  ['veg', 'Vegetais ao almoço', 'leaf'],
   ['resp', '5 min a respirar', 'wind'],
 ];
 

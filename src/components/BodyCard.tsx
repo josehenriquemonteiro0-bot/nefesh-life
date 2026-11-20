@@ -124,7 +124,7 @@ export function BodyCard({ a, onReassess }: { a: Answers; onReassess?: () => voi
       )}
       <ProTargets />
       <p className="small" style={{ margin: '10px 0 0' }}>
-        Esta é uma referência geral, calculada por fórmulas. Para um plano feito para si, fale com um nutricionista: no separador <b>Saúde</b> encontra a rede NEFESH.
+        Esta é uma referência geral, calculada por fórmulas. Para um plano feito para si, fale com um nutricionista: em <b>Acompanhamento profissional</b>, no Início, encontra a rede NEFESH.
       </p>
       <p className="small mute" style={{ margin: '10px 0 0' }}>
         {b.fatMethod === 'medidas'

@@ -1,7 +1,8 @@
 export type BodyGoal = 'perder-suave' | 'perder-moderado' | 'manter' | 'ganhar-suave' | 'ganhar-moderado';
 export type Goal = 'energia' | 'desporto' | 'imunidade' | 'foco' | 'nutricao' | 'peso';
 export type AreaKey = 'energia' | 'sono' | 'nutricao' | 'hidratacao' | 'movimento';
-export type HabitKey = 'sono' | 'passos' | 'resp';
+/** 'passos' fica para registos antigos; o hábito de passos passou para o cartão dos passos */
+export type HabitKey = 'sono' | 'passos' | 'resp' | 'veg';
 export type Scores = Record<AreaKey, number>;
 
 /** Respostas da avaliação. Todos os campos são opcionais durante o preenchimento. */

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { fmtNum } from '../domain/dates';
+import { daysSince, fmtNum } from '../domain/dates';
 import { slotsFor } from '../domain/plan';
-import { GOLDEN_RULES, RECIPES, type Recipe } from '../domain/recipes';
+import { GOLDEN_RULES, RECIPES, recipeOfDay, type Recipe } from '../domain/recipes';
 import { useStore } from '../state/store';
 import { RecipeArt } from '../components/RecipeArt';
 
@@ -102,6 +102,19 @@ export function Recipes() {
     <>
       <h1>Receitas com Spirulina</h1>
       <p className="mute">Smoothies com Spirulina em pó e pratos com Nibs, sempre frios para preservar os nutrientes.</p>
+      {(() => {
+        const rd = recipeOfDay(goal, daysSince('2026-01-01'));
+        return (
+          <button className="card recipe-day" onClick={() => { setOpen(rd); window.scrollTo(0, 0); }}>
+            <RecipeArt r={rd} height={120} />
+            <div style={{ padding: '12px 16px 14px' }}>
+              <span className="rtag solid">Receita do dia · Spirulina {rd.form}</span>
+              <h2 style={{ margin: '8px 0 4px' }}>{rd.title}</h2>
+              <span className="small mute">{fmtNum(rd.grams)} g por porção · {rd.minutes} min</span>
+            </div>
+          </button>
+        );
+      })()}
       <div className="chips" style={{ margin: '4px 0 16px' }}>
         {FILTERS.map((f) => (
           <button key={f} className={`chip ${filter === f ? 'on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>

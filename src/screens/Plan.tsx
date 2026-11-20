@@ -90,6 +90,16 @@ function ProDoseForm() {
   );
 }
 
+/** Secção que se abre ao tocar (para o detalhe não ocupar o ecrã). */
+function More({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details className="card more">
+      <summary><span>{title}</span></summary>
+      <div className="more-body">{children}</div>
+    </details>
+  );
+}
+
 export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, openScience }: Props) {
   const { S } = useStore();
   if (!a)
@@ -123,7 +133,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
 
   const head = (
     <>
-      <p className="mute small" style={{ margin: 0 }}>{isNew ? 'O seu resultado' : 'O seu plano'}{a.name ? ` · ${a.name}` : ''}</p>
+      {isNew && <p className="mute small" style={{ margin: 0 }}>O seu resultado{a.name ? ` · ${a.name}` : ''}</p>}
       <section className="card hero" style={{ marginTop: 10 }}>
         <div className="idx">
           <p className="small" style={{ margin: 0, opacity: 0.8 }}>Índice NEFESH de bem-estar</p>
@@ -175,7 +185,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
 
   return (
     <>
-      {head}
+      {isNew ? head : <h1>O seu plano</h1>}
       <section className="card hero">
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>A sua dose de Spirulina</p>
         <div className="dose" style={{ marginTop: 6 }}>{fmtNum(c.g)} g <small>/ dia</small></div>
@@ -191,14 +201,14 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
         <ProDoseForm />
       </section>
 
-      <section className="card">
-        <h2>Como calculamos a sua dose</h2>
+      {!isNew && head}
+
+      <h2 className="more-head">Saber mais</h2>
+        <More title="Como calculamos a sua dose">
         <p className="small mute">Cada passo indica de onde vem: de um <b>estudo</b>, de um <b>critério NEFESH</b>, do <b>rótulo</b> do produto ou do <b>seu profissional</b>.</p>
         <DoseSteps steps={c.why} total={`${fmtNum(c.g)} g · ${dt(c.caps)}`} gPerKg={fmtNum(c.gPerKg.toFixed(3))} />
-      </section>
-
-      <section className="card">
-        <h2>As suas primeiras semanas</h2>
+        </More>
+        <More title="As suas primeiras semanas">
         <ul className="tl">
           {c.start && (
             <li className={cur === 0 ? 'now' : ''}>
@@ -219,16 +229,12 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
             <p className="small mute" style={{ margin: 0 }}>Os estudos medem mudanças após 4 a 12 semanas de uso diário.</p>
           </li>
         </ul>
-      </section>
-
-      <section className="card">
-        <h2>O que esperar</h2>
+        </More>
+        <More title="O que esperar">
         <p className="small">{EXPECT[goal]}</p>
         <p className="small mute" style={{ margin: 0 }}>A regularidade conta mais do que a quantidade: o app ajuda-o a não falhar.</p>
-      </section>
-
-      <section className="card">
-        <h2>A ciência por trás do seu plano</h2>
+        </More>
+        <More title="A ciência por trás do seu plano">
         <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginBottom: 8 }}>
           <span className="small mute">Força da evidência:</span>
           <LevelTag level={ev.level} />
@@ -237,17 +243,15 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
         <p className="small mute">{LEVELS[ev.level].text}</p>
         {studiesFor(goal).map((st) => <StudyCard key={st.id} s={st} />)}
         <button className="btn ghost full" onClick={openScience}>Ver a biblioteca científica completa</button>
-      </section>
-
-      <section className="card">
-        <h2>Segurança e tolerância</h2>
+        </More>
+        <More title="Segurança e tolerância">
         <ul className="list small">
           <li><span className="neon">•</span><span>Os efeitos adversos relatados são raros e sobretudo digestivos (náusea, inchaço). A semana de adaptação existe para os reduzir.</span></li>
           <li><span className="neon">•</span><span>A segurança depende da pureza, ou seja, da ausência de microcistinas e metais pesados. Leia o QR code do frasco para ver as análises do seu lote.</span></li>
           <li><span className="neon">•</span><span>A Spirulina não é fonte fiável de vitamina B12. Em alimentação vegana mantenha o suplemento de B12.</span></li>
           <li><span className="neon">•</span><span>Se tiver uma doença crónica ou tomar medicação, confirme a dose com um profissional.</span></li>
         </ul>
-      </section>
+        </More>
 
       <p className="small mute">
         A NEFESH Life é uma ferramenta de bem-estar e não substitui aconselhamento médico. A Spirulina é um suplemento alimentar e não se destina a tratar ou prevenir doenças.
