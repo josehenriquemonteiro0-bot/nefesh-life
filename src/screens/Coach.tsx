@@ -9,7 +9,8 @@ import { ritualJustDone } from '../state/doses';
 import { useStore } from '../state/store';
 import type { DayLog } from '../domain/types';
 import { notePremiumUse } from '../domain/analytics';
-import { listen, speak, speechSupported, stopSpeaking, takeListenRequest, ttsSupported, voiceLang, type Listening } from '../domain/voice';
+import { isBlockedByPlatform, KEYBOARD_DICTATION_HINT, listen, preferKeyboardDictation, setPreferKeyboardDictation, speak, speechSupported, stopSpeaking, takeListenRequest, ttsSupported, voiceLang, type Listening } from '../domain/voice';
+import { isIOS } from '../domain/push';
 
 const STARTERS = [
   'Bebi 2 copos de água',
@@ -32,6 +33,7 @@ export function Coach({ go }: { go: Nav }) {
   const free = dailyQuota(S, 'coach');
   const lang = voiceLang(S);
   const [listening, setListening] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const rec = useRef<Listening | null>(null);
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function Coach({ go }: { go: Nav }) {
     save(withUser);
     setText('');
     setErr(null);
+    setNote(null);
     setBusy(true);
     try {
       const r = await askCoach(S, withUser);
@@ -92,8 +95,8 @@ export function Coach({ go }: { go: Nav }) {
       return;
     }
     setErr(null);
-    if (!speechSupported()) {
-      setErr('Este navegador não reconhece voz. Toque na caixa de texto e use o microfone do teclado 🎤 para ditar.');
+    if (!speechSupported() || preferKeyboardDictation()) {
+      setNote(KEYBOARD_DICTATION_HINT);
       inputRef.current?.focus();
       return;
     }
@@ -105,9 +108,16 @@ export function Coach({ go }: { go: Nav }) {
         rec.current = null;
         if (t) send(t, true);
       },
-      onError: (msg) => {
+      onError: (msg, code) => {
         setListening(false);
         rec.current = null;
+        if (isBlockedByPlatform(code, isIOS())) {
+          // iPhone: daqui em diante o microfone abre o teclado (ditado)
+          setPreferKeyboardDictation(true);
+          setNote(`No iPhone, a Apple não deixa as apps instaladas usar a voz diretamente. ${KEYBOARD_DICTATION_HINT}`);
+          inputRef.current?.focus();
+          return;
+        }
         setErr(msg);
       },
     });
@@ -184,6 +194,7 @@ export function Coach({ go }: { go: Nav }) {
       </div>
 
       {err && <p className="small" style={{ color: 'var(--warn, #ffb37a)' }}>{err}</p>}
+      {note && <p className="small coach-note">🎤 {note}</p>}
 
       {hist.length === 0 && (
         <div className="chips coach-starters">

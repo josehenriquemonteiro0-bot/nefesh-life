@@ -57,7 +57,7 @@ export interface Listening {
  * Começa a ouvir. Chama onText com o texto até agora (parcial) e onDone com o texto final
  * quando a pessoa para de falar (ou toca para parar).
  */
-export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone: (t: string) => void; onError: (msg: string) => void }): Listening | null {
+export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone: (t: string) => void; onError: (msg: string, code: string) => void }): Listening | null {
   const C = ctor();
   if (!C) return null;
   const rec = new C();
@@ -81,7 +81,7 @@ export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone
   rec.onerror = (e) => {
     if (e.error === 'aborted') return;
     failed = true;
-    h.onError(VOICE_ERRORS[e.error] ?? 'Não foi possível ouvir. Tente outra vez.');
+    h.onError(VOICE_ERRORS[e.error] ?? 'Não foi possível ouvir. Tente outra vez.', e.error);
   };
   rec.onend = () => {
     if (!failed) h.onDone((finalText || latest).trim());
@@ -137,3 +137,28 @@ export function takeListenRequest() {
     return false;
   }
 }
+
+/**
+ * No iPhone, com a app no ecrã principal, a Apple bloqueia muitas vezes o reconhecimento de
+ * voz das páginas (mesmo com o microfone autorizado). Depois da primeira recusa, o botão do
+ * microfone passa a abrir o teclado, onde o ditado 🎤 funciona sempre.
+ */
+const DICTATION_KEY = 'nefesh-voz-teclado';
+export const KEYBOARD_DICTATION_HINT = 'Toque no 🎤 do teclado e fale: o texto aparece aqui e o Coach regista da mesma forma.';
+export const preferKeyboardDictation = () => {
+  try {
+    return localStorage.getItem(DICTATION_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+export function setPreferKeyboardDictation(on: boolean) {
+  try {
+    if (on) localStorage.setItem(DICTATION_KEY, '1');
+    else localStorage.removeItem(DICTATION_KEY);
+  } catch {
+    /* sem armazenamento */
+  }
+}
+/** Recusa que, num iPhone, quer dizer "use o ditado do teclado". */
+export const isBlockedByPlatform = (code: string, ios: boolean) => ios && (code === 'not-allowed' || code === 'service-not-allowed');

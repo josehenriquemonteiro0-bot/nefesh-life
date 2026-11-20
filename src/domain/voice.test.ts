@@ -61,3 +61,13 @@ describe('voz', () => {
     expect(listen('pt-PT', { onText: () => {}, onDone: () => {}, onError: () => {} })).toBeNull();
   });
 });
+
+describe('voz no iPhone', () => {
+  it('recusa do iPhone passa para o ditado do teclado; noutros telemóveis mostra o erro', async () => {
+    const { isBlockedByPlatform } = await import('./voice');
+    expect(isBlockedByPlatform('not-allowed', true)).toBe(true);
+    expect(isBlockedByPlatform('service-not-allowed', true)).toBe(true);
+    expect(isBlockedByPlatform('not-allowed', false)).toBe(false);
+    expect(isBlockedByPlatform('no-speech', true)).toBe(false);
+  });
+});
