@@ -23,7 +23,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # aceita também o nome com erro de digitação usado na configuração inicial
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
       ACCESS_CODE: ${{ secrets.PHOTO_ACCESS_CODE }}
     steps:
       - name: Verificar segredos
