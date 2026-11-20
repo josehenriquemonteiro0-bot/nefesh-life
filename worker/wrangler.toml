@@ -7,3 +7,12 @@ compatibility_flags = ["nodejs_compat"]
 # Só a app NEFESH Life pode chamar o serviço a partir do navegador
 ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io"
 MODEL = "claude-opus-5-5"
+# limites diários de fotos
+DAILY_LIMIT = "15"
+IP_LIMIT = "45"
+GLOBAL_LIMIT = "200"
+
+# contadores diários; o id é preenchido pela publicação automática (.github/workflows/worker.yml)
+[[kv_namespaces]]
+binding = "LIMITS"
+id = "KV_ID_PLACEHOLDER"

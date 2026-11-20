@@ -1,23 +1,37 @@
 /**
  * NEFESH Foto: estima os alimentos e as calorias de uma fotografia de refeição.
  *
- * A app envia { image (base64 JPEG), code, hint? }. O Worker guarda a chave da
- * Anthropic (nunca vai para a app) e só responde a quem tiver o código de acesso.
+ * A app envia { image (base64 JPEG), device, hint? }. O Worker guarda a chave da
+ * Anthropic (nunca vai para a app) e aplica limites diários de fotos.
  *
- * Variáveis (Cloudflare → Worker → Settings → Variables):
+ * Variáveis (wrangler.toml e segredos):
  *   ANTHROPIC_API_KEY  segredo - chave da Anthropic
- *   ACCESS_CODE        segredo - código que os testadores escrevem na app
+ *   LIMITS             KV - contadores diários
+ *   DAILY_LIMIT        fotos por telemóvel por dia (15)
+ *   IP_LIMIT           fotos por rede por dia (45)
+ *   GLOBAL_LIMIT       fotos no total por dia (200)
  *   ALLOWED_ORIGIN     opcional - origem da app (ex.: https://josehenriquemonteiro0-bot.github.io)
  *   MODEL              opcional - modelo (por omissão claude-opus-5-5; claude-haiku-5-5 é mais barato)
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { LIMIT_MESSAGES, check, cleanDeviceId, count, type Limits } from './limits';
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
-  ACCESS_CODE: string;
+  LIMITS: KVNamespace;
+  DAILY_LIMIT?: string;
+  IP_LIMIT?: string;
+  GLOBAL_LIMIT?: string;
   ALLOWED_ORIGIN?: string;
   MODEL?: string;
 }
+
+const num = (v: string | undefined, def: number) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : def);
+const limitsOf = (env: Env): Limits => ({
+  device: num(env.DAILY_LIMIT, 15),
+  ip: num(env.IP_LIMIT, 45),
+  global: num(env.GLOBAL_LIMIT, 200),
+});
 
 /** Tamanho máximo da imagem em base64 (~1,5 MB): a app já envia fotos reduzidas a 1024 px. */
 const MAX_IMAGE_CHARS = 2_000_000;
@@ -77,14 +91,6 @@ function json(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
-/** Comparação em tempo constante, para não revelar o código pela duração da resposta. */
-function sameCode(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let r = 0;
-  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return r === 0;
-}
-
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const h = cors(env, req.headers.get('Origin'));
@@ -92,15 +98,17 @@ export default {
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
 
-    let body: { image?: string; media_type?: string; code?: string; hint?: string };
+    let body: { image?: string; media_type?: string; device?: string; hint?: string };
     try {
       body = await req.json();
     } catch {
       return json({ error: 'pedido inválido' }, 400, h);
     }
-    if (!env.ACCESS_CODE || !sameCode(String(body.code ?? '').trim(), env.ACCESS_CODE.trim())) {
-      return json({ error: 'código de acesso inválido' }, 401, h);
-    }
+    const device = cleanDeviceId(body.device);
+    const ip = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+    const limits = limitsOf(env);
+    const allowed = await check(env.LIMITS, limits, device, ip);
+    if (!allowed.ok) return json({ error: LIMIT_MESSAGES[allowed.reason!], remaining: 0, limit: limits.device }, 429, h);
     const image = String(body.image ?? '');
     if (!image || image.length > MAX_IMAGE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) {
       return json({ error: 'imagem inválida ou demasiado grande' }, 400, h);
@@ -135,7 +143,9 @@ export default {
       const text = response.content.find((b) => b.type === 'text');
       if (!text || text.type !== 'text') return json({ error: 'resposta vazia' }, 502, h);
       const result = JSON.parse(text.text);
-      return json({ ...result, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens } }, 200, h);
+      // só conta as fotos analisadas com sucesso
+      const remaining = await count(env.LIMITS, limits, device, ip);
+      return json({ ...result, remaining, limit: limits.device, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens } }, 200, h);
     } catch (err) {
       if (err instanceof Anthropic.AuthenticationError) return json({ error: 'chave da Anthropic inválida no servidor' }, 500, h);
       if (err instanceof Anthropic.RateLimitError) return json({ error: 'Muitos pedidos. Tente daqui a um minuto.' }, 429, h);

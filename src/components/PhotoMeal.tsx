@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fmtNum } from '../domain/dates';
 import { MEALS, type MealKey } from '../domain/foods';
-import { PHOTO_API, PhotoError, analyzePhoto, compressImage, mealForHour, photoEntry, type PhotoResult } from '../domain/photo';
+import { PHOTO_API, type PhotoError, analyzePhoto, compressImage, mealForHour, photoEntry, type PhotoResult } from '../domain/photo';
 import { useStore } from '../state/store';
 import { DecimalInput } from './DecimalInput';
 import { Icon } from './Icon';
@@ -9,11 +9,10 @@ import { Icon } from './Icon';
 const CONF: Record<string, string> = { alta: 'pos-up', media: 'pos-ok', baixa: 'pos-low' };
 
 function PhotoSheet({ onClose }: { onClose: () => void }) {
-  const { S, update, updateToday, toast } = useStore();
+  const { updateToday, toast } = useStore();
   const file = useRef<HTMLInputElement>(null);
   const [img, setImg] = useState<{ data: string; media_type: 'image/jpeg' } | null>(null);
   const [hint, setHint] = useState('');
-  const [code, setCode] = useState(S.photoCode ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PhotoResult | null>(null);
@@ -43,15 +42,12 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const r = await analyzePhoto(img, code.trim(), hint);
-      if (!S.photoCode || S.photoCode !== code.trim()) update((d) => { d.photoCode = code.trim(); });
+      const r = await analyzePhoto(img, hint);
       setResult(r);
       setGrams(r.items.map((i) => i.grams));
       setKeep(r.items.map(() => true));
     } catch (e) {
-      const err = e as PhotoError;
-      if (err.status === 401) update((d) => { d.photoCode = undefined; });
-      setError(err.message);
+      setError((e as PhotoError).message);
     } finally {
       setBusy(false);
     }
@@ -86,10 +82,7 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
         {img && !result && (
           <>
             <input className="field sm" style={{ width: '100%', margin: '12px 0 8px' }} maxLength={300} placeholder="Nota opcional (ex.: arroz integral, comi metade)" value={hint} onChange={(e) => setHint(e.target.value)} aria-label="Nota sobre a refeição" />
-            {!S.photoCode && (
-              <input className="field sm" style={{ width: '100%', marginBottom: 8 }} placeholder="Código de acesso (fase de testes)" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Código de acesso" autoCapitalize="off" autoCorrect="off" />
-            )}
-            <button className="btn full" disabled={busy || !code.trim()} onClick={analyze}>
+            <button className="btn full" disabled={busy} onClick={analyze}>
               {busy ? 'A analisar a refeição…' : 'Analisar'}
             </button>
             {busy && <div className="prog" style={{ margin: '12px 0 0' }}><i className="indeterminate" /></div>}
@@ -102,7 +95,10 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
 
         {result && result.is_food && (
           <>
-            <p className="small mute" style={{ margin: '12px 0 8px' }}>{result.note}</p>
+            <p className="small mute" style={{ margin: '12px 0 8px' }}>
+              {result.note}
+              {result.remaining !== undefined && ` Restam ${result.remaining} ${result.remaining === 1 ? 'foto' : 'fotos'} hoje.`}
+            </p>
             <div className="photo-items">
               {result.items.map((it, i) => {
                 const e = keep[i] && grams[i] ? photoEntry(it, grams[i]!) : null;
@@ -171,7 +167,7 @@ export function PhotoMealCard() {
         <Icon name="recipes" />
         <span>
           <b>Fotografar o prato</b>
-          <span className="small mute">Calorias e macros estimadas a partir de uma foto</span>
+          <span className="small mute">Calorias e macros estimadas a partir de uma foto · até 15 por dia</span>
         </span>
       </button>
       {open && <PhotoSheet onClose={() => setOpen(false)} />}

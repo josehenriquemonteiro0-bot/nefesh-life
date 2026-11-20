@@ -1,8 +1,8 @@
 name: Publicar serviço de fotos
 
 # Publica o Cloudflare Worker que analisa as fotos das refeições.
-# Precisa de 4 segredos em Settings → Secrets and variables → Actions → Secrets:
-#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY, PHOTO_ACCESS_CODE
+# Precisa de 3 segredos em Settings → Secrets and variables → Actions → Secrets:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY
 # Sem eles, o workflow termina sem publicar nada.
 
 on:
@@ -25,13 +25,12 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # aceita também o nome com erro de digitação usado na configuração inicial
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
-      ACCESS_CODE: ${{ secrets.PHOTO_ACCESS_CODE }}
     steps:
       - name: Verificar segredos
         id: check
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$ANTHROPIC_API_KEY" ] || [ -z "$ACCESS_CODE" ]; then
-            echo "::notice::Faltam segredos (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY, PHOTO_ACCESS_CODE). Nada foi publicado."
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::Faltam segredos (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY). Nada foi publicado."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -54,16 +53,26 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         run: |
           trim() { printf '%s' "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
-          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ANTHROPIC_API_KEY ACCESS_CODE; do
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ANTHROPIC_API_KEY; do
             clean="$(trim "${!v}")"
             echo "::add-mask::$clean"
             { echo "$v<<NEFESH_EOF"; echo "$clean"; echo "NEFESH_EOF"; } >> "$GITHUB_ENV"
           done
+      - name: Preparar o armazenamento dos limites diários (KV)
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          find_id() { npx wrangler kv namespace list 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const n=a.find(x=>String(x.title).includes('nefesh-foto-limites'));process.stdout.write(n?n.id:'')}catch(e){}})"; }
+          ID="$(find_id)"
+          if [ -z "$ID" ]; then
+            npx wrangler kv namespace create nefesh-foto-limites
+            ID="$(find_id)"
+          fi
+          if [ -z "$ID" ]; then echo "::error::Não foi possível criar ou encontrar o KV nefesh-foto-limites"; exit 1; fi
+          sed -i "s/KV_ID_PLACEHOLDER/$ID/" wrangler.toml
+          grep -n "^id = " wrangler.toml
       - name: Publicar o Worker
         if: steps.check.outputs.ready == 'true'
         run: npx wrangler deploy
-      - name: Guardar a chave da Anthropic e o código de acesso no Worker
+      - name: Guardar a chave da Anthropic no Worker
         if: steps.check.outputs.ready == 'true'
-        run: |
-          printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
-          printf '%s' "$ACCESS_CODE" | npx wrangler secret put ACCESS_CODE
+        run: printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY

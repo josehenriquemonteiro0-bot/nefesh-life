@@ -169,7 +169,7 @@ export function App() {
               toast('Dados apagados. Vamos começar do zero.');
               startQuiz(true);
             } else if (a === 'reassess' || !S.ans) startQuiz();
-            else go('home');
+            // 'continue': fica no separador onde está (não interrompe um toque feito durante a animação)
           }}
         />
       )}

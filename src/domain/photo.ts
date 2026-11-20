@@ -18,6 +18,28 @@ export interface PhotoResult {
   is_food: boolean;
   items: PhotoItem[];
   note: string;
+  /** fotos que restam hoje a este telemóvel */
+  remaining?: number;
+  limit?: number;
+}
+
+const DEVICE_KEY = 'nefesh-life-device';
+
+/**
+ * Identificação anónima deste telemóvel, usada só para o limite diário de fotos.
+ * Fica fora dos dados da app, por isso não muda com "Começar do zero".
+ */
+export function deviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'sem-armazenamento';
+  }
 }
 
 /** Reduz a foto a no máximo 1024 px (JPEG): menos dados a enviar e menor custo por análise. */
@@ -41,13 +63,13 @@ export class PhotoError extends Error {
   }
 }
 
-export async function analyzePhoto(image: { data: string; media_type: string }, code: string, hint: string): Promise<PhotoResult> {
+export async function analyzePhoto(image: { data: string; media_type: string }, hint: string): Promise<PhotoResult> {
   let res: Response;
   try {
     res = await fetch(PHOTO_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: image.data, media_type: image.media_type, code, hint }),
+      body: JSON.stringify({ image: image.data, media_type: image.media_type, device: deviceId(), hint }),
     });
   } catch {
     throw new PhotoError('Sem ligação à internet. Tente outra vez.', 0);
