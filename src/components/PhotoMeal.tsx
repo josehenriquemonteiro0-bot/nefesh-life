@@ -153,7 +153,7 @@ export function PhotoMealCard() {
   const [open, setOpen] = useState(false);
   if (!PHOTO_API)
     return (
-      <section className="card photo-soon">
+      <section className="card photo-soon" data-tour="foto-prato">
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 200px' }}>
             <h3 style={{ margin: 0 }}>Fotografar o prato <span className="lvl lvl-seguranca" style={{ marginLeft: 6 }}>Em breve</span></h3>
@@ -165,7 +165,7 @@ export function PhotoMealCard() {
     );
   return (
     <>
-      <button className="card photo-cta" onClick={() => setOpen(true)}>
+      <button className="card photo-cta" data-tour="foto-prato" onClick={() => setOpen(true)}>
         <Icon name="recipes" />
         <span>
           <b>Fotografar o prato <PremiumTag f="fotoPrato" /></b>

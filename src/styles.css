@@ -445,3 +445,19 @@ details.more .more-body{padding:0 18px 16px}
 .moment-info{display:grid;margin:6px 2px 0}
 .moment .react-row{margin:6px 0 0;gap:4px}
 .moment .chip.cheer{min-height:28px;padding:2px 7px;font-size:13px}
+
+/* tutorial guiado */
+.tour{position:fixed;inset:0;z-index:60}
+.tour-dim{position:absolute;inset:0;background:rgba(2,8,6,.78)}
+.tour-hole{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(2,8,6,.78),0 0 0 3px var(--neon);transition:all .28s ease;pointer-events:none}
+.tour-card{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));max-width:440px;margin:0 auto;background:var(--panel);border:1px solid var(--neon);border-radius:18px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.tour-card h2{margin:2px 0 6px}
+.tour-card p{margin:0 0 10px}
+.tour-count{color:var(--gold, #C9A85C);font-weight:700;letter-spacing:.06em;margin:0}
+.tour-dots{display:flex;gap:5px;margin:4px 0 12px}
+.tour-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.tour-dots i.done{background:rgba(0,254,138,.45)}.tour-dots i.on{background:var(--neon);width:18px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){.tour-hole{transition:none}}
+/* dica de primeira visita */
+.tab-tip{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:rgba(201,168,92,.10);border:1px solid rgba(201,168,92,.4);border-radius:14px;padding:10px 12px;margin:0 0 14px}
+.tab-tip .link{flex:none}

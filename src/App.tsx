@@ -31,6 +31,7 @@ import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { Community } from './screens/Community';
 import { AvatarImg } from './components/Avatar';
+import { GuidedTour, TAB_TIPS } from './components/GuidedTour';
 import { savePendingCode, takePendingCode, useRedeemBottle } from './components/BottleCode';
 import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
@@ -95,6 +96,19 @@ export function App() {
     const pending = takePendingCode();
     if (pending) redeemBottle(pending);
   }, [getAuth()?.token, S.ans]);
+  // tutorial guiado: na primeira vez que chega ao Início com um plano (e sempre que o pedir no Perfil)
+  const [tour, setTour] = useState(false);
+  useEffect(() => {
+    if (tour || intro || quiz || !S.ans || S.sample || S.tourDone || tab !== 'home') return;
+    const t = window.setTimeout(() => setTour(true), 900);
+    return () => window.clearTimeout(t);
+  }, [S.ans, S.tourDone, tab, intro, quiz, tour]);
+  const closeTour = () => {
+    setTour(false);
+    update((d) => { d.tourDone = true; });
+    setTab('home');
+    window.scrollTo(0, 0);
+  };
   const [healthOpen, setHealthOpen] = useState(false);
   const openHealth = () => setHealthOpen(true);
   const [reportOpen, setReportOpen] = useState(false);
@@ -207,7 +221,7 @@ export function App() {
           }}
         />
       ),
-      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} />,
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} openTour={() => { go('home'); setTour(true); }} />,
     }[tab];
   }
 
@@ -229,16 +243,24 @@ export function App() {
           </div>
           <div className="row" style={{ gap: 8 }}>
             {!S.ans && <button className="btn ghost sm" onClick={() => startQuiz()}>Avaliar</button>}
-            <button className={`avatar ${tab === 'perfil' ? 'on' : ''}`} onClick={() => go('perfil')} aria-label="Perfil" aria-current={tab === 'perfil' ? 'page' : undefined}>
+            <button data-tour="perfil" className={`avatar ${tab === 'perfil' ? 'on' : ''}`} onClick={() => go('perfil')} aria-label="Perfil" aria-current={tab === 'perfil' ? 'page' : undefined}>
               <AvatarImg />
             </button>
           </div>
         </header>
-        <main key={tab + (quiz ? quiz.qi : '')} className="view">{screen}</main>
+        <main key={tab + (quiz ? quiz.qi : '')} className="view">
+          {S.ans && !tour && TAB_TIPS[tab] && !S.tipsSeen?.[tab] && (
+            <div className="tab-tip" role="note">
+              <span className="small">💡 {TAB_TIPS[tab]}</span>
+              <button className="link small inline" onClick={() => update((d) => { d.tipsSeen = { ...(d.tipsSeen ?? {}), [tab]: true }; })}>Percebi</button>
+            </div>
+          )}
+          {screen}
+        </main>
       </div>
       <nav aria-label="Navegação principal">
         {TABS.map(([k, t, icon]) => (
-          <button key={k} className={(NAV_OF[tab] ?? tab) === k ? 'on' : ''} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => go(k)}>
+          <button key={k} data-tour={`nav-${k}`} className={(NAV_OF[tab] ?? tab) === k ? 'on' : ''} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => go(k)}>
             <Icon name={icon} />
             {t}
           </button>
@@ -269,6 +291,7 @@ export function App() {
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} onPrint={() => { setReportOpen(false); printReport(); }} />}
       {printing && <PrintReport />}
+      {tour && <GuidedTour go={go} onClose={closeTour} />}
       {healthOpen && (
         <HealthConnectSheet
           onClose={() => setHealthOpen(false)}

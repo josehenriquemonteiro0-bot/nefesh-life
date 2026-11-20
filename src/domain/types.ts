@@ -113,6 +113,10 @@ export interface AppState {
   trainWhere?: 'personal' | 'ginasio' | 'casa';
   /** últimas cargas usadas no ginásio, por exercício */
   gymLoads?: Record<string, string>;
+  /** tutorial guiado já visto */
+  tourDone?: boolean;
+  /** dicas de primeira visita já fechadas, por separador */
+  tipsSeen?: Record<string, boolean>;
   /** nível escolhido para os treinos sugeridos (sobrepõe-se ao da avaliação) */
   trainLevel?: 'iniciante' | 'intermedio';
   /** participa na comunidade (pontos, ligas, amigos) */

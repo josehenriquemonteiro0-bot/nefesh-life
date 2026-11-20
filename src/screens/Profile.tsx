@@ -64,7 +64,8 @@ function PushToggle() {
   );
 }
 
-export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth }: {
+export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth, openTour }: {
+  openTour: () => void;
   openHealth: () => void;
   openAccount: () => void;
   syncNow: () => Promise<void>;
@@ -220,6 +221,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
       <DataCard />
 
       <p style={{ textAlign: 'center' }}>
+        <button className="skip" onClick={openTour}>Ver o tutorial da app</button>
+        <button className="skip" onClick={() => update((d) => { d.tipsSeen = {}; })}>Mostrar de novo as dicas</button>
         <button className="skip" onClick={replayIntro}>Rever as boas-vindas</button>
       </p>
     </>

@@ -219,7 +219,7 @@ export function Training() {
   return (
     <>
       <h1>Treino</h1>
-      <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(3,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Onde treina">
+      <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(3,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Onde treina" data-tour="treino-onde">
         {([['personal', 'Com personal'], ['ginasio', 'No ginásio'], ['casa', 'Em casa']] as [TrainTab, string][]).map(([k, t]) => (
           <button key={k} className={tab === k ? 'on' : ''} aria-pressed={tab === k} onClick={() => { setTab(k); update((d) => { d.trainWhere = k; }); }}>{t}</button>
         ))}

@@ -42,7 +42,7 @@ function ActivityCard({ openHealth }: { openHealth: () => void }) {
     });
   };
   return (
-    <section className="card">
+    <section className="card" data-tour="passos">
       <div className="row" style={{ marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Passos de hoje</h2>
         <span className="small mute">meta {STEP_GOAL.toLocaleString('pt-PT')}</span>
@@ -85,7 +85,7 @@ function StatusStrip({ go }: { go: Nav }) {
   const me = st?.league?.find((m) => m.me);
   const unread = unreadCount(st);
   return (
-    <button className="status-strip" onClick={() => go('social')} aria-label="Abrir a Comunidade">
+    <button className="status-strip" data-tour="strip" onClick={() => go('social')} aria-label="Abrir a Comunidade">
       <span><b>🔥 {streakN}</b><small>{streakN === 1 ? 'dia de ritual' : 'dias de ritual'}</small></span>
       <span><b>⭐ {pts}</b><small>pontos hoje</small></span>
       {joined ? (
@@ -250,7 +250,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
             </div>
           )}
         </div>
-        <div className="slots">
+        <div className="slots" data-tour="tomas">
           {sl.map((s, i) => (
             <div className="slot" key={s.l}>
               <div>
@@ -284,7 +284,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </section>
       )}
 
-      <section className="card">
+      <section className="card" data-tour="agua">
         <div className="row">
           <h2 style={{ margin: 0 }}>Hidratação</h2>
           <span className="small mute">{litres(w)} de {litres(goalW)} L</span>
@@ -308,7 +308,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       </section>
 
       {!l.e && (
-        <section className="card">
+        <section className="card" data-tour="checkin">
           <div className="row">
             <div>
               <h2 style={{ margin: 0 }}>Como se sente hoje?</h2>

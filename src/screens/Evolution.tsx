@@ -17,7 +17,7 @@ export function SpirulinaInsight() {
     <tr key={t}><td>{t}</td><td><b>{a === null ? '—' : fmtNum(a)}</b></td><td>{b === null ? '—' : fmtNum(b)}</td></tr>
   );
   return (
-    <section className="card insight">
+    <section className="card insight" data-tour="spirulina-voce">
       <h2 style={{ marginTop: 0 }}>🌿 A Spirulina e você</h2>
       {r.comparable ? (
         <>

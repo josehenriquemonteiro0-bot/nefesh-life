@@ -36,7 +36,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
     <>
       <h1>Comunidade NEFESH</h1>
       <p className="mute">Ganhe pontos com os seus hábitos, suba de liga todas as semanas e incentive os seus amigos.</p>
-      <section className="card">
+      <section className="card" data-tour="comunidade">
         <div className="row" style={{ justifyContent: 'flex-start', gap: 12 }}>
           <Face nick={nick || '?'} avatar={S.avatar} size={52} />
           <label className="afield" style={{ flex: 1 }}>
@@ -617,7 +617,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       <>
         <h1>Comunidade NEFESH</h1>
         <p className="mute">Pontos pelos seus hábitos, ligas semanais, amigos que se incentivam e desafios.</p>
-        <section className="card">
+        <section className="card" data-tour="comunidade">
           <p className="small" style={{ marginTop: 0 }}>Para entrar na comunidade precisa de uma conta (é grátis e leva 30 segundos).</p>
           <button className="btn" onClick={openAccount}>Criar conta ou entrar</button>
         </section>
@@ -679,7 +679,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       <SpirulinaCheck />
       <TodayPoints st={st} />
 
-      <div className="seg acc-seg five" role="group" aria-label="Comunidade">
+      <div className="seg acc-seg five" data-tour="comunidade" role="group" aria-label="Comunidade">
         {([['mural', 'Mural'], ['liga', 'Liga'], ['equipa', 'Equipa'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}${st.partner?.status === 'recebido' ? ' •' : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (
           <button key={k} className={view === k ? 'on' : ''} aria-pressed={view === k} onClick={() => setView(k)}>{t}</button>
         ))}
