@@ -565,3 +565,13 @@ ul.plain li.row{gap:8px}
 .prev-edit{padding:0 0 10px}
 .lab-row{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 .spark{display:block}
+/* mente */
+.mood-row{display:flex;justify-content:space-between;gap:6px}
+.mood{flex:1;font-size:30px;line-height:1;padding:10px 0;border-radius:14px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;filter:grayscale(.6);opacity:.75}
+.mood.on{filter:none;opacity:1;border-color:var(--neon);background:rgba(0,254,138,.12)}
+.breath-overlay{position:fixed;inset:0;z-index:60;background:radial-gradient(circle at 50% 40%,#003a40,#060d0e 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
+.breath-circle{width:220px;height:220px;border-radius:50%;display:grid;place-content:center;gap:4px;background:radial-gradient(circle,rgba(0,254,138,.35),rgba(0,254,138,.08));border:2px solid rgba(0,254,138,.6);transform:scale(.62);transition-property:transform;transition-timing-function:ease-in-out}
+.breath-circle.grow{transform:scale(1)}
+.breath-circle.shrink{transform:scale(.62)}
+.breath-circle span{font:600 22px Sora,sans-serif}
+.breath-circle b{font:700 34px Sora,sans-serif;color:var(--neon)}

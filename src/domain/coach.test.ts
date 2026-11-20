@@ -136,3 +136,14 @@ describe('Coach e o plano do personal', () => {
     expect(S.logs[todayKey(NOW)].workouts).toHaveLength(1);
   });
 });
+
+describe('Coach e a mente', () => {
+  it('regista humor, stress e gratidão; a pausa não conta como feita', () => {
+    const S = person();
+    const done = applyCoachActions(S, [act({ type: 'stress', value: 4 }), act({ type: 'humor', value: 2 }), act({ type: 'gratidao', note: 'o abraço da minha filha' }), act({ type: 'respiracao', value: 3 })], NOW);
+    const l = S.logs[todayKey(NOW)];
+    expect(l).toMatchObject({ stress: 4, d: 2, grat: ['o abraço da minha filha'] });
+    expect(l.breath).toBeUndefined();
+    expect(done).toEqual(['🌬️ Stress: 4/5', '🙂 Humor: 2/5', '💚 Gratidão: o abraço da minha filha']);
+  });
+});

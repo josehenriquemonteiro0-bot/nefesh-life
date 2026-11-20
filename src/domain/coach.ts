@@ -20,7 +20,7 @@ import { womenContext } from './women';
 import { notePremiumUse } from './analytics';
 import type { AppState, DayLog } from './types';
 
-export type CoachActionType = 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos';
+export type CoachActionType = 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos' | 'humor' | 'stress' | 'gratidao' | 'respiracao';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -56,6 +56,8 @@ export interface CoachMsg {
   pro?: boolean;
   /** mensagem ditada por voz */
   voice?: boolean;
+  /** pausa de respiração sugerida (minutos) */
+  breath?: number;
 }
 
 const MEAL_LABEL = Object.fromEntries(MEALS) as Record<MealKey, string>;
@@ -208,6 +210,24 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         if (msg) done.push(`📋 ${msg}${a.status === 'alterado' && a.note ? ` (${a.note})` : ''} ✓`);
         break;
       }
+      case 'humor':
+        l.d = a.value;
+        done.push(`🙂 Humor: ${a.value}/5`);
+        break;
+      case 'stress':
+        l.stress = a.value;
+        done.push(`🌬️ Stress: ${a.value}/5`);
+        break;
+      case 'gratidao': {
+        const g = (a.note ?? '').trim();
+        if (g) {
+          l.grat = [...(l.grat ?? []), g].slice(-5);
+          done.push(`💚 Gratidão: ${g}`);
+        }
+        break;
+      }
+      case 'respiracao':
+        break;
       case 'plano_treino': {
         const msg = coachPlanWorkout(S, l, a.value, a.option ?? 0, (a.status || 'seguido') as 'seguido' | 'alterado' | 'saltado', a.note);
         if (msg) done.push(`🏋️ ${msg} ✓`);

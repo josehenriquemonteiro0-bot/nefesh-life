@@ -7,6 +7,7 @@ import { todayKey } from '../domain/dates';
 import { dailyQuota, TEST_MODE } from '../domain/features';
 import { ritualJustDone } from '../state/doses';
 import { useStore } from '../state/store';
+import { requestBreath } from '../domain/mind';
 import type { DayLog } from '../domain/types';
 import { notePremiumUse } from '../domain/analytics';
 import { KEYBOARD_DICTATION_HINT, listen, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
@@ -76,7 +77,7 @@ export function Coach({ go }: { go: Nav }) {
       }
       save([
         ...withUser,
-        { role: 'assistant', text: r.reply, at: new Date().toISOString(), applied, undo: applied.length ? { day: key, log: before } : undefined, pro: r.suggest_professional },
+        { role: 'assistant', text: r.reply, at: new Date().toISOString(), applied, undo: applied.length ? { day: key, log: before } : undefined, pro: r.suggest_professional, breath: r.actions.find((a) => a.type === 'respiracao')?.value },
       ]);
       if (S.voiceReply) speak(r.reply, lang);
     } catch (e) {
@@ -218,6 +219,9 @@ export function Coach({ go }: { go: Nav }) {
                 ) : null}
               </div>
             )}
+            {m.breath ? (
+              <button className="btn sm" style={{ marginTop: 8 }} onClick={() => { requestBreath(m.breath!); go('mente'); }}>🌬️ Fazer a pausa ({m.breath} min)</button>
+            ) : null}
             {m.pro && (
               <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => go('pros')}>Ver profissionais de saúde</button>
             )}

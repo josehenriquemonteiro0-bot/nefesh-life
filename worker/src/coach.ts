@@ -17,7 +17,7 @@ export function coachLimits(env: { TEST_MODE?: string }): Limits {
   return { device: Number.isFinite(q) ? q : 40, ip: Number.isFinite(q) ? q * 4 : 120, global: 3000 };
 }
 
-const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos'] as const;
+const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos', 'humor', 'stress', 'gratidao', 'respiracao'] as const;
 export type CoachActionType = (typeof ACTION_TYPES)[number];
 
 export const COACH_SCHEMA = {
@@ -31,10 +31,10 @@ export const COACH_SCHEMA = {
         type: 'object',
         properties: {
           type: { type: 'string', enum: ACTION_TYPES },
-          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); spirulina e refeicao: 1' },
+          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); humor e stress: 1 a 5; respiracao: minutos da pausa sugerida (2 a 5); gratidao: 1; spirulina e refeicao: 1' },
           option: { type: 'number', description: 'plano_refeicao: número da opção do plano que comeu (0 se só houver uma ou se não disser); plano_treino: minutos do treino (0 se não disser); 0 nos outros' },
           status: { type: 'string', enum: ['seguido', 'alterado', 'saltado', ''], description: 'só para plano_refeicao e plano_treino: seguido = como no plano; alterado = com mudanças; saltado = não fez; "" nos outros' },
-          note: { type: 'string', description: 'só para plano_refeicao alterado: as mudanças em poucas palavras (ex.: "sem arroz", "mais 1 ovo"); "" nos outros' },
+          note: { type: 'string', description: 'plano_refeicao alterado: as mudanças em poucas palavras (ex.: "sem arroz"); gratidao: a frase de gratidão da pessoa, curta; "" nos outros' },
           meal: { type: 'string', enum: ['pa', 'almoco', 'lanche', 'jantar', ''], description: 'só para refeicao: pa = pequeno-almoço; "" se não for refeição' },
           intensity: { type: 'string', enum: ['leve', 'moderado', 'intenso', ''], description: 'só para treino' },
           title: { type: 'string', description: 'só para treino: nome curto (ex.: "Corrida", "Ginásio"); "" nos outros' },
@@ -85,6 +85,9 @@ Regras de registo:
 - Refeição: escolhe food_id da tabela abaixo sempre que houver um equivalente razoável (ex.: "ovo" → o id de ovo); usa grams pela quantidade dita ou pela porção habitual. Só sem equivalente deixas food_id "" e dás uma estimativa por 100 g. Não escrevas calorias na resposta: a app calcula-as.
 - Plano do nutricionista: se o contexto tiver "Plano alimentar do nutricionista" e a pessoa disser que fez uma refeição do plano ("almocei o do plano", "segui o plano ao jantar", "fiz o pequeno-almoço do plano mas sem pão"), usa plano_refeicao com value = número [n] dessa refeição, option = opção, status = seguido / alterado (com note) / saltado ("não fiz o lanche"). NÃO envies também refeicao para a mesma refeição: a app põe os alimentos do plano no diário. O que comer a mais, fora do plano, vai como refeicao.
 - Plano do personal: se o contexto tiver "Plano de treino do personal" e a pessoa disser que fez um treino do plano ("fiz o treino A", "treinei pernas do plano"), usa plano_treino com value = número [n] desse treino, option = minutos (0 se não disser), status e note como acima. NÃO envies também treino para o mesmo.
+- Mente: humor (1 = muito em baixo … 5 = muito bem) e stress (1 = nada … 5 = muito) quando a pessoa o diz. Gratidão ("hoje estou grato por…"): gratidao com a frase em note.
+- Stress, ansiedade ou nervos: regista stress e propõe uma pausa com respiracao (value 2 a 5 minutos); a app mostra um botão para começar a respiração guiada. Na resposta, convida com uma frase curta. Não registes a respiração como feita.
+- Tristeza ou ansiedade que duram há semanas, ou falta de vontade de fazer as coisas: sugere falar com o médico de família ou um psicólogo (suggest_professional = true). Se falar em fazer-se mal ou em não querer viver: responde com cuidado e indica SNS 24 (808 24 24 24) ou 112 em Portugal, CVV 188 ou 192 no Brasil.
 - Acrescentar ("também comi uma maçã"): envia só o que é novo, com replace = false.
 - Correções ("não, foram três ovos", "afinal dormi 6 horas"): envia o registo corrigido completo com replace = true; a app substitui o que o Coach registou antes nessa refeição (ou o valor desse dia). Para água, replace = true quer dizer o total de copos do dia.
 - Energia e disposição: escala 1 a 5 (cansado/em baixo = 2, normal = 3, bem = 4, ótimo = 5).
@@ -134,7 +137,7 @@ export function cleanActions(raw: unknown) {
     .slice(0, 8)
     .map((a) => ({
       type: a.type as CoachActionType,
-      value: a.type === 'plano_refeicao' || a.type === 'plano_treino' ? Math.round(num(a.value, 0, 30)) : a.type === 'energia' || a.type === 'disposicao' ? Math.round(num(a.value, 1, 5)) : a.type === 'sono' ? num(a.value, 0, 16) : a.type === 'passos' ? Math.round(num(a.value, 0, 100000)) : a.type === 'treino' ? Math.round(num(a.value, 0, 600)) : a.type === 'agua' ? Math.round(num(a.value, -20, 20)) : 1,
+      value: a.type === 'respiracao' ? Math.round(num(a.value, 2, 5)) : a.type === 'humor' || a.type === 'stress' ? Math.round(num(a.value, 1, 5)) : a.type === 'plano_refeicao' || a.type === 'plano_treino' ? Math.round(num(a.value, 0, 30)) : a.type === 'energia' || a.type === 'disposicao' ? Math.round(num(a.value, 1, 5)) : a.type === 'sono' ? num(a.value, 0, 16) : a.type === 'passos' ? Math.round(num(a.value, 0, 100000)) : a.type === 'treino' ? Math.round(num(a.value, 0, 600)) : a.type === 'agua' ? Math.round(num(a.value, -20, 20)) : 1,
       meal: ['pa', 'almoco', 'lanche', 'jantar'].includes(a.meal) ? a.meal : '',
       intensity: ['leve', 'moderado', 'intenso'].includes(a.intensity) ? a.intensity : '',
       title: String(a.title ?? '').slice(0, 40),

@@ -69,8 +69,7 @@ export interface DayLog {
   viaRecipe?: Record<number, string>;
   /** tomas de medicação e suplementos (id@HH:MM → tomada) */
   meds?: Record<string, boolean>;
-  /** humor (1–5), stress (1–5), gratidão e minutos de respiração guiada */
-  mood?: number;
+  /** stress (1–5), gratidão (até 3 frases) e minutos de respiração guiada (o humor é a disposição, d) */
   stress?: number;
   grat?: string[];
   breath?: number;
