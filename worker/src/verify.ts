@@ -170,6 +170,8 @@ export async function registerBottle(db: DB, uid: string, codeRaw: unknown, prod
       await db.batch([
         db.prepare('UPDATE bottle_codes SET used_by = ?, used_at = ? WHERE code = ?').bind(uid, at, code),
         db.prepare('INSERT INTO bottles (uid, code, product, units, verified, created) VALUES (?, ?, ?, ?, 1, ?)').bind(uid, code, unique.product, UNITS_PER_BOTTLE, at),
+        // frasco novo verificado aparece no mural
+        db.prepare("INSERT INTO feed (uid, kind, value, created) VALUES (?, 'frasco', 0, ?)").bind(uid, at),
       ]);
       return { status: 200, body: { ok: true, verified: true, product: unique.product } };
     }

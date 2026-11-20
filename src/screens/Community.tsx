@@ -4,7 +4,7 @@ import { useAuth } from '../domain/account';
 import { todayKey } from '../domain/dates';
 import { HABIT_POINTS, activityStreak, dayScore, levelOf, totalPoints, weekPayload, weekTotal, type Flag } from '../domain/points';
 import {
-  CHALLENGES, cheer, feedText, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
+  CHALLENGES, REACTIONS, REPLIES, acceptPartner, createTeam, endPartner, feedText, invitePartner, joinTeam, leaveTeam, react, replyTo, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
   leaveCommunity, markSeen, refresh, removeFriend, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type Member, type SocialState,
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
@@ -13,7 +13,7 @@ import { HealthShotButton } from '../components/HealthShot';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
 
-type View = 'mural' | 'liga' | 'amigos' | 'desafios';
+type View = 'mural' | 'liga' | 'equipa' | 'amigos' | 'desafios';
 
 const FLAG_ICON: Record<string, string> = { s: '🌿', a: '💧', c: '📝', m: '🍽️', t: '💪', p: '👟', n: '😴' };
 
@@ -108,7 +108,7 @@ function TodayPoints({ st }: { st: SocialState }) {
           );
         })}
       </div>
-      <HealthShotButton />
+      <HealthShotButton compact />
       {open && (
         <ul className="small plan-list" style={{ marginTop: 10 }}>
           {HABIT_POINTS.map((h) => (
@@ -126,43 +126,211 @@ function TodayPoints({ st }: { st: SocialState }) {
   );
 }
 
-function FeedView({ st }: { st: SocialState }) {
+function FeedItemRow({ f }: { f: NonNullable<SocialState['feed']>[number] }) {
   const { toast } = useStore();
+  const [replying, setReplying] = useState(false);
+  const act = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+      refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+  const counts = f.reactions ?? (f.cheers ? { '👏': f.cheers } : {});
+  return (
+    <li className="feed-item">
+      <div className="row" style={{ gap: 10, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+        <Face nick={f.nick} avatar={f.avatar} size={34} />
+        <span style={{ flex: 1 }}>
+          {feedText(f)}
+          <small className="mute"> · {new Date(f.created).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })}</small>
+        </span>
+      </div>
+      {(f.replies ?? []).length > 0 && (
+        <ul className="replies">{f.replies!.map((r, i) => <li key={i}><b>{r.nick}:</b> {REPLIES[r.kind]}</li>)}</ul>
+      )}
+      <div className="react-row">
+        {REACTIONS.map((k) => (
+          <button
+            key={k}
+            className={`chip cheer ${f.myReaction === k ? 'on' : ''}`}
+            disabled={f.me}
+            onClick={() => act(() => react(f.id, k))}
+            aria-label={`Reagir ${k}`}
+          >
+            {k} {counts[k] || ''}
+          </button>
+        ))}
+        {!f.me && <button className="link small inline" onClick={() => setReplying((v) => !v)}>{replying ? 'fechar' : 'responder'}</button>}
+      </div>
+      {replying && (
+        <div className="msg-pick">
+          {Object.entries(REPLIES).map(([k, t]) => (
+            <button key={k} className="chip" onClick={() => { setReplying(false); act(() => replyTo(f.id, k)); }}>{t}</button>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
+function FeedView({ st }: { st: SocialState }) {
   const feed = st.feed ?? [];
   return (
     <section className="card">
       <h2 style={{ marginTop: 0 }}>Mural</h2>
       {!feed.length && <p className="small mute">Ainda sem conquistas. Os 7 dias seguidos de ritual são a primeira!</p>}
-      <ul className="msgs feed">
-        {feed.map((f) => (
-          <li key={f.id}>
-            <Face nick={f.nick} avatar={f.avatar} size={34} />
-            <span style={{ flex: 1 }}>
-              {feedText(f)}
-              <small className="mute"> · {new Date(f.created).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })}</small>
-            </span>
-            {f.me ? (
-              f.cheers ? <span className="small mute">👏 {f.cheers}</span> : null
-            ) : (
-              <button
-                className={`chip cheer ${f.cheered ? 'on' : ''}`}
-                disabled={f.cheered}
-                onClick={async () => {
-                  try {
-                    await cheer(f.id);
-                    refresh();
-                  } catch (e) {
-                    toast((e as Error).message);
-                  }
-                }}
-                aria-label={`Aplaudir ${f.nick}`}
-              >
-                👏 {f.cheers || ''}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      <ul className="feed-list">{feed.map((f) => <FeedItemRow key={f.id} f={f} />)}</ul>
+    </section>
+  );
+}
+
+/** Equipa de melhores amigos: meta de ritual da semana em conjunto e ranking de equipas. */
+function TeamView({ st }: { st: SocialState }) {
+  const { toast } = useStore();
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const t = st.team;
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn();
+      toast(ok);
+      refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+  return (
+    <>
+      {t ? (
+        <section className="card hero">
+          <p className="small" style={{ margin: 0, opacity: 0.8 }}>A minha equipa</p>
+          <h2 style={{ margin: '4px 0 6px' }}>{t.name}</h2>
+          <p className="small" style={{ margin: '0 0 8px' }}>Meta da semana: <b>{t.goal} dias de ritual</b> somados por todos ({t.members.length} × 5)</p>
+          <Bar pct={(t.done / Math.max(1, t.goal)) * 100} />
+          <p className="small" style={{ margin: '6px 0 0' }}>{t.done >= t.goal ? 'Meta cumprida! 🎉' : `${t.done} de ${t.goal} dias · faltam ${t.goal - t.done}`}</p>
+          <ol className="rank team-rank">
+            {t.members.map((m, i) => (
+              <li key={m.id} className={m.me ? 'me' : ''}>
+                <b className="pos">{i + 1}</b>
+                <Face nick={m.nick} avatar={m.avatar} />
+                <span className="who">{m.nick}{m.me ? ' (eu)' : ''}<small>🌿 {m.ritualDays} dias esta semana{m.today ? ' · hoje ✓' : ''}</small></span>
+                <b>{m.points}</b>
+              </li>
+            ))}
+          </ol>
+          <p className="small" style={{ margin: '10px 0 0' }}>Código da equipa: <code className="key" style={{ display: 'inline-block' }}>{t.code}</code></p>
+          <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 8 }}>
+            <a className="btn sm" href={whatsappShare(`Entra na minha equipa "${t.name}" na NEFESH Life 🌿\nComunidade → Equipa → Entrar com o código ${t.code}`)} target="_blank" rel="noopener">Convidar para a equipa</a>
+            <button className="btn ghost sm" onClick={() => confirm('Sair da equipa?') && run(leaveTeam, 'Saiu da equipa.')}>Sair</button>
+          </div>
+        </section>
+      ) : (
+        <section className="card">
+          <h2 style={{ marginTop: 0 }}>Equipa de melhores amigos</h2>
+          <p className="small mute" style={{ marginTop: 0 }}>Juntem-se até 8 pessoas com uma meta em comum: 5 dias de ritual por pessoa, todas as semanas. A equipa entra no ranking pela média de pontos de cada um.</p>
+          <form className="row" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); run(() => createTeam(name), 'Equipa criada. Convide os seus amigos!'); }}>
+            <input className="field sm" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da equipa" maxLength={30} aria-label="Nome da equipa" />
+            <button className="btn sm" disabled={name.trim().length < 2}>Criar</button>
+          </form>
+          <form className="row" style={{ gap: 8, marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); run(() => joinTeam(code), 'Entrou na equipa!'); }}>
+            <input className="field sm" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Código da equipa" maxLength={8} aria-label="Código da equipa" />
+            <button className="btn ghost sm" disabled={code.trim().length < 4}>Entrar</button>
+          </form>
+        </section>
+      )}
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>Ranking de equipas</h2>
+        {!(st.teams ?? []).length && <p className="small mute">Ainda não há equipas. Seja o primeiro!</p>}
+        <ol className="rank">
+          {(st.teams ?? []).map((x) => (
+            <li key={x.rank} className={x.mine ? 'me' : ''}>
+              <b className="pos">{x.rank}</b>
+              <span className="who">{x.name}<small>{x.members} {x.members === 1 ? 'pessoa' : 'pessoas'}</small></span>
+              <b>{x.avg}<small className="mute"> /pessoa</small></b>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </>
+  );
+}
+
+/** Parceiro de ritual: sequência a dois, só avança quando os dois tomam a Spirulina. */
+function PartnerCard({ st }: { st: SocialState }) {
+  const { toast } = useStore();
+  const p = st.partner;
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn();
+      toast(ok);
+      refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+  if (!p)
+    return (
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>🤝 Parceiro de ritual</h2>
+        <p className="small mute" style={{ margin: 0 }}>Escolha um amigo para fazerem o ritual juntos: a sequência a dois só avança nos dias em que os dois tomam a Spirulina. Convide-o em "outras mensagens", na lista de amigos.</p>
+      </section>
+    );
+  if (p.status === 'recebido')
+    return (
+      <section className="card due">
+        <h2 style={{ marginTop: 0 }}>🤝 {p.nick} quer ser o seu parceiro de ritual</h2>
+        <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
+          <button className="btn sm" onClick={() => run(acceptPartner, 'Agora são parceiros de ritual!')}>Aceitar</button>
+          <button className="btn ghost sm" onClick={() => run(endPartner, 'Convite recusado.')}>Agora não</button>
+        </div>
+      </section>
+    );
+  if (p.status === 'enviado')
+    return (
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>🤝 Convite enviado a {p.nick}</h2>
+        <p className="small mute">Fica ativo quando {p.nick} aceitar.</p>
+        <button className="link small inline" onClick={() => run(endPartner, 'Convite cancelado.')}>cancelar convite</button>
+      </section>
+    );
+  return (
+    <section className="card hero">
+      <p className="small" style={{ margin: 0, opacity: 0.8 }}>🤝 Parceiro de ritual</p>
+      <div className="row" style={{ marginTop: 6 }}>
+        <span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}><Face nick={p.nick} avatar={p.avatar} /><b>{p.nick}</b></span>
+        <b style={{ font: '600 24px Sora' }}>🔥 {p.streak}</b>
+      </div>
+      <p className="small" style={{ margin: '6px 0 0' }}>
+        {p.streak === 1 ? '1 dia de ritual juntos.' : `${p.streak} dias de ritual juntos.`} Hoje: você {p.todayMe ? '✓' : '—'} · {p.nick} {p.todayThem ? '✓' : '—'}
+      </p>
+      {!p.todayThem && p.todayMe && <p className="small" style={{ margin: '4px 0 0' }}>Falta {p.nick}: mande-lhe um lembrete na lista de amigos.</p>}
+      <button className="link small inline" style={{ marginTop: 8 }} onClick={() => confirm('Terminar a parceria de ritual?') && run(endPartner, 'Parceria terminada.')}>terminar parceria</button>
+    </section>
+  );
+}
+
+/** Lembrete de grupo ao fim do dia: amigos que ainda não fizeram o ritual. */
+function GroupReminder({ st }: { st: SocialState }) {
+  const { toast } = useStore();
+  const [sent, setSent] = useState(false);
+  const missing = (st.friends ?? []).filter((f) => !f.today.includes('s'));
+  if (new Date().getHours() < 17 || !missing.length || sent) return null;
+  return (
+    <section className="card due">
+      <h2 style={{ marginTop: 0 }}>🌙 {missing.length === 1 ? `${missing[0].nick} ainda não fez` : `${missing.length} amigos ainda não fizeram`} o ritual hoje</h2>
+      <p className="small mute" style={{ marginTop: 0 }}>{missing.map((f) => f.nick).join(', ')}</p>
+      <button
+        className="btn sm"
+        onClick={async () => {
+          const r = await Promise.allSettled(missing.map((f) => sendMessage(f.id, 'lembrete_spirulina')));
+          setSent(true);
+          toast(`Lembrete enviado a ${r.filter((x) => x.status === 'fulfilled').length} ${missing.length === 1 ? 'amigo' : 'amigos'}.`);
+        }}
+      >
+        Lembrar {missing.length === 1 ? missing[0].nick : 'todos'}
+      </button>
     </section>
   );
 }
@@ -232,6 +400,7 @@ function FriendRow({ f }: { f: Member & { id: string; today: string } }) {
           {Object.entries(MESSAGES).map(([k, t]) => (
             <button key={k} className="chip" onClick={() => send(k)}>{t}</button>
           ))}
+          <button className="chip" onClick={async () => { try { await invitePartner(f.id); toast(`Convite de parceiro de ritual enviado a ${f.nick}.`); refresh(); } catch (e) { toast((e as Error).message); } }}>🤝 Convidar para parceiro de ritual</button>
           <button
             className="link small inline"
             style={{ color: 'var(--warn)' }}
@@ -260,6 +429,8 @@ function FriendsView({ st }: { st: SocialState }) {
   const text = inviteText(me.code, me.nick);
   return (
     <>
+      <GroupReminder st={st} />
+      <PartnerCard st={st} />
       {(st.messages ?? []).length > 0 && (
         <section className="card">
           <h2>Mensagens</h2>
@@ -507,14 +678,15 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       <SpirulinaCheck />
       <TodayPoints st={st} />
 
-      <div className="seg acc-seg four" role="group" aria-label="Comunidade">
-        {([['mural', 'Mural'], ['liga', 'Liga'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (
+      <div className="seg acc-seg five" role="group" aria-label="Comunidade">
+        {([['mural', 'Mural'], ['liga', 'Liga'], ['equipa', 'Equipa'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}${st.partner?.status === 'recebido' ? ' •' : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (
           <button key={k} className={view === k ? 'on' : ''} aria-pressed={view === k} onClick={() => setView(k)}>{t}</button>
         ))}
       </div>
 
       {view === 'mural' && <FeedView st={st} />}
       {view === 'liga' && <><LeagueView st={st} /><EvolutionView /></>}
+      {view === 'equipa' && <TeamView st={st} />}
       {view === 'amigos' && <FriendsView st={st} />}
       {view === 'desafios' && <ChallengesView st={st} />}
 

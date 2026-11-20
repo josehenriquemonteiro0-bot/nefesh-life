@@ -166,6 +166,13 @@ export const MESSAGE_TEXT: Record<string, string> = {
   volta: '👋 Tenho saudades suas no ritual! Bora voltar?',
 };
 
+/** Notificação para uma pessoa (todos os telemóveis dela com notificações). */
+export async function notifyUser(db: DB, store: KeyStore, uid: string, msg: PushMessage, fetcher: typeof fetch = fetch) {
+  const { results } = await db.prepare('SELECT endpoint FROM push_subs WHERE uid = ?').bind(uid).all<{ endpoint: string }>();
+  for (const r of results) await sendPush(db, store, r.endpoint, msg, fetcher);
+  return results.length;
+}
+
 /** Avisa o amigo que recebeu uma mensagem (em todos os telemóveis dele com notificações). */
 export async function notifyFriend(db: DB, store: KeyStore, toUid: string, fromNick: string, kind: string, fetcher: typeof fetch = fetch) {
   const { results } = await db.prepare('SELECT endpoint FROM push_subs WHERE uid = ?').bind(toUid).all<{ endpoint: string }>();

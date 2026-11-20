@@ -3,6 +3,7 @@ import { daysSince, fmtNum } from '../domain/dates';
 import { slotsFor } from '../domain/plan';
 import { GOLDEN_RULES, RECIPES, recipeOfDay, type Recipe } from '../domain/recipes';
 import { useStore } from '../state/store';
+import { shareMoment } from '../domain/social';
 import { RecipeArt } from '../components/RecipeArt';
 
 const FILTERS = ['Todas', 'Smoothie', 'Pequeno-almoço', 'Refeição', 'Snack', 'Bebida'] as const;
@@ -25,6 +26,18 @@ function RecipeDetail({ r, onBack }: { r: Recipe; onBack: () => void }) {
           <p className="small mute" style={{ margin: 0 }}>{r.minutes} min · {r.serves}</p>
         </div>
       </div>
+      {S.community && (
+        <button
+          className="btn ghost sm"
+          style={{ marginTop: 10 }}
+          onClick={() => {
+            shareMoment('receita', RECIPES.indexOf(r));
+            toast('Partilhado no mural da comunidade 🥤');
+          }}
+        >
+          🥤 Fiz esta receita
+        </button>
+      )}
 
       <section className="card">
         <div className="row">

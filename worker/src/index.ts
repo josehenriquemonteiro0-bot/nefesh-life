@@ -25,6 +25,7 @@ import * as verify from './verify';
 import { checkSpirulinaPhoto } from './spirulinaPhoto';
 import { acceptShot, readHealthShot } from './healthShot';
 import * as admin from './admin';
+import * as together from './together';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -224,6 +225,36 @@ export default {
           return social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {});
         },
         frasco: () => verify.registerBottle(db, uid, b.code, b.product),
+        'equipa-criar': () => together.createTeam(db, uid, b.name),
+        'equipa-entrar': () => together.joinTeam(db, uid, b.code),
+        'equipa-sair': () => together.leaveTeam(db, uid),
+        momento: () => together.moment(db, uid, b.kind, b.value),
+        'parceiro-convidar': async () => {
+          const r = await together.invitePartner(db, uid, b.id);
+          if (r.status === 200) {
+            const me = await social.getProfile(db, uid);
+            ctx.waitUntil(push.notifyUser(db, env.LIMITS, String(b.id), { title: 'Convite para parceiro de ritual 🌿', body: `${me?.nick ?? 'Um amigo'} quer fazer o ritual da Spirulina consigo. Abra a Comunidade para aceitar.`, tag: 'nefesh-parceiro' }));
+          }
+          return r;
+        },
+        'parceiro-aceitar': () => together.acceptPartner(db, uid),
+        'parceiro-terminar': () => together.endPartner(db, uid),
+        reagir: async () => {
+          const { r, owner } = await together.react(db, uid, b.id, b.kind);
+          if (owner) {
+            const me = await social.getProfile(db, uid);
+            ctx.waitUntil(push.notifyUser(db, env.LIMITS, owner, { title: `${me?.nick ?? 'Um amigo'} reagiu ${String(b.kind)}`, body: 'à sua conquista na NEFESH Life.', tag: 'nefesh-reacao' }));
+          }
+          return r;
+        },
+        responder: async () => {
+          const { r, owner } = await together.reply(db, uid, b.id, b.kind);
+          if (owner) {
+            const me = await social.getProfile(db, uid);
+            ctx.waitUntil(push.notifyUser(db, env.LIMITS, owner, { title: `${me?.nick ?? 'Um amigo'} respondeu`, body: together.REPLIES[String(b.kind)] ?? '', tag: 'nefesh-reacao' }));
+          }
+          return r;
+        },
         'prova-saude': async () => {
           const image = String(b.image ?? '');
           if (!image || image.length > MAX_IMAGE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) return { status: 400, body: { error: 'imagem inválida' } };

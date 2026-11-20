@@ -6,6 +6,7 @@
  * Peso, medidas e restantes dados de saúde nunca chegam aqui.
  */
 
+import { feedExtras, leaveTeam, partnerState, teamState } from './together';
 import { FULL, anomaly, bottlesOf, cleanParts, isCheckDay, overStock, proofsFor, scoreDay, type Habit, type Proofs } from './verify';
 
 /** O subconjunto da API D1 que usamos (permite testar com SQLite local). */
@@ -63,6 +64,13 @@ CREATE TABLE IF NOT EXISTS bottles (
 CREATE INDEX IF NOT EXISTS bottles_uid ON bottles (uid);
 CREATE TABLE IF NOT EXISTS bottle_codes (code TEXT PRIMARY KEY, product TEXT NOT NULL, used_by TEXT, used_at TEXT, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reviews (uid TEXT PRIMARY KEY, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'aberto', created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS teams (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner TEXT NOT NULL, code TEXT UNIQUE NOT NULL, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS team_members (uid TEXT PRIMARY KEY, tid TEXT NOT NULL, joined TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS team_members_tid ON team_members (tid);
+CREATE TABLE IF NOT EXISTS reactions (fid INTEGER NOT NULL, uid TEXT NOT NULL, kind TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY (fid, uid));
+CREATE TABLE IF NOT EXISTS replies (id INTEGER PRIMARY KEY AUTOINCREMENT, fid INTEGER NOT NULL, uid TEXT NOT NULL, kind TEXT NOT NULL, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS replies_fid ON replies (fid);
+CREATE TABLE IF NOT EXISTS pairs (uid TEXT PRIMARY KEY, partner TEXT NOT NULL, status TEXT NOT NULL, since TEXT NOT NULL, best INTEGER NOT NULL DEFAULT 0);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */
@@ -197,7 +205,11 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM bottles WHERE uid = ?').bind(id),
     db.prepare('DELETE FROM reviews WHERE uid = ?').bind(id),
     db.prepare('DELETE FROM photo_hashes WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM reactions WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM replies WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM pairs WHERE uid = ? OR partner = ?').bind(id, id),
   ]);
+  await leaveTeam(db, id);
   return ok({ ok: true });
 }
 
@@ -271,6 +283,10 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), he
   const official = CHALLENGE_KINDS[officialChallenge(week)];
   const bonus = countFlag(days, official.flag, week, addDays(week, 6)) >= official.target - 1 ? CHALLENGE_BONUS : 0;
   const points = Object.values(days).reduce((t, d) => t + d.p, 0) + evo + bonus;
+  // desafio da semana cumprido: aparece no mural (uma vez por semana)
+  if (bonus && !(await db.prepare("SELECT 1 FROM feed WHERE uid = ? AND kind = 'desafio' AND created >= ?").bind(id, `${week}T00:00:00`).first())) {
+    await db.prepare("INSERT INTO feed (uid, kind, value, created) VALUES (?, 'desafio', 0, ?)").bind(id, now.toISOString()).run();
+  }
   // sinais de fraude: a pessoa sai do ranking dos outros até a equipa rever
   const repeated = [...proofs.values()].reduce((t, p) => t + p.repeated, 0);
   const reason = anomaly(Object.values(days).map((d) => ({ declared: d.dd ?? 0, verified: d.dv ?? 0 })), repeated);
@@ -499,7 +515,13 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     )
     .bind(id, ...circle, since)
     .all<Record<string, unknown>>();
-  const feed = fd.map((r) => ({ id: r.id, me: r.uid === id, kind: r.kind, value: r.value, created: r.created, nick: r.nick, avatar: r.avatar, cheers: Number(r.cheers) || 0, cheered: Number(r.mine) > 0 }));
+  const extras = await feedExtras(db, id, fd.map((r) => Number(r.id)));
+  const feed = fd.map((r) => {
+    const x = extras.get(Number(r.id));
+    return { id: r.id, me: r.uid === id, kind: r.kind, value: r.value, created: r.created, nick: r.nick, avatar: r.avatar, cheers: Number(r.cheers) || 0, cheered: Number(r.mine) > 0, reactions: x?.reactions ?? {}, myReaction: x?.mine ?? null, replies: x?.replies ?? [] };
+  });
+  const teams = await teamState(db, id, week, today);
+  const partner = await partnerState(db, id, today, now);
 
   // desafio oficial da semana
   const okind = officialChallenge(week);
@@ -533,6 +555,9 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     messages: msgs.map((m) => ({ id: m.id, kind: m.kind, created: m.created, seen: !!m.seen, nick: m.nick ?? 'Ex-membro', avatar: m.avatar, from: m.from_id })),
     challenges,
     feed,
+    team: teams.team,
+    teams: teams.ranking,
+    partner,
     official: { kind: okind, target: odef.target - 1, done: countFlag(myDays, odef.flag, week, addDays(week, 6)), bonus: CHALLENGE_BONUS },
   });
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DAYS, weekdayIndex, type WorkoutLog } from '../domain/training';
 import { GYM, gymWeek, setsFor, type GymLevel, type GymSession } from '../domain/gym';
 import { useStore } from '../state/store';
+import { shareMoment } from '../domain/social';
 import { DecimalInput } from './DecimalInput';
 import { ExerciseHelp } from './ExerciseHelp';
 import { Icon } from './Icon';
@@ -24,6 +25,8 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
     // guarda as cargas para a próxima vez
     update((d) => { d.gymLoads = { ...(d.gymLoads ?? {}), ...Object.fromEntries(Object.entries(loads).filter(([, v]) => v.trim())) }; });
     toast(`Ginásio: ${s.title} registado (${m} min).`);
+    // treino concluído aparece no mural da comunidade
+    if (S.community && m >= 10) shareMoment('treino', m);
     onBack();
   };
 

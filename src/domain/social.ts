@@ -4,6 +4,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { AccountError, getAuth } from './account';
 import { PHOTO_API } from './photo';
+import { RECIPES } from './recipes';
 
 export const LEAGUES = ['Bronze', 'Prata', 'Ouro', 'Esmeralda', 'Diamante'];
 export const LEAGUE_COLORS = ['#c58b5a', '#b8c2c8', '#e2c15b', '#3fd59a', '#8fd3ff'];
@@ -58,6 +59,9 @@ export interface SocialState {
   challenges?: { id: string; kind: string; start: string; end: string; target: number; days: number; mine: boolean; members: { id: string; me: boolean; nick: string; avatar: string | null; done: number }[] }[];
   official?: { kind: string; target: number; done: number; bonus: number };
   feed?: FeedItem[];
+  team?: TeamInfo | null;
+  teams?: { rank: number; name: string; members: number; avg: number; mine: boolean }[];
+  partner?: { status: 'ativo' | 'enviado' | 'recebido'; nick: string; avatar: string | null; streak: number; todayMe: boolean; todayThem: boolean } | null;
   /** pontos de hoje calculados pelo servidor, com as provas */
   verify?: { points: number; verified: number; declared: number; v: string; checkDay: boolean; spirulinaPhoto: boolean; meals: number; review: boolean };
 }
@@ -72,6 +76,28 @@ export interface FeedItem {
   avatar: string | null;
   cheers: number;
   cheered: boolean;
+  reactions?: Record<string, number>;
+  myReaction?: string | null;
+  replies?: { nick: string; kind: string }[];
+}
+
+export const REACTIONS = ['👏', '💚', '🔥'];
+export const REPLIES: Record<string, string> = {
+  parabens: 'Parabéns! 🎉',
+  bora: 'Bora! 💪',
+  orgulho: 'Que orgulho! 💚',
+  inspiras: 'Inspiraste-me hoje 🌿',
+  continua: 'Continua assim! 🔥',
+};
+
+export interface TeamInfo {
+  name: string;
+  code: string;
+  mine: boolean;
+  members: { id: string; me: boolean; nick: string; avatar: string | null; streak: number; points: number; ritualDays: number; today: boolean }[];
+  goal: number;
+  done: number;
+  total: number;
 }
 
 const LEVEL_NAMES = ['Semente', 'Broto', 'Folha', 'Raiz', 'Árvore', 'Floresta', 'Oceano', 'Nefesh'];
@@ -88,6 +114,16 @@ export function feedText(f: FeedItem) {
       return f.me ? `📈 O seu Índice NEFESH subiu ${f.value} pontos` : `📈 O Índice NEFESH de ${f.nick} subiu ${f.value} pontos`;
     case 'liga':
       return `🏆 ${f.me ? 'Subiu' : `${f.nick} subiu`} para a liga ${LEAGUES[f.value] ?? ''}`;
+    case 'receita':
+      return `🥤 ${f.me ? 'Fez' : `${f.nick} fez`} a receita ${RECIPES[f.value]?.title ?? 'com Spirulina'}`;
+    case 'treino':
+      return `💪 ${f.me ? 'Concluiu' : `${f.nick} concluiu`} um treino${f.value ? ` de ${f.value} min` : ''}`;
+    case 'frasco':
+      return `🌿 ${f.me ? 'Começou' : `${f.nick} começou`} um frasco novo de Spirulina NEFESH`;
+    case 'desafio':
+      return `🏅 ${f.me ? 'Cumpriu' : `${f.nick} cumpriu`} o desafio NEFESH da semana`;
+    case 'dupla':
+      return `🤝 ${f.me ? 'Você e o seu parceiro' : `${f.nick} e o parceiro de ritual`} chegaram a ${f.value} dias de ritual juntos`;
     case 'entrou':
       return `👋 ${f.me ? 'Entrou' : `${f.nick} entrou`} na comunidade NEFESH`;
     default:
@@ -162,6 +198,19 @@ export const sendMessage = (to: string, kind: string) => call('mensagem', { to, 
 export const markSeen = () => call('lidas');
 export const cheer = (id: number) => call('aplaudir', { id });
 export const registerBottle = (code: string | null, product: string) => call<{ ok: boolean; verified: boolean; note?: string }>('frasco', { code, product });
+export const createTeam = (name: string) => call<{ code: string }>('equipa-criar', { name });
+export const joinTeam = (code: string) => call<{ name: string }>('equipa-entrar', { code });
+export const leaveTeam = () => call('equipa-sair');
+export const react = (id: number, kind: string) => call('reagir', { id, kind });
+export const replyTo = (id: number, kind: string) => call('responder', { id, kind });
+export const invitePartner = (id: string) => call('parceiro-convidar', { id });
+export const acceptPartner = () => call('parceiro-aceitar');
+export const endPartner = () => call('parceiro-terminar');
+/** Partilha um momento no mural (receita feita, treino concluído). Falhas são ignoradas. */
+export function shareMoment(kind: 'receita' | 'treino', value: number) {
+  if (!getAuth()) return;
+  call('momento', { kind, value }).then(() => refresh()).catch(() => undefined);
+}
 export const proveHealth = (image: string, media_type: string) =>
   call<{ ok: boolean; note: string; steps?: number; exMin?: number; sleepH?: number }>('prova-saude', { image, media_type });
 export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });

@@ -11,6 +11,7 @@ import { GymPlan } from '../components/GymPlan';
 import { TrainPlanCard } from '../components/TrainPlan';
 import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
 import { useStore } from '../state/store';
+import { shareMoment } from '../domain/social';
 
 const KIND_ICON = { forca: 'flame', caminhada: 'steps', intervalos: 'evo', mobilidade: 'wind', descanso: 'moon' } as const;
 const INTENSITY: Record<Session['kind'], number> = { forca: 2, intervalos: 3, caminhada: 1, mobilidade: 1, descanso: 0 };
@@ -40,7 +41,7 @@ function ExerciseItem({ e, level, done, onToggle }: { e: Exercise; level: Level;
 }
 
 function SessionView({ s, level, onBack }: { s: Session; level: Level; onBack: () => void }) {
-  const { todayLog: l, updateToday, toast } = useStore();
+  const { S, todayLog: l, updateToday, toast } = useStore();
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [minutes, setMinutes] = useState<number | undefined>(s.minutes);
   const already = (l.workouts || []).some((w) => w.sessionId === s.id);
@@ -54,6 +55,8 @@ function SessionView({ s, level, onBack }: { s: Session; level: Level; onBack: (
       d.t = Math.max(d.t ?? 0, INTENSITY[s.kind]);
     });
     toast(`${s.title} registado: ${m} min.`);
+    // treino concluído aparece no mural da comunidade
+    if (S.community && m >= 10) shareMoment('treino', m);
     onBack();
   };
 
