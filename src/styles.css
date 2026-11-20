@@ -353,3 +353,13 @@ table.cmp td.up,table.cmp td.down{color:var(--gold, #C9A85C)}
 .pw .link{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--neon);cursor:pointer}
 .err{color:var(--warn);margin:0}
 .code-big{font:600 clamp(17px,5.4vw,24px)/1.3 Sora,monospace;letter-spacing:.03em;white-space:nowrap;color:var(--neon);margin:4px 0 14px;}
+
+/* foto de perfil */
+.avatar{overflow:hidden}
+.avatar-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.profile-hero{display:flex;gap:16px;align-items:center}
+.avatar-edit{display:grid;justify-items:center;gap:4px;flex:none}
+.avatar.big{width:72px;height:72px;font-size:28px;position:relative;overflow:visible;border:2px solid var(--neon)}
+.avatar.big svg{width:30px;height:30px}
+.avatar.big .cam{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;background:var(--neon);color:#00140d;display:grid;place-items:center}
+.avatar.big .cam svg{width:15px;height:15px}

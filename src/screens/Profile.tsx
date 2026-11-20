@@ -12,6 +12,7 @@ import { enableNotifications, notificationsSupported } from '../reminders';
 import { useStore } from '../state/store';
 import { Comparison } from './Evolution';
 import { AccountCard } from '../components/Account';
+import { AvatarEdit } from '../components/Avatar';
 
 export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow }: {
   openAccount: () => void;
@@ -47,13 +48,28 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
   return (
     <>
       <h1>Perfil</h1>
-      <section className="card hero">
-        <p className="small" style={{ margin: 0, opacity: 0.8 }}>Dia {day} do ritual</p>
-        <h2 style={{ margin: '4px 0 2px' }}>{S.ans.name || 'O seu plano'}</h2>
-        <p className="small" style={{ margin: 0, opacity: 0.85 }}>
-          {GOAL_LABEL[S.ans.goal ?? 'energia']} · {BODY_GOAL_LABEL[bodyOf(S.ans)?.corpo ?? bodyGoalOf(S.ans)]}
-          {ev ? ` · Índice ${indexOf(ev.sc)}` : ''}
-        </p>
+      <section className="card hero profile-hero">
+        <AvatarEdit />
+        <div>
+          <p className="small" style={{ margin: 0, opacity: 0.8 }}>Dia {day} do ritual</p>
+          <h2 style={{ margin: '4px 0 2px' }}>
+            {S.ans.name || 'O seu plano'}{' '}
+            <button
+              className="link small inline"
+              onClick={() => {
+                const v = window.prompt('Como quer ser tratado(a)?', S.ans?.name ?? '');
+                if (v === null) return;
+                update((d) => { if (d.ans) d.ans.name = v.trim().slice(0, 40); });
+              }}
+            >
+              alterar
+            </button>
+          </h2>
+          <p className="small" style={{ margin: 0, opacity: 0.85 }}>
+            {GOAL_LABEL[S.ans.goal ?? 'energia']} · {BODY_GOAL_LABEL[bodyOf(S.ans)?.corpo ?? bodyGoalOf(S.ans)]}
+            {ev ? ` · Índice ${indexOf(ev.sc)}` : ''}
+          </p>
+        </div>
       </section>
 
       <AccountCard openAccount={openAccount} syncNow={syncNow} />

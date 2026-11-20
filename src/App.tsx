@@ -27,6 +27,7 @@ import { sendDailyPing } from './domain/analytics';
 import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout } from './domain/account';
 import { useCloudSync } from './state/cloud';
+import { AvatarImg } from './components/Avatar';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
@@ -190,7 +191,7 @@ export function App() {
           <div className="row" style={{ gap: 8 }}>
             {!S.ans && <button className="btn ghost sm" onClick={() => startQuiz()}>Avaliar</button>}
             <button className={`avatar ${tab === 'perfil' ? 'on' : ''}`} onClick={() => go('perfil')} aria-label="Perfil" aria-current={tab === 'perfil' ? 'page' : undefined}>
-              {S.ans?.name ? S.ans.name.trim()[0].toUpperCase() : <Icon name="user" />}
+              <AvatarImg />
             </button>
           </div>
         </header>

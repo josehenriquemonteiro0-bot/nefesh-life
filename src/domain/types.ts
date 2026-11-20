@@ -106,6 +106,8 @@ export interface AppState {
   trainPlan?: (import('./planRead').ParsedWorkoutPlan & { at: string; name: string }) | null;
   /** plano do nutricionista lido pela IA */
   nutriPlan?: (import('./planRead').ParsedPlan & { at: string; name: string }) | null;
+  /** foto de perfil (JPEG pequeno em data URL) */
+  avatar?: string;
   /** última alteração (ISO), para sincronizar com a conta */
   updatedAt?: string;
   /** false quando a pessoa desliga as estatísticas anónimas */
