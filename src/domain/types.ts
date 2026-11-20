@@ -109,6 +109,10 @@ export interface AppState {
   nutriPlan?: (import('./planRead').ParsedPlan & { at: string; name: string }) | null;
   /** ligação ao app Saúde pelo atalho: data em que foi ligada e última receção */
   health2?: { since: string; lastAt?: string };
+  /** onde treina (separador do Treino que abre primeiro) */
+  trainWhere?: 'personal' | 'ginasio' | 'casa';
+  /** últimas cargas usadas no ginásio, por exercício */
+  gymLoads?: Record<string, string>;
   /** nível escolhido para os treinos sugeridos (sobrepõe-se ao da avaliação) */
   trainLevel?: 'iniciante' | 'intermedio';
   /** participa na comunidade (pontos, ligas, amigos) */

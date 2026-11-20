@@ -7,6 +7,7 @@ import { BODY_GOAL_LABEL } from '../domain/body';
 import { PlanUpload } from '../components/PlanUpload';
 import { PremiumTag } from '../components/PremiumTag';
 import { ExerciseAnim } from '../components/ExerciseAnim';
+import { GymPlan } from '../components/GymPlan';
 import { TrainPlanCard } from '../components/TrainPlan';
 import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
 import { useStore } from '../state/store';
@@ -136,7 +137,7 @@ function OtherActivity() {
   );
 }
 
-type TrainTab = 'personal' | 'casa';
+type TrainTab = 'personal' | 'ginasio' | 'casa';
 
 /** Resumo da semana, comum aos dois separadores. */
 function WeekSummary() {
@@ -175,7 +176,7 @@ function PersonalNote() {
     <section className="card personal-note">
       <h2 style={{ marginTop: 0 }}>🏋️ Um personal faz a diferença</h2>
       <p className="small" style={{ marginTop: 0 }}>
-        Estes treinos são uma sugestão geral para o seu objetivo. Um personal trainer avalia a sua postura e a sua condição, ajusta os exercícios e as cargas e faz-o progredir com segurança.
+        Estes treinos são uma sugestão geral para o seu objetivo, em casa ou no ginásio. Um personal trainer avalia a sua postura e a sua condição, ajusta os exercícios e as cargas e faz-o progredir com segurança.
       </p>
       <p className="small mute">A NEFESH indica-lhe um profissional de exercício parceiro para montar um treino feito à sua medida. Depois, carregue esse plano em "Com personal".</p>
       <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de uma indicação de personal trainer para montar um treino personalizado${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener">
@@ -189,7 +190,7 @@ export function Training() {
   const { S, todayLog, update } = useStore();
   const hasProFile = !!S.plans?.treino;
   const hasPro = !!(S.trainPlan && S.plans?.treino?.name === S.trainPlan.name);
-  const [tab, setTab] = useState<TrainTab>(hasProFile ? 'personal' : 'casa');
+  const [tab, setTab] = useState<TrainTab>(hasProFile ? 'personal' : S.trainWhere ?? 'casa');
   const [open, setOpen] = useState<Session | null>(null);
   const [lib, setLib] = useState(false);
   // nível dos treinos sugeridos: escolhido pela pessoa ou deduzido da avaliação (avançado conta como intermédio)
@@ -200,22 +201,34 @@ export function Training() {
 
   if (open) return <SessionView s={open} level={level} onBack={() => { setOpen(null); window.scrollTo(0, 0); }} />;
 
+  const levelPicker = (
+    <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Nível">
+      {(['iniciante', 'intermedio'] as const).map((lv) => (
+        <button key={lv} className={level === lv ? 'on' : ''} aria-pressed={level === lv} onClick={() => update((d) => { d.trainLevel = lv; })}>
+          {lv === 'iniciante' ? 'Iniciante' : 'Intermediário'}
+        </button>
+      ))}
+    </div>
+  );
   const s = plan[today];
   const doneToday = (todayLog.workouts || []).length > 0;
 
   return (
     <>
       <h1>Treino</h1>
-      <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Tipo de treino">
-        <button className={tab === 'personal' ? 'on' : ''} aria-pressed={tab === 'personal'} onClick={() => setTab('personal')}>Com personal</button>
-        <button className={tab === 'casa' ? 'on' : ''} aria-pressed={tab === 'casa'} onClick={() => setTab('casa')}>Em casa</button>
+      <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(3,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Onde treina">
+        {([['personal', 'Com personal'], ['ginasio', 'No ginásio'], ['casa', 'Em casa']] as [TrainTab, string][]).map(([k, t]) => (
+          <button key={k} className={tab === k ? 'on' : ''} aria-pressed={tab === k} onClick={() => { setTab(k); update((d) => { d.trainWhere = k; }); }}>{t}</button>
+        ))}
       </div>
 
       <WeekSummary />
       <OtherActivity />
       <p />
 
-      {tab === 'personal' ? (
+      {tab === 'ginasio' ? (
+        <GymPlan level={level === 'iniciante' ? 'iniciante' : 'intermedio'} levelPicker={levelPicker} personal={<PersonalNote />} />
+      ) : tab === 'personal' ? (
         <>
           {hasPro ? (
             <>
@@ -247,13 +260,7 @@ export function Training() {
           <p className="mute small" style={{ margin: '0 0 10px' }}>
             Para o seu objetivo: {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · sem material
           </p>
-          <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Nível">
-            {(['iniciante', 'intermedio'] as const).map((lv) => (
-              <button key={lv} className={level === lv ? 'on' : ''} aria-pressed={level === lv} onClick={() => update((d) => { d.trainLevel = lv; })}>
-                {lv === 'iniciante' ? 'Iniciante' : 'Intermediário'}
-              </button>
-            ))}
-          </div>
+          {levelPicker}
           <p className="small mute" style={{ margin: '-6px 0 12px' }}>
             {level === 'iniciante'
               ? 'Iniciante: 2 voltas por circuito, versões mais fáceis quando precisar e caminhada em vez de cardio intenso.'
