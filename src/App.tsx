@@ -15,6 +15,7 @@ import { blankState } from './domain/sample';
 import { clearFiles } from './domain/files';
 import { took } from './domain/stats';
 import { scheduleReminder } from './reminders';
+import { pushSupported, updatePush } from './domain/push';
 import { Check } from './screens/Check';
 import { Evolution } from './screens/Evolution';
 import { Home } from './screens/Home';
@@ -97,9 +98,15 @@ export function App() {
   const [bottleOpen, setBottleOpen] = useState(false);
   const openBottle = () => setBottleOpen(true);
 
-  // lembrete diário enquanto a app está aberta
+  // notificações: com Web Push, o lembrete vem do servidor mesmo com a app fechada;
+  // ao abrir (e ao entrar na conta) atualiza a hora e a ligação à conta
+  const authToken = getAuth()?.token;
   useEffect(() => {
-    if (!S.notifications || !S.ans) return;
+    if (S.notifications && S.ans && pushSupported()) updatePush(S.reminder);
+  }, [authToken, S.notifications]);
+  // sem Web Push (navegador antigo): lembrete enquanto a app está aberta
+  useEffect(() => {
+    if (!S.notifications || !S.ans || pushSupported()) return;
     return scheduleReminder(S.reminder, () => took(S, S.logs[todayKey()]));
   }, [S]);
 

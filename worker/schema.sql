@@ -26,3 +26,8 @@ CREATE TABLE IF NOT EXISTS feed (
 );
 CREATE INDEX IF NOT EXISTS feed_created ON feed (created);
 CREATE TABLE IF NOT EXISTS cheers (fid INTEGER NOT NULL, uid TEXT NOT NULL, PRIMARY KEY (fid, uid));
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint TEXT PRIMARY KEY, uid TEXT, device TEXT, remind TEXT, tz TEXT,
+  done TEXT, sent TEXT, league_sent TEXT, msg TEXT, created TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS push_uid ON push_subs (uid);

@@ -20,6 +20,7 @@ import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
+import * as push from './push';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -115,7 +116,12 @@ function apiError(err: unknown, h: Record<string, string>) {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  /** a cada 15 minutos: lembretes da toma e aviso de fim da liga */
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    if (env.DB) ctx.waitUntil(push.runSchedule(env.DB, env.LIMITS));
+  },
+
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const h = cors(env, req.headers.get('Origin'));
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
@@ -146,6 +152,25 @@ export default {
       return json(r.body, r.status, h);
     }
 
+    if (url.pathname.startsWith('/push/')) {
+      if (!env.DB) return json({ error: 'indisponível' }, 503, h);
+      let b: Record<string, unknown>;
+      try {
+        b = await req.json();
+      } catch {
+        return json({ error: 'pedido inválido' }, 400, h);
+      }
+      const action = url.pathname.slice('/push/'.length);
+      let r: { status: number; body: Record<string, unknown> };
+      if (action === 'chave') r = { status: 200, body: { key: (await push.vapid(env.LIMITS)).pub } };
+      else if (action === 'inscrever') r = await push.subscribe(env.DB, b, b.token ? await sessionUser(env.LIMITS as never, b.token) : null);
+      else if (action === 'feito') r = await push.markDone(env.DB, b);
+      else if (action === 'sair') r = await push.unsubscribe(env.DB, b);
+      else if (action === 'mensagem') r = await push.pendingMessage(env.DB, b);
+      else r = { status: 404, body: { error: 'rota desconhecida' } };
+      return json(r.body, r.status, h);
+    }
+
     if (url.pathname.startsWith('/social/')) {
       if (!env.DB) return json({ error: 'A comunidade ainda está a ser preparada. Tente mais tarde.' }, 503, h);
       let b: Record<string, unknown>;
@@ -168,7 +193,15 @@ export default {
         sincronizar: () => social.sync(db, uid, b as social.SyncBody),
         amigo: () => social.addFriend(db, uid, b.code),
         'remover-amigo': () => social.removeFriend(db, uid, b.id),
-        mensagem: () => social.sendMessage(db, uid, b.to, b.kind),
+        mensagem: async () => {
+          const r = await social.sendMessage(db, uid, b.to, b.kind);
+          // avisa o amigo no telemóvel, mesmo com a app fechada
+          if (r.status === 200) {
+            const me = await social.getProfile(db, uid);
+            ctx.waitUntil(push.notifyFriend(db, env.LIMITS, String(b.to), String(me?.nick ?? 'Um amigo'), String(b.kind)));
+          }
+          return r;
+        },
         lidas: () => social.markSeen(db, uid),
         aplaudir: () => social.cheer(db, uid, b.id),
         'resultado-visto': () => social.clearResult(db, uid),

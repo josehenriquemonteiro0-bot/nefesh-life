@@ -9,6 +9,7 @@ import { useStore } from '../state/store';
 import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
+import { pushRitualDone } from '../domain/push';
 import { activityStreak, dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
 import { mealForSlot, nextReassessment, spirulinaEntry, spirulinaInsight, weeklySummary } from '../domain/progress';
@@ -203,6 +204,8 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
     });
     const after = { ...S, logs: { ...S.logs, [todayKey()]: { ...l, doses: next } } };
     if (took(after, after.logs[todayKey()]) && !took(S, l)) {
+      // ritual feito: hoje não há lembrete
+      if (S.notifications) pushRitualDone();
       toast(`Ritual do dia cumprido. ${streak(after)} dias seguidos.`);
     }
   };

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bar } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { DataCard } from '../components/DataCard';
@@ -8,12 +9,59 @@ import { reorderText, stock } from '../domain/stats';
 import { lotFor, stockText } from '../domain/lots';
 import { nextReassessment } from '../domain/progress';
 import { BODY_GOAL_LABEL, bodyGoalOf, bodyOf } from '../domain/body';
-import { enableNotifications, notificationsSupported } from '../reminders';
+import { disablePush, enablePush, isInstalled, isIOS, pushSupported, updatePush } from '../domain/push';
 import { useStore } from '../state/store';
 import { Comparison } from './Evolution';
 import { AccountCard } from '../components/Account';
 import { AvatarEdit } from '../components/Avatar';
 import { syncedLabel } from '../domain/account';
+
+/** Ativar ou desligar as notificações (lembrete da toma, amigos e liga). */
+function PushToggle() {
+  const { S, update, toast } = useStore();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  if (S.notifications)
+    return (
+      <button
+        className="link small inline"
+        style={{ marginTop: 10 }}
+        onClick={async () => {
+          await disablePush();
+          update((d) => { d.notifications = false; });
+          toast('Notificações desligadas.');
+        }}
+      >
+        desligar notificações
+      </button>
+    );
+  return (
+    <>
+      <button
+        className="btn sm"
+        style={{ marginTop: 12 }}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          const err = await enablePush(S.reminder);
+          setBusy(false);
+          setMsg(err);
+          if (!err) {
+            update((d) => { d.notifications = true; });
+            toast('Notificações ativadas.');
+          }
+        }}
+      >
+        <Icon name="bell" /> Ativar notificações
+      </button>
+      {(msg || (isIOS() && !isInstalled())) && (
+        <p className="small key-warn">{msg ?? 'No iPhone, as notificações só funcionam com a app no ecrã principal: no Safari, toque em Partilhar → Adicionar ao ecrã principal.'}</p>
+      )}
+      {!pushSupported() && !isIOS() && <p className="small mute">Este navegador não permite notificações.</p>}
+      <p className="small mute" style={{ margin: '8px 0 0' }}>Recebe o lembrete da Spirulina, as mensagens dos amigos e o aviso de fim da liga ao domingo.</p>
+    </>
+  );
+}
 
 export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth }: {
   openHealth: () => void;
@@ -137,7 +185,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <div style={{ flex: '1 1 200px' }}>
             <h2 style={{ margin: 0 }}>Lembrete diário</h2>
             <p className="mute small" style={{ margin: '4px 0 0' }}>
-              {S.notifications ? 'Notificação ativa neste dispositivo.' : 'Receba uma notificação à hora da sua toma.'}
+              {S.notifications ? 'Notificações ativas neste telemóvel, mesmo com a app fechada. Se já tiver tomado a Spirulina, não recebe o lembrete.' : 'Receba uma notificação à hora da sua toma, mesmo com a app fechada.'}
             </p>
           </div>
           <input
@@ -148,23 +196,12 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
               const v = e.target.value;
               if (!v) return;
               update((d) => { d.reminder = v; });
+              updatePush(v);
               toast(`Lembrete às ${v}.`);
             }}
           />
         </div>
-        {!S.notifications && notificationsSupported() && (
-          <button
-            className="btn ghost sm"
-            style={{ marginTop: 12 }}
-            onClick={async () => {
-              const ok = await enableNotifications();
-              update((d) => { d.notifications = ok; });
-              toast(ok ? 'Notificações ativadas.' : 'As notificações foram bloqueadas no navegador.');
-            }}
-          >
-            <Icon name="bell" /> Ativar notificações
-          </button>
-        )}
+        <PushToggle />
       </section>
 
       <section className="card">
