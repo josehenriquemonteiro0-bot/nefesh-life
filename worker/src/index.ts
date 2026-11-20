@@ -27,6 +27,7 @@ import { acceptShot, readHealthShot } from './healthShot';
 import * as admin from './admin';
 import * as together from './together';
 import * as photos from './photos';
+import * as notify from './notify';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -228,10 +229,14 @@ export default {
         estado: () => social.state(db, uid),
         perfil: () => social.upsertProfile(db, uid, b),
         'perfil-foto': () => social.updateAvatar(db, uid, b.avatar),
+        'notificacoes-comunidade': () => notify.setCommunityPush(db, uid, b.on),
         sincronizar: async () => {
           // dados do app Saúde recebidos pelo atalho contam como verificados
           const raw = await env.LIMITS.get(`hd:${uid}`);
-          return social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {});
+          const notes: notify.Note[] = [];
+          const r = await social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {}, notes);
+          if (notes.length) ctx.waitUntil(notify.sendNotes(db, env.LIMITS, notes));
+          return r;
         },
         frasco: () => verify.registerBottle(db, uid, b.code, b.product),
         foto: async () => {
@@ -247,6 +252,11 @@ export default {
           if (!m.safe || !m.fits) return { status: 200, body: { ok: false, note: m.safe ? `Esta foto não parece ser de ${kind === 'spirulina' ? 'Spirulina' : kind === 'treino' ? 'um treino' : 'comida'}. ${m.note}` : 'Esta foto não pode ser partilhada na comunidade.' } };
           await count(env.LIMITS, lim, uid, ipc, new Date(), 'f');
           const id = await photos.savePhoto(db, uid, b.image, kind, Math.round(Number(b.value) || 0));
+          // avisa amigos e equipa (uma vez por dia por pessoa)
+          const me = await social.getProfile(db, uid);
+          const day = social.lisbonDay();
+          const circle = await notify.circleOf(db, uid);
+          ctx.waitUntil(notify.sendNotes(db, env.LIMITS, circle.map((to) => ({ to, once: `foto:${uid}:${day}:${to}`, msg: { title: `${me?.nick ?? 'Um amigo'} partilhou um momento 📸`, body: 'Veja nos Momentos de hoje, na Comunidade.', tag: 'nefesh-momento' } }))));
           return { status: 200, body: { ok: true, id, note: m.other_people ? 'Publicada. Lembre-se de pedir autorização a quem aparece na foto.' : 'Publicada nos Momentos de hoje durante 24 horas.' } };
         },
         'denunciar-foto': () => photos.report(db, uid, b.id),

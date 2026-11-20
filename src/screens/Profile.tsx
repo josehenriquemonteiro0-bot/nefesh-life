@@ -9,6 +9,7 @@ import { reorderText, stock } from '../domain/stats';
 import { lotFor, stockText } from '../domain/lots';
 import { nextReassessment } from '../domain/progress';
 import { BODY_GOAL_LABEL, bodyGoalOf, bodyOf } from '../domain/body';
+import { setCommunityPush } from '../domain/social';
 import { disablePush, enablePush, isInstalled, isIOS, pushSupported, updatePush } from '../domain/push';
 import { useStore } from '../state/store';
 import { Comparison } from './Evolution';
@@ -24,17 +25,41 @@ function PushToggle() {
   const [msg, setMsg] = useState<string | null>(null);
   if (S.notifications)
     return (
-      <button
-        className="link small inline"
-        style={{ marginTop: 10 }}
-        onClick={async () => {
-          await disablePush();
-          update((d) => { d.notifications = false; });
-          toast('Notificações desligadas.');
-        }}
-      >
-        desligar notificações
-      </button>
+      <>
+        {S.community && (
+          <label className="check" style={{ marginTop: 12 }}>
+            <input
+              type="checkbox"
+              checked={S.communityPush !== false}
+              onChange={async (e) => {
+                const on = e.target.checked;
+                update((d) => { d.communityPush = on; });
+                try {
+                  await setCommunityPush(on);
+                  toast(on ? 'Vai receber avisos da comunidade.' : 'Avisos da comunidade desligados.');
+                } catch (err) {
+                  toast((err as Error).message);
+                }
+              }}
+            />
+            <span className="small">
+              Avisos da comunidade: o parceiro já tomou, a meta da equipa, conquistas e momentos de amigos, a liga.
+              <span className="mute"> No máximo 3 por dia e nunca entre as 22h e as 8h.</span>
+            </span>
+          </label>
+        )}
+        <button
+          className="link small inline"
+          style={{ marginTop: 10 }}
+          onClick={async () => {
+            await disablePush();
+            update((d) => { d.notifications = false; });
+            toast('Notificações desligadas.');
+          }}
+        >
+          desligar notificações
+        </button>
+      </>
     );
   return (
     <>

@@ -53,7 +53,7 @@ describe('notificações', () => {
     const store = kv();
     await push.subscribe(db, { endpoint: EP, remind: null, tz: 'Europe/Lisbon' }, 'ana');
     const gone = (async () => new Response(null, { status: 410 })) as unknown as typeof fetch;
-    expect(await push.notifyFriend(db, store, 'ana', 'Rui', 'forca', gone)).toBe(1);
-    expect(await push.notifyFriend(db, store, 'ana', 'Rui', 'forca', gone)).toBe(0);
+    expect(await push.notifyFriend(db, store, 'ana', 'Rui', 'forca', gone, new Date('2026-11-20T12:00:00Z'))).toBe(1);
+    expect(await push.notifyFriend(db, store, 'ana', 'Rui', 'forca', gone, new Date('2026-11-20T12:00:00Z'))).toBe(0);
   });
 });

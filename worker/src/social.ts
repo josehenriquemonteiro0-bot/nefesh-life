@@ -8,6 +8,7 @@
 
 import { feedExtras, leaveTeam, partnerState, teamState } from './together';
 import { recentPhotos } from './photos';
+import type { Note } from './notify';
 import { FULL, anomaly, bottlesOf, cleanParts, isCheckDay, overStock, proofsFor, scoreDay, type Habit, type Proofs } from './verify';
 
 /** O subconjunto da API D1 que usamos (permite testar com SQLite local). */
@@ -75,6 +76,9 @@ CREATE TABLE IF NOT EXISTS pairs (uid TEXT PRIMARY KEY, partner TEXT NOT NULL, s
 CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, fid INTEGER, uid TEXT NOT NULL, kind TEXT NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL, hidden INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS photos_created ON photos (created);
 CREATE TABLE IF NOT EXISTS photo_reports (pid TEXT NOT NULL, uid TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY (pid, uid));
+CREATE TABLE IF NOT EXISTS push_prefs (uid TEXT PRIMARY KEY, community INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS notif_once (key TEXT PRIMARY KEY, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS push_daily (uid TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uid, day));
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */
@@ -263,7 +267,7 @@ export interface SyncBody {
 export type HealthDays = Record<string, { steps?: number; sleepH?: number; exMin?: number }>;
 
 /** Guarda os pontos da semana atual (a app envia os dias de segunda até hoje). */
-export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), health: HealthDays = {}): Promise<Ok> {
+export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), health: HealthDays = {}, notes: Note[] = []): Promise<Ok> {
   const prof = await getProfile(db, id);
   if (!prof) return fail(404, 'Entre primeiro na comunidade.');
   const today = lisbonDay(now);
@@ -306,8 +310,33 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), he
   const reason = anomaly(Object.values(days).map((d) => ({ declared: d.dd ?? 0, verified: d.dv ?? 0 })), repeated);
   if (reason) await db.prepare("INSERT OR IGNORE INTO reviews (uid, reason, status, created) VALUES (?, ?, 'aberto', ?)").bind(id, reason, now.toISOString()).run();
   const at = now.toISOString();
-  const row = await db.prepare('SELECT league, grp FROM weeks WHERE id = ? AND week = ?').bind(id, week).first<{ league: number; grp: number }>();
+  const row = await db.prepare('SELECT league, grp, points, days FROM weeks WHERE id = ? AND week = ?').bind(id, week).first<{ league: number; grp: number; points: number; days: string }>();
   const stmts: Stmt[] = [];
+  const nick = String(prof.nick);
+  // --- notificações da comunidade (enviadas depois de guardar) ---
+  const prevDays = parseDays(row?.days) as Record<string, StoredDay>;
+  const tookNow = (days[today]?.ds ?? 0) > 0;
+  const tookBefore = (prevDays[today]?.ds ?? (prevDays[today]?.f?.includes('s') ? 1 : 0)) > 0;
+  if (tookNow && !tookBefore) {
+    // o parceiro de ritual ainda não tomou: só falta ele
+    const pair = await db.prepare("SELECT partner FROM pairs WHERE uid = ? AND status = 'ativo'").bind(id).first<{ partner: string }>();
+    if (pair) {
+      const pr = await db.prepare('SELECT days FROM weeks WHERE id = ? AND week = ?').bind(pair.partner, week).first<{ days: string }>();
+      const pd = (parseDays(pr?.days) as Record<string, StoredDay>)[today];
+      if (!pd || !((pd.ds ?? 0) > 0 || pd.f.includes('s')))
+        notes.push({ to: pair.partner, once: `parceiro:${pair.partner}:${today}`, msg: { title: `${nick} já tomou a Spirulina 🌿`, body: 'Só falta você para a sequência a dois continuar!', tag: 'nefesh-parceiro' } });
+    }
+  }
+  if (row) {
+    // ultrapassagem na liga: avisa quem ficou para trás
+    const { results: others } = await db
+      .prepare('SELECT id, points FROM weeks WHERE week = ? AND league = ? AND grp = ? AND id != ?')
+      .bind(week, row.league, row.grp, id)
+      .all<{ id: string; points: number }>();
+    for (const o of others)
+      if (row.points <= o.points && points > o.points)
+        notes.push({ to: o.id, once: `ultrapassado:${o.id}:${id}:${today}`, msg: { title: `${nick} passou à sua frente na liga 🏆`, body: 'Ainda vai a tempo: cada hábito de hoje conta.', tag: 'nefesh-liga' } });
+  }
   let league = Number(prof.league) || 0;
   if (row) {
     stmts.push(db.prepare('UPDATE weeks SET points = ?, evo = ?, days = ?, updated = ? WHERE id = ? AND week = ?').bind(points, evo, JSON.stringify(days), at, id, week));
@@ -315,6 +344,8 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), he
     // primeira vez esta semana: fecha a anterior e entra num grupo de até 20 pessoas da mesma liga
     const s = await settlePrevious(db, id, week, league);
     league = s.league;
+    if (s.result && s.result.to > s.result.from)
+      notes.push({ to: id, once: `liga:${id}:${week}`, msg: { title: `Subiu para a liga ${LEAGUES[s.result.to]}! 🎉`, body: `Ficou em ${s.result.rank}.º na semana passada. Boa semana!`, tag: 'nefesh-liga' } });
     const c = await db.prepare('SELECT COUNT(*) AS n FROM weeks WHERE week = ? AND league = ?').bind(week, league).first<{ n: number }>();
     const grp = Math.floor((c?.n ?? 0) / GROUP_SIZE);
     stmts.push(db.prepare('INSERT INTO weeks (id, week, league, grp, points, evo, days, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(id, week, league, grp, points, evo, JSON.stringify(days), at));
@@ -343,6 +374,27 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), he
       .bind(newStreak, newLevel, idx, idxFirst, at, id),
   );
   await db.batch(stmts);
+  if (hit) {
+    const { results: fr } = await db.prepare('SELECT b AS id FROM friends WHERE a = ?').bind(id).all<{ id: string }>();
+    for (const f of fr)
+      notes.push({ to: f.id, once: `marco:${id}:${hit}:${f.id}`, msg: { title: `${nick} chegou aos ${hit} dias de ritual! 🎉`, body: 'Dê-lhe os parabéns no mural da comunidade.', tag: 'nefesh-mural' } });
+  }
+  if (tookNow && !tookBefore) {
+    // meta da equipa: quase lá (falta 1 dia) ou cumprida
+    const tm = await db.prepare('SELECT tid FROM team_members WHERE uid = ?').bind(id).first<{ tid: string }>();
+    if (tm) {
+      const { results: mem } = await db
+        .prepare('SELECT tm.uid, w.days FROM team_members tm LEFT JOIN weeks w ON w.id = tm.uid AND w.week = ? WHERE tm.tid = ?')
+        .bind(week, tm.tid)
+        .all<{ uid: string; days: string | null }>();
+      const goal = mem.length * 5;
+      const done = mem.reduce((t, m) => t + Object.values(parseDays(m.days) as Record<string, StoredDay>).filter((d) => (d.ds ?? 0) > 0 || d.f.includes('s')).length, 0);
+      for (const m of mem) {
+        if (done >= goal) notes.push({ to: m.uid, once: `equipa-meta:${tm.tid}:${week}:${m.uid}`, msg: { title: 'A vossa equipa cumpriu a meta da semana! 🏅', body: `${done} dias de ritual somados. Que equipa!`, tag: 'nefesh-equipa' } });
+        else if (done === goal - 1 && m.uid !== id) notes.push({ to: m.uid, once: `equipa-quase:${tm.tid}:${week}:${m.uid}`, msg: { title: 'Falta 1 dia de ritual para a meta da equipa 💪', body: 'A sua toma de hoje pode fechar a meta.', tag: 'nefesh-equipa' } });
+      }
+    }
+  }
   return ok({ points, league, bonus, review: !!reason });
 }
 

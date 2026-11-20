@@ -170,15 +170,15 @@ export const MESSAGE_TEXT: Record<string, string> = {
 };
 
 /** Notificação para uma pessoa (todos os telemóveis dela com notificações). */
-export async function notifyUser(db: DB, store: KeyStore, uid: string, msg: PushMessage, fetcher: typeof fetch = fetch) {
-  const { results } = await db.prepare('SELECT endpoint FROM push_subs WHERE uid = ?').bind(uid).all<{ endpoint: string }>();
-  for (const r of results) await sendPush(db, store, r.endpoint, msg, fetcher);
-  return results.length;
+export async function notifyUser(db: DB, store: KeyStore, uid: string, msg: PushMessage, fetcher: typeof fetch = fetch, now = new Date()) {
+  const { results } = await db.prepare('SELECT endpoint, tz FROM push_subs WHERE uid = ?').bind(uid).all<{ endpoint: string; tz: string | null }>();
+  // de noite (22h às 8h) não avisa: a pessoa vê na app quando a abrir
+  const awake = results.filter((r) => { const h = Number(localNow(r.tz || 'Europe/Lisbon', now).time.slice(0, 2)); return h >= 8 && h < 22; });
+  for (const r of awake) await sendPush(db, store, r.endpoint, msg, fetcher);
+  return awake.length;
 }
 
 /** Avisa o amigo que recebeu uma mensagem (em todos os telemóveis dele com notificações). */
-export async function notifyFriend(db: DB, store: KeyStore, toUid: string, fromNick: string, kind: string, fetcher: typeof fetch = fetch) {
-  const { results } = await db.prepare('SELECT endpoint FROM push_subs WHERE uid = ?').bind(toUid).all<{ endpoint: string }>();
-  for (const r of results) await sendPush(db, store, r.endpoint, { title: `${fromNick} na NEFESH Life`, body: MESSAGE_TEXT[kind] ?? 'Enviou-lhe uma mensagem.', tag: 'nefesh-amigo' }, fetcher);
-  return results.length;
+export async function notifyFriend(db: DB, store: KeyStore, toUid: string, fromNick: string, kind: string, fetcher: typeof fetch = fetch, now = new Date()) {
+  return notifyUser(db, store, toUid, { title: `${fromNick} na NEFESH Life`, body: MESSAGE_TEXT[kind] ?? 'Enviou-lhe uma mensagem.', tag: 'nefesh-amigo' }, fetcher, now);
 }
