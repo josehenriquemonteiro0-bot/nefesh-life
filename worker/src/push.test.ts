@@ -56,4 +56,31 @@ describe('notificações', () => {
     expect(await push.notifyFriend(db, store, 'ana', 'Rui', 'forca', gone, new Date('2026-11-20T12:00:00Z'))).toBe(1);
     expect(await push.notifyFriend(db, store, 'ana', 'Rui', 'forca', gone, new Date('2026-11-20T12:00:00Z'))).toBe(0);
   });
+
+  it('avisa da reposição 7 dias antes, uma vez por data, e de novo se a data mudar', async () => {
+    const db = memoryDB();
+    const store = kv();
+    const calls: string[] = [];
+    const fetcher = (async (u: string) => { calls.push(u); return new Response(null, { status: 201 }); }) as unknown as typeof fetch;
+    await push.subscribe(db, { endpoint: EP, remind: null, tz: 'Europe/Lisbon' }, null);
+    expect((await push.setStockEnd(db, { endpoint: EP, ends: 'amanhã' })).status).toBe(200); // data inválida apaga
+    await push.setStockEnd(db, { endpoint: EP, ends: '2026-12-05' });
+    // a 20/11 faltam 15 dias: ainda não avisa
+    expect(await push.runSchedule(db, store, new Date('2026-11-20T10:20:00Z'), fetcher)).toBe(0);
+    // a 28/11 faltam 7 dias: avisa às 10h, só uma vez
+    expect(await push.runSchedule(db, store, new Date('2026-11-28T09:50:00Z'), fetcher)).toBe(0);
+    expect(await push.runSchedule(db, store, new Date('2026-11-28T10:05:00Z'), fetcher)).toBe(1);
+    expect((await push.pendingMessage(db, { endpoint: EP })).body.title).toMatch(/acaba daqui a 7 dias/);
+    expect(await push.runSchedule(db, store, new Date('2026-11-28T10:35:00Z'), fetcher)).toBe(0);
+    expect(await push.runSchedule(db, store, new Date('2026-11-29T10:05:00Z'), fetcher)).toBe(0);
+    // a mesma data outra vez não repete; uma data nova (frasco novo acabado) volta a avisar
+    await push.setStockEnd(db, { endpoint: EP, ends: '2026-12-05' });
+    expect(await push.runSchedule(db, store, new Date('2026-11-30T10:05:00Z'), fetcher)).toBe(0);
+    await push.setStockEnd(db, { endpoint: EP, ends: '2026-12-03' });
+    expect(await push.runSchedule(db, store, new Date('2026-11-30T10:05:00Z'), fetcher)).toBe(1);
+    expect(calls).toEqual([EP, EP]);
+    // sair das notificações apaga também o aviso
+    await push.unsubscribe(db, { endpoint: EP });
+    expect(await db.prepare('SELECT 1 FROM stock_alerts').first()).toBeNull();
+  });
 });

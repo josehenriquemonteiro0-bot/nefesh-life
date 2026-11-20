@@ -197,7 +197,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         </div>
         <Bar pct={st.pct} variant={low ? 'low' : undefined} />
         <p className={`small ${low ? '' : 'mute'}`}>
-          {low ? `O seu stock acaba em ${st.days} dias.` : `Ao ritmo atual, o seu stock dura mais ${st.days} dias.`}
+          {low ? `O seu stock acaba em ${st.days} ${st.days === 1 ? 'dia' : 'dias'}` : `Ao seu ritmo, o seu stock dura mais ${st.days} dias`}{st.rate < 1 ? ` (toma em ${Math.round(st.rate * 100)}% dos dias; a tomar todos os dias seriam ${st.planDays})` : ''}.{S.notifications ? ' Avisamos por notificação 7 dias antes de acabar.' : ''}
           {lastLot ? ` Lote ${lastLot.code}: ${lastLot.values.filter((v) => v.pos === 'acima').map((v) => v.label).join(', ')} acima da referência.` : ''}
         </p>
         <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>

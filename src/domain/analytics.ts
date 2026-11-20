@@ -8,7 +8,7 @@
  */
 import { keyDaysAgo, todayKey } from './dates';
 import { PHOTO_API, deviceId } from './photo';
-import { took } from './stats';
+import { adherence, took } from './stats';
 import type { AppState } from './types';
 import { isPremium, type Feature } from './features';
 
@@ -59,6 +59,10 @@ export interface Ping {
   premiumUses?: Record<string, number>;
   /** a pessoa tem Premium ativo */
   premium?: boolean;
+  /** uso de Spirulina antes da app (resposta do quiz) */
+  prior?: 'nunca' | 'as-vezes' | 'regular' | 'sem resposta';
+  /** aderência à Spirulina nos últimos 14 dias (%) */
+  adh14?: number;
 }
 
 export function buildPing(S: AppState, device: string, now = new Date(), env: { installed: boolean; platform: Ping['platform'] } = { installed: false, platform: 'outro' }): Ping {
@@ -83,6 +87,8 @@ export function buildPing(S: AppState, device: string, now = new Date(), env: { 
     platform: env.platform,
     evals: S.evals.length,
     premium: isPremium(S),
+    prior: (['nunca', 'as-vezes', 'regular'] as const).find((x) => x === S.ans?.prior) ?? 'sem resposta',
+    adh14: S.ans ? adherence(S, 14, now) : 0,
   };
 }
 

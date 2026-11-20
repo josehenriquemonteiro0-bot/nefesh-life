@@ -70,6 +70,22 @@ export async function updatePush(remind: string | null) {
   }
 }
 
+const STOCK_KEY = 'nefesh-life-reposicao';
+
+/** Envia a data prevista do fim da Spirulina (só quando muda), para o aviso 7 dias antes. */
+export async function pushStockEnd(ends: string | null) {
+  try {
+    const sub = await currentSub();
+    if (!sub) return;
+    const mark = `${sub.endpoint}|${ends ?? ''}`;
+    if (localStorage.getItem(STOCK_KEY) === mark) return;
+    const r = await post('reposicao', { endpoint: sub.endpoint, ends });
+    if (r.ok) localStorage.setItem(STOCK_KEY, mark);
+  } catch {
+    /* sem rede: tenta na próxima abertura */
+  }
+}
+
 /** Avisa que o ritual de hoje está feito (não há lembrete hoje). */
 export async function pushRitualDone() {
   try {

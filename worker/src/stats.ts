@@ -36,6 +36,9 @@ export function cleanPing(b: Record<string, unknown>) {
     platform: pick(b.platform, ['ios', 'android', 'outro'] as const, 'outro'),
     evals: int(b.evals, 100),
     premium: b.premium === true,
+    // aderência à Spirulina: antes da app (resposta do quiz) e nos últimos 14 dias
+    prior: pick(b.prior, ['nunca', 'as-vezes', 'regular', 'sem resposta'] as const, 'sem resposta'),
+    adh14: int(b.adh14, 100),
     // usos de funcionalidades Premium (só chaves conhecidas)
     premiumUses: Object.fromEntries(
       Object.entries((b.premiumUses && typeof b.premiumUses === 'object' ? b.premiumUses : {}) as Record<string, unknown>)
@@ -107,9 +110,19 @@ export async function summarize(store: StatsStore, days = 30, now = new Date()) 
   // interesse em funcionalidades Premium: usos somados nos 30 dias
   const premiumUses: Record<string, number> = {};
   for (const { v } of values) for (const [k, n] of Object.entries(v?.premiumUses ?? {})) premiumUses[k] = (premiumUses[k] ?? 0) + n;
+  // aderência média nos últimos 14 dias, por uso de Spirulina antes da app
+  const PRIOR: Record<string, string> = { nunca: 'Nunca tinham tomado', 'as-vezes': 'Tomavam às vezes', regular: 'Já tomavam com regularidade', 'sem resposta': 'Sem resposta' };
+  const adherenceByPrior: Record<string, { n: number; avg: number }> = {};
+  for (const p of devs.filter((d) => d.plan && d.adh14 !== undefined)) {
+    const k = PRIOR[p.prior ?? 'sem resposta'] ?? 'Sem resposta';
+    const g = (adherenceByPrior[k] ??= { n: 0, avg: 0 });
+    g.avg = (g.avg * g.n + (p.adh14 ?? 0)) / (g.n + 1);
+    g.n++;
+  }
   return {
     perDay,
     accounts,
+    adherenceByPrior,
     premiumUses,
     devices30: devs.length,
     devices7: ids7.size,
@@ -163,6 +176,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 <h2>Utilizadores ativos por dia</h2><div class="chart">${bars}</div><p class="m">verde claro: novos · verde escuro: total ativos · da esquerda (há 30 dias) para a direita (hoje)</p>
 <h2>O que as pessoas usam</h2><p class="m">Percentagem dos telemóveis ativos em 30 dias, pelo resumo mais recente de cada um.</p><table>${feat}</table>
 <h2>Interesse em funcionalidades Premium (usos em 30 dias)</h2><table>${Object.keys(s.premiumUses).length ? kv(s.premiumUses) : '<tr><td class="m">Ainda sem usos registados.</td></tr>'}</table>
+<h2>Aderência à Spirulina: antes e com a app</h2><p class="m">Aderência média nos últimos 14 dias (% de dias com a toma feita), agrupada pela resposta do quiz "Já tomou Spirulina antes?".</p><table><tr><th>Antes da app</th><th>Pessoas</th><th>Aderência com a app</th></tr>${Object.entries(s.adherenceByPrior).map(([k, g]) => `<tr><td>${esc(k)}</td><td>${g.n}</td><td>${Math.round(g.avg)}%</td></tr>`).join('') || '<tr><td class="m" colspan="3">Ainda sem dados.</td></tr>'}</table>
 <h2>Fase do ritual</h2><table>${kv(s.stage)}</table>
 <h2>Sistema</h2><table>${kv(s.platform)}</table>
 <h2>Formato da Spirulina</h2><table>${kv(s.format)}</table>

@@ -14,9 +14,9 @@ import { daysSince, todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
 import { blankState } from './domain/sample';
 import { clearFiles } from './domain/files';
-import { took } from './domain/stats';
+import { stock, took } from './domain/stats';
 import { scheduleReminder } from './reminders';
-import { pushSupported, updatePush } from './domain/push';
+import { pushStockEnd, pushSupported, updatePush } from './domain/push';
 import { Check } from './screens/Check';
 import { Evolution } from './screens/Evolution';
 import { Home } from './screens/Home';
@@ -148,6 +148,11 @@ export function App() {
   useEffect(() => {
     if (S.notifications && S.ans && pushSupported()) updatePush(S.reminder);
   }, [authToken, S.notifications]);
+  // reposição: o servidor avisa 7 dias antes da data prevista para acabar a Spirulina
+  const stockEnds = S.ans && S.stockCaps > 0 ? stock(S).ends : null;
+  useEffect(() => {
+    if (S.notifications && S.ans && !S.sample && pushSupported()) pushStockEnd(stockEnds);
+  }, [stockEnds, S.notifications, authToken]);
   // sem Web Push (navegador antigo): lembrete enquanto a app está aberta
   useEffect(() => {
     if (!S.notifications || !S.ans || pushSupported()) return;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { daysSince, keyDaysAgo, todayKey } from './dates';
 import { calcPlan, indexOf, scores, slotsFor, splitDose } from './plan';
 import { blankState, sampleState } from './sample';
-import { adherence, bestStreak, changeSinceStart, report, stock, streak, took } from './stats';
+import { adherence, pace, bestStreak, changeSinceStart, report, stock, streak, took } from './stats';
 import type { AppState } from './types';
 
 const NOW = new Date(2026, 10, 19, 10, 0);
@@ -95,7 +95,20 @@ describe('estatísticas', () => {
     const st = stock(S, NOW);
     expect(st.used).toBe(28);
     expect(st.left).toBe(92);
-    expect(st.days).toBe(23);
+    // tomou 7 de 15 dias (14 anteriores e hoje): ao seu ritmo, o stock dura mais do dobro
+    expect(st.planDays).toBe(23);
+    expect(st.rate).toBeCloseTo(7 / 15);
+    expect(st.days).toBe(49);
+  });
+
+  it('o ritmo assume todos os dias no início e não baixa antes da toma de hoje', () => {
+    const S = { ...base(), planStart: keyDaysAgo(2, NOW), stockStart: keyDaysAgo(2, NOW) };
+    expect(pace(S, NOW)).toBe(1);
+    const T = base();
+    for (let i = 1; i <= 14; i++) T.logs[keyDaysAgo(i, NOW)] = { doses: [true, true] };
+    expect(pace(T, NOW)).toBe(1);
+    T.logs[todayKey(NOW)] = { doses: [true, true] };
+    expect(pace(T, NOW)).toBe(1);
   });
 
   it('exige todas as tomas para o ritual contar', () => {

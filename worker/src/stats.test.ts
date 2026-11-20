@@ -44,4 +44,19 @@ describe('estatísticas anónimas', () => {
     expect(r.features['Usaram o diário']).toBe(0);
     expect(statsPage(r)).toContain('NEFESH Life · Estatísticas');
   });
+
+  it('compara a aderência à Spirulina pelo uso antes da app', async () => {
+    const s = memory();
+    await savePing(s, 'tel-aaaaaaaa', { plan: true, prior: 'nunca', adh14: 80 }, NOW);
+    await savePing(s, 'tel-bbbbbbbb', { plan: true, prior: 'nunca', adh14: 60 }, NOW);
+    await savePing(s, 'tel-cccccccc', { plan: true, prior: 'regular', adh14: 250 }, NOW);
+    await savePing(s, 'tel-dddddddd', { plan: true, prior: 'hack', adh14: 10 }, NOW);
+    const r = await summarize(s, 30, NOW);
+    expect(r.adherenceByPrior).toEqual({
+      'Nunca tinham tomado': { n: 2, avg: 70 },
+      'Já tomavam com regularidade': { n: 1, avg: 100 },
+      'Sem resposta': { n: 1, avg: 10 },
+    });
+    expect(statsPage(r)).toContain('Aderência à Spirulina: antes e com a app');
+  });
 });

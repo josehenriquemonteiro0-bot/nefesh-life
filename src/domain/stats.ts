@@ -18,6 +18,22 @@ export function took(S: AppState, l: DayLog | undefined, now = new Date()) {
   return l.doses.filter(Boolean).length >= Math.max(1, slotsFor(S, now).length);
 }
 
+/**
+ * Ritmo real das tomas: fração dos dias com o ritual feito nos últimos 14 dias
+ * (desde o início do frasco). Com menos de 5 dias de histórico, assume todos os dias.
+ * Hoje só conta se já tomou, para não baixar o ritmo de manhã.
+ */
+export function pace(S: AppState, now = new Date()) {
+  const start = [S.planStart, S.stockStart].filter(Boolean).sort().pop() ?? null;
+  const span = start ? Math.min(14, daysSince(start, now)) : 0;
+  if (span < 5) return 1;
+  const today = took(S, S.logs[keyDaysAgo(0, now)], now) ? 1 : 0;
+  let yes = today;
+  for (let i = 1; i <= span; i++) if (took(S, S.logs[keyDaysAgo(i, now)], now)) yes++;
+  const n = span + today;
+  return Math.max(0.25, Math.min(1, yes / n));
+}
+
 export function stock(S: AppState, now = new Date()) {
   const sl = slotsFor(S, now);
   let used = 0;
@@ -30,7 +46,10 @@ export function stock(S: AppState, now = new Date()) {
   }
   const per = sl.reduce((t, s) => t + s.n, 0) || 1;
   const left = Math.max(0, S.stockCaps - used);
-  return { left, used, days: Math.floor(left / per), pct: S.stockCaps ? Math.min(100, (left / S.stockCaps) * 100) : 0 };
+  const rate = pace(S, now);
+  // dias até acabar ao ritmo real da pessoa; planDays: se tomasse todos os dias
+  const days = Math.floor(left / (per * rate));
+  return { left, used, days, planDays: Math.floor(left / per), rate, ends: dayKey(new Date(now.getTime() + days * 86400000)), pct: S.stockCaps ? Math.min(100, (left / S.stockCaps) * 100) : 0 };
 }
 
 /** Segunda-feira (chave) da semana de uma data local. */

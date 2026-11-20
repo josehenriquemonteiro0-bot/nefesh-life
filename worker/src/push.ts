@@ -58,7 +58,10 @@ export async function sendPush(db: DB, store: KeyStore, endpoint: string, msg: P
       method: 'POST',
       headers: { Authorization: await vapidHeader(store, endpoint), TTL: '43200', Urgency: 'normal', 'Content-Length': '0' },
     });
-    if (res.status === 404 || res.status === 410) await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(endpoint).run();
+    if (res.status === 404 || res.status === 410) {
+      await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(endpoint).run();
+      await db.prepare('DELETE FROM stock_alerts WHERE endpoint = ?').bind(endpoint).run();
+    }
     return res.status;
   } catch {
     return 0;
@@ -99,9 +102,39 @@ export async function markDone(db: DB, b: Record<string, unknown>) {
 }
 
 export async function unsubscribe(db: DB, b: Record<string, unknown>) {
-  if (validEndpoint(b.endpoint)) await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(b.endpoint).run();
+  if (validEndpoint(b.endpoint)) {
+    await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(b.endpoint).run();
+    await db.prepare('DELETE FROM stock_alerts WHERE endpoint = ?').bind(b.endpoint).run();
+  }
   return { status: 200, body: { ok: true } };
 }
+
+/**
+ * Data prevista para o fim da Spirulina deste telemóvel (calculada na app pelo ritmo das tomas).
+ * Se a data mudar (ex.: frasco novo), o aviso volta a poder ser enviado.
+ */
+export async function setStockEnd(db: DB, b: Record<string, unknown>) {
+  if (!validEndpoint(b.endpoint)) return { status: 400, body: { error: 'pedido inválido' } };
+  const ends = typeof b.ends === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.ends) ? b.ends : null;
+  if (!ends) {
+    await db.prepare('DELETE FROM stock_alerts WHERE endpoint = ?').bind(b.endpoint).run();
+    return { status: 200, body: { ok: true } };
+  }
+  await db
+    .prepare(
+      `INSERT INTO stock_alerts (endpoint, ends) VALUES (?, ?)
+       ON CONFLICT(endpoint) DO UPDATE SET ends = excluded.ends, notified = CASE WHEN stock_alerts.ends = excluded.ends THEN stock_alerts.notified ELSE NULL END`,
+    )
+    .bind(b.endpoint, ends)
+    .run();
+  return { status: 200, body: { ok: true } };
+}
+
+/** Dias entre duas datas AAAA-MM-DD. */
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
+
+/** Quantos dias antes do fim da Spirulina avisamos. */
+export const STOCK_NOTICE_DAYS = 7;
 
 const DEFAULT_MSG: PushMessage = { title: 'NEFESH Life 🌿', body: 'Está na hora do seu ritual de Spirulina.', tag: 'nefesh-dose' };
 
@@ -125,17 +158,41 @@ export function localNow(tz: string, now = new Date()) {
 
 const minutes = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
 
-/** Agendamento: lembrete da toma e aviso de fim da liga. */
+/** Agendamento: aviso de reposição, lembrete da toma e aviso de fim da liga. */
 export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fetcher: typeof fetch = fetch) {
   // fotos da comunidade só ficam 24 horas
   await cleanupPhotos(db, now).catch(() => 0);
   const { results } = await db
     .prepare('SELECT endpoint, uid, remind, tz, done, sent, league_sent FROM push_subs')
     .all<{ endpoint: string; uid: string | null; remind: string | null; tz: string; done: string | null; sent: string | null; league_sent: string | null }>();
+  const alerts = new Map(
+    (await db.prepare('SELECT endpoint, ends, notified FROM stock_alerts').all<{ endpoint: string; ends: string; notified: string | null }>()).results.map((a) => [a.endpoint, a]),
+  );
   let sent = 0;
   for (const s of results) {
     const t = localNow(s.tz || 'Europe/Lisbon', now);
     const m = minutes(t.time);
+    // reposição: a Spirulina acaba dentro de 7 dias (um aviso por data prevista, entre as 10h e as 11h)
+    const a = alerts.get(s.endpoint);
+    if (a && a.notified !== a.ends && m >= 10 * 60 && m < 11 * 60) {
+      const left = dayDiff(t.date, a.ends);
+      if (left >= 0 && left <= STOCK_NOTICE_DAYS) {
+        await db.prepare('UPDATE stock_alerts SET notified = ? WHERE endpoint = ?').bind(a.ends, s.endpoint).run();
+        await sendPush(
+          db,
+          store,
+          s.endpoint,
+          {
+            title: left ? `A sua Spirulina acaba daqui a ${left} ${left === 1 ? 'dia' : 'dias'} 🌿` : 'A sua Spirulina acaba hoje 🌿',
+            body: 'Encomende já para o ritual não parar: a entrega demora alguns dias. Toque para ver a reposição.',
+            tag: 'nefesh-reposicao',
+          },
+          fetcher,
+        );
+        sent++;
+        continue;
+      }
+    }
     // lembrete da toma: até 1 hora depois da hora escolhida, se ainda não tomou nem foi lembrado hoje
     if (s.remind && s.done !== t.date && s.sent !== t.date && m >= minutes(s.remind) && m < minutes(s.remind) + 60) {
       await db.prepare('UPDATE push_subs SET sent = ? WHERE endpoint = ?').bind(t.date, s.endpoint).run();

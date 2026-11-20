@@ -212,6 +212,7 @@ export default {
       else if (action === 'feito') r = await push.markDone(env.DB, b);
       else if (action === 'sair') r = await push.unsubscribe(env.DB, b);
       else if (action === 'mensagem') r = await push.pendingMessage(env.DB, b);
+      else if (action === 'reposicao') r = await push.setStockEnd(env.DB, b);
       else r = { status: 404, body: { error: 'rota desconhecida' } };
       return json(r.body, r.status, h);
     }

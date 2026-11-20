@@ -305,7 +305,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
             <span className="mute small">{c.format === 'caps' ? st.left : fmtNum(st.left / 2)} de {stockText(S.stockCaps, c.format)}</span>
           </div>
           <Bar pct={st.pct} variant="low" />
-          <p className="small">{st.days ? `A sua Spirulina acaba em ${st.days} ${st.days === 1 ? 'dia' : 'dias'}.` : 'A sua Spirulina acabou.'} Encomende já para o ritual não parar: a entrega demora alguns dias.</p>
+          <p className="small">{st.days ? `A sua Spirulina acaba em ${st.days} ${st.days === 1 ? 'dia' : 'dias'}${st.rate < 1 ? `, ao seu ritmo (toma em ${Math.round(st.rate * 100)}% dos dias)` : ''}.` : 'A sua Spirulina acabou.'} Encomende já para o ritual não parar: a entrega demora alguns dias.</p>
           <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
             <a className="btn sm" href={whatsappLink(reorderText(S))} target="_blank" rel="noopener">Encomendar pelo WhatsApp</a>
             <a className="btn ghost sm" href={SHOP_URL} target="_blank" rel="noopener">Loja online</a>
