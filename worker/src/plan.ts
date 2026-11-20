@@ -120,6 +120,18 @@ Regras:
 - Mantém os nomes dos exercícios como estão no plano.
 - Se um campo não estiver indicado, deixa-o vazio (ou 0 nas séries).
 - Bi-sets, tri-sets e drop-sets: regista cada exercício e explica a ligação nas observações.
+- Se os treinos não tiverem nome próprio (por exemplo, todas as páginas com o mesmo título, como o objetivo da rotina), chama-lhes "Treino A", "Treino B", "Treino C"... pela ordem em que aparecem, e indica no foco os grupos musculares principais (ex.: "Costas e bíceps").
+- Formato de apps como o MyFit:
+  - "Séries: 3x12" → sets 3, reps "12".
+  - "Séries: 3x12/10/8" (tantos números como séries) → pirâmide: sets 3, reps "12/10/8" (uma contagem por série, pela ordem).
+  - "Séries: 3x12/15" (menos números do que séries) → intervalo: sets 3, reps "12-15".
+  - "Séries: 1x" ou "Séries: 3x" sem repetições → só as séries.
+  - "Carga" com tempo (ex.: "10 min", "60seg") é duração, não peso: põe-na em reps (ex.: "10 min") e deixa load vazio. Copia o tempo tal como está, mesmo que pareça estranho.
+  - "Carga: 0kg" significa que a carga não foi definida: deixa load vazio.
+  - "Carga: 8/6 kg" (cargas por série) e textos como "Diminuindo carga" ficam em load tal como estão.
+  - "Intervalo" é o descanso entre séries.
+  - "Instruções:" vão para as observações do exercício a que pertencem.
+  - O cabeçalho (rotina, objetivo como "Definição muscular", nível como "Intermediário") vai para as orientações gerais; o nome da pessoa não é o profissional.
 - Escreve em português de Portugal.
 - Se o ficheiro não for um plano de treino, responde com is_workout false e workouts vazio.`;
 

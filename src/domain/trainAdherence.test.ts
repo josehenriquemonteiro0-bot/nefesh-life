@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { keyDaysAgo } from './dates';
 import { blankState } from './sample';
-import { describeTrainChanges, lastPerformance, trainChanges, weekTrainAdherence } from './trainAdherence';
+import { describeTrainChanges, lastPerformance, perSet, trainChanges, weekTrainAdherence } from './trainAdherence';
 import type { AppState } from './types';
 
 const NOW = new Date(2026, 10, 20, 18); // sexta-feira
@@ -43,5 +43,23 @@ describe('treino do personal vs execução', () => {
     const S = withPlan();
     S.logs[keyDaysAgo(1, NOW)] = { trainLog: { 0: { status: 'alterado', sets: [], changes: ['Supino reto: 22,5 kg'], note: 'ombro sensível' }, 1: { status: 'saltado', sets: [] } } };
     expect(trainChanges(S, 7, NOW)).toEqual(['19/11 · Treino A: Supino reto: 22,5 kg (nota: ombro sensível)', '19/11 · Treino B: não fez']);
+  });
+});
+
+describe('prescrição por série (formato MyFit)', () => {
+  it('reparte pirâmides de repetições e cargas pelas séries', () => {
+    expect([0, 1, 2].map((i) => perSet('12/10/8', 3, i))).toEqual(['12', '10', '8']);
+    expect([0, 1, 2].map((i) => perSet('12-15', 3, i))).toEqual(['12-15', '12-15', '12-15']);
+    expect(perSet('8/6 kg', 2, 1)).toBe('6 kg');
+    expect(perSet('8/6 kg', 3, 1)).toBe('8/6 kg');
+    expect(perSet('Diminuindo carga', 3, 0)).toBe('Diminuindo carga');
+    expect(perSet('10 min', 1, 0)).toBe('10 min');
+  });
+  it('uma pirâmide feita à risca não conta como alteração', () => {
+    const e = [ex('Puxada neutra triângulo', 3, '12/10/8', '50 kg')];
+    const sets = [0, 1, 2].map((k) => ({ ex: 0, set: k, done: true, reps: perSet('12/10/8', 3, k), load: '50 kg' }));
+    expect(describeTrainChanges(e, sets)).toEqual([]);
+    sets[2].reps = '6';
+    expect(describeTrainChanges(e, sets)).toEqual(['Puxada neutra triângulo: 12/10/6 reps']);
   });
 });

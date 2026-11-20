@@ -86,11 +86,24 @@ export function describeTrainChanges(exercises: { name: string; sets: number; re
     const planned = e.sets || mine.length;
     const parts: string[] = [];
     if (done.length < planned) parts.push(`${done.length}/${planned} séries`);
-    const loads = [...new Set(done.map((s) => s.load?.trim()).filter(Boolean))];
-    if (loads.length && loads.some((l) => l !== e.load.trim())) parts.push(loads.join('/'));
-    const reps = [...new Set(done.map((s) => s.reps?.trim()).filter(Boolean))];
-    if (reps.length && reps.some((r) => r !== e.reps.trim())) parts.push(`${reps.join('/')} reps`);
+    // compara cada série com o que estava prescrito para essa série (pirâmides incluídas)
+    const loadDiff = done.filter((s) => (s.load ?? '').trim() && (s.load ?? '').trim() !== perSet(e.load, e.sets, s.set).trim());
+    if (loadDiff.length) parts.push([...new Set(loadDiff.map((s) => s.load!.trim()))].join('/'));
+    const repsDiff = done.filter((s) => (s.reps ?? '').trim() && (s.reps ?? '').trim() !== perSet(e.reps, e.sets, s.set).trim());
+    if (repsDiff.length) parts.push(`${[...new Set(done.map((s) => (s.reps ?? '').trim()).filter(Boolean))].join('/')} reps`);
     if (parts.length) out.push(`${e.name}: ${parts.join(', ')}`);
   });
   return out;
+}
+
+/**
+ * Valor de uma série a partir da prescrição: "12/10/8" com 3 séries é uma pirâmide
+ * (12, 10, 8); "12-15" ou "12/15" com 3 séries vale para todas.
+ */
+export function perSet(value: string, sets: number, i: number): string {
+  const v = (value || '').trim();
+  const unit = v.match(/[a-zA-Z]+$/)?.[0] ?? '';
+  const parts = v.replace(/\s*[a-zA-Z]+$/, '').split('/').map((x) => x.trim()).filter(Boolean);
+  if (sets > 1 && parts.length === sets) return `${parts[i]}${unit ? ` ${unit}` : ''}`;
+  return v;
 }

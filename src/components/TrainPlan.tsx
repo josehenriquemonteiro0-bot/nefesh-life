@@ -3,7 +3,7 @@ import { shortDate, todayKey } from '../domain/dates';
 import { loadFile } from '../domain/files';
 import type { PhotoError } from '../domain/photo';
 import { readWorkoutPlan, type PlanWorkout } from '../domain/planRead';
-import { describeTrainChanges, lastPerformance, weekTrainAdherence, type TrainSessionLog, type TrainSetLog } from '../domain/trainAdherence';
+import { describeTrainChanges, lastPerformance, perSet, weekTrainAdherence, type TrainSessionLog, type TrainSetLog } from '../domain/trainAdherence';
 import type { DayLog } from '../domain/types';
 import { useStore } from '../state/store';
 import { Bar } from './Charts';
@@ -32,7 +32,7 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
     w.exercises.flatMap((e, i) =>
       Array.from({ length: Math.max(1, e.sets || 1) }, (_, k) => {
         const prev = current?.sets.find((s) => s.ex === i && s.set === k);
-        return prev ?? { ex: i, set: k, done: false, reps: e.reps, load: last[i]?.load || e.load };
+        return prev ?? { ex: i, set: k, done: false, reps: perSet(e.reps, e.sets, k), load: last[i]?.load || perSet(e.load, e.sets, k) };
       }),
     );
   const [sets, setSets] = useState<TrainSetLog[]>(initial);
@@ -64,7 +64,7 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
   };
 
   const asPlanned = () =>
-    save('seguido', w.exercises.flatMap((e, i) => Array.from({ length: Math.max(1, e.sets || 1) }, (_, k) => ({ ex: i, set: k, done: true, reps: e.reps, load: e.load }))));
+    save('seguido', w.exercises.flatMap((e, i) => Array.from({ length: Math.max(1, e.sets || 1) }, (_, k) => ({ ex: i, set: k, done: true, reps: perSet(e.reps, e.sets, k), load: perSet(e.load, e.sets, k) }))));
 
   const saveDone = () => {
     const changes = describeTrainChanges(w.exercises, sets);
