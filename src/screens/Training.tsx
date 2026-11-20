@@ -134,17 +134,48 @@ function OtherActivity() {
   );
 }
 
+type TrainTab = 'personal' | 'casa';
+
+/** Resumo da semana, comum aos dois separadores. */
+function WeekSummary() {
+  const { S } = useStore();
+  const p = weekProgress(S);
+  const today = weekdayIndex();
+  return (
+    <section className="card">
+      <div className="weekstrip">
+        {DAYS.map((d, i) => (
+          <div key={d} className={`wd ${i === today ? 'today' : ''} ${p.doneDays[i] ? 'done' : ''}`}>
+            <span>{d.slice(0, 3)}</span>
+            <i>{p.doneDays[i] ? '✓' : ''}</i>
+          </div>
+        ))}
+      </div>
+      <div className="mini-bars">
+        <div>
+          <div className="row small"><span>Atividade</span><span className="mute">{p.mvpa}/{p.goalMin} min</span></div>
+          <Bar pct={(p.mvpa / p.goalMin) * 100} />
+        </div>
+        <div>
+          <div className="row small"><span>Força</span><span className="mute">{p.strengthDays}/{p.goalStrength} dias</span></div>
+          <Bar pct={(p.strengthDays / p.goalStrength) * 100} />
+        </div>
+      </div>
+      <p className="small mute" style={{ margin: '4px 0 0' }}>Meta da OMS: 150 minutos por semana e força 2 vezes por semana.</p>
+    </section>
+  );
+}
+
 export function Training() {
   const { S, todayLog } = useStore();
+  const hasProFile = !!S.plans?.treino;
+  const hasPro = !!(S.trainPlan && S.plans?.treino?.name === S.trainPlan.name);
+  const [tab, setTab] = useState<TrainTab>(hasProFile ? 'personal' : 'casa');
   const [open, setOpen] = useState<Session | null>(null);
   const [lib, setLib] = useState(false);
-  const [showNefesh, setShowNefesh] = useState(false);
   const level = levelOf(S.ans);
   const plan = weekPlan(S.ans);
   const today = weekdayIndex();
-  const p = weekProgress(S);
-
-  const hasPro = !!(S.trainPlan && S.plans?.treino?.name === S.trainPlan.name);
 
   if (open) return <SessionView s={open} level={level} onBack={() => { setOpen(null); window.scrollTo(0, 0); }} />;
 
@@ -153,82 +184,83 @@ export function Training() {
 
   return (
     <>
-      <div className="row"><h1>Treino</h1><PremiumTag f="treinoObjetivo" /></div>
-      <p className="mute small" style={{ marginTop: 0 }}>
-        Plano {LEVEL_LABEL[level].toLowerCase()} · {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · exercícios em casa, sem material
-      </p>
+      <h1>Treino</h1>
+      <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Tipo de treino">
+        <button className={tab === 'personal' ? 'on' : ''} aria-pressed={tab === 'personal'} onClick={() => setTab('personal')}>Com personal</button>
+        <button className={tab === 'casa' ? 'on' : ''} aria-pressed={tab === 'casa'} onClick={() => setTab('casa')}>Em casa</button>
+      </div>
 
-      {hasPro && <TrainPlanCard />}
-
-      <section className="card">
-        <h2>Esta semana</h2>
-        <div className="weekstrip">
-          {DAYS.map((d, i) => (
-            <div key={d} className={`wd ${i === today ? 'today' : ''} ${p.doneDays[i] ? 'done' : ''}`}>
-              <span>{d.slice(0, 3)}</span>
-              <i>{p.doneDays[i] ? '✓' : ''}</i>
-            </div>
-          ))}
-        </div>
-        <div className="row small" style={{ marginTop: 12 }}><span>Atividade moderada a vigorosa</span><span className="mute">{p.mvpa} / {p.goalMin} min</span></div>
-        <Bar pct={(p.mvpa / p.goalMin) * 100} />
-        <div className="row small"><span>Dias de força</span><span className="mute">{p.strengthDays} / {p.goalStrength}</span></div>
-        <Bar pct={(p.strengthDays / p.goalStrength) * 100} />
-        <p className="small mute" style={{ margin: '6px 0 0' }}>Recomendação da OMS para adultos: 150 minutos por semana e força 2 vezes por semana.</p>
-      </section>
-
-      {hasPro && !showNefesh && (
-        <button className="btn ghost full" style={{ marginBottom: 14 }} onClick={() => setShowNefesh(true)}>Ver também o plano NEFESH em casa</button>
-      )}
-      {(!hasPro || showNefesh) && (
-        <>
-      <button className="card today-session" onClick={() => setOpen(s)}>
-        <span className="small" style={{ opacity: 0.8 }}>Hoje · {DAYS[today]}{doneToday ? ' · registado ✓' : ''}</span>
-        <span className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
-          <Icon name={KIND_ICON[s.kind]} />
-          <span style={{ flex: 1 }}>
-            <b style={{ font: '600 20px Sora' }}>{s.title}</b>
-            <span className="small" style={{ display: 'block', opacity: 0.85 }}>{s.minutes} min · {s.text}</span>
-          </span>
-        </span>
-        <span className="btn sm" style={{ alignSelf: 'flex-start' }}>Começar</span>
-      </button>
-
-        </>
-      )}
+      <WeekSummary />
       <OtherActivity />
       <p />
-      <PlanUpload kind="treino" />
-      {!hasPro && <TrainPlanCard />}
 
-      {(!hasPro || showNefesh) && (
+      {tab === 'personal' ? (
         <>
-      <section className="card">
-        <h2>O plano da semana</h2>
-        <ul className="weeklist">
-          {plan.map((x, i) => (
-            <li key={i}>
-              <button onClick={() => setOpen(x)} className={i === today ? 'on' : ''}>
-                <span className="small mute" style={{ width: 62 }}>{DAYS[i]}</span>
-                <Icon name={KIND_ICON[x.kind]} />
-                <span style={{ flex: 1 }}>{x.title}</span>
-                <span className="small mute">{x.minutes ? `${x.minutes} min` : ''}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+          {hasPro ? (
+            <>
+              <TrainPlanCard />
+              <PlanUpload kind="treino" />
+            </>
+          ) : (
+            <>
+              {!hasProFile && (
+                <section className="card">
+                  <h2>Treina com um personal?</h2>
+                  <p className="small mute" style={{ margin: 0 }}>
+                    Carregue o plano que ele lhe deu (do MyFit ou de outra app, em PDF, fotografia, Excel ou Word). A NEFESH Life transforma-o em treinos para registar série a série, com as cargas e a sua evolução.
+                  </p>
+                </section>
+              )}
+              <PlanUpload kind="treino" />
+              <TrainPlanCard />
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="row" style={{ marginBottom: 6 }}>
+            <p className="mute small" style={{ margin: 0 }}>
+              Plano {LEVEL_LABEL[level].toLowerCase()} · {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · sem material
+            </p>
+            <PremiumTag f="treinoObjetivo" />
+          </div>
+          <button className="card today-session" onClick={() => setOpen(s)}>
+            <span className="small" style={{ opacity: 0.8 }}>Hoje · {DAYS[today]}{doneToday ? ' · registado ✓' : ''}</span>
+            <span className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
+              <Icon name={KIND_ICON[s.kind]} />
+              <span style={{ flex: 1 }}>
+                <b style={{ font: '600 20px Sora' }}>{s.title}</b>
+                <span className="small" style={{ display: 'block', opacity: 0.85 }}>{s.minutes} min · {s.text}</span>
+              </span>
+            </span>
+            <span className="btn sm" style={{ alignSelf: 'flex-start' }}>Começar</span>
+          </button>
 
+          <section className="card">
+            <h2>O plano da semana</h2>
+            <ul className="weeklist">
+              {plan.map((x, i) => (
+                <li key={i}>
+                  <button onClick={() => setOpen(x)} className={i === today ? 'on' : ''}>
+                    <span className="small mute" style={{ width: 62 }}>{DAYS[i]}</span>
+                    <Icon name={KIND_ICON[x.kind]} />
+                    <span style={{ flex: 1 }}>{x.title}</span>
+                    <span className="small mute">{x.minutes ? `${x.minutes} min` : ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="card">
+            <div className="row">
+              <h2 style={{ margin: 0 }}>Biblioteca de exercícios</h2>
+              <button className="btn ghost sm" onClick={() => setLib(!lib)}>{lib ? 'Fechar' : `Ver ${EXERCISES.length}`}</button>
+            </div>
+            {lib && <div className="exlist" style={{ marginTop: 12 }}>{EXERCISES.map((e) => <ExerciseItem key={e.id} e={e} level={level} />)}</div>}
+          </section>
         </>
       )}
-
-      <section className="card">
-        <div className="row">
-          <h2 style={{ margin: 0 }}>Biblioteca de exercícios</h2>
-          <button className="btn ghost sm" onClick={() => setLib(!lib)}>{lib ? 'Fechar' : `Ver ${EXERCISES.length}`}</button>
-        </div>
-        {lib && <div className="exlist" style={{ marginTop: 12 }}>{EXERCISES.map((e) => <ExerciseItem key={e.id} e={e} level={level} />)}</div>}
-      </section>
 
       <p className="small mute">
         Se sentir dor no peito, falta de ar fora do normal, tonturas ou dor nas articulações, pare e fale com um profissional de saúde. Se tem uma doença crónica ou está grávida, confirme o plano com o seu médico antes de começar.
