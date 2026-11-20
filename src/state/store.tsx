@@ -26,7 +26,8 @@ interface Store {
   S: AppState;
   /** Aplica uma alteração ao estado (sobre uma cópia) e guarda. */
   update: (fn: (draft: AppState) => void) => void;
-  replace: (next: AppState) => void;
+  /** Substitui o estado. `keepStamp` mantém a data de alteração (dados vindos da nuvem). */
+  replace: (next: AppState, opts?: { keepStamp?: boolean }) => void;
   /** Registo de hoje, apenas para leitura. */
   todayLog: DayLog;
   /** Altera o registo de hoje. */
@@ -41,7 +42,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // primeira utilização: começa vazia, com as boas-vindas. Estados antigos de demonstração são descartados.
   const [S, setS] = useState<AppState>(() => {
     const saved = load();
-    return saved && !saved.sample ? saved : { ...blankState(), intro: false };
+    // estados antigos sem data de alteração recebem uma, para a sincronização com a conta
+    return saved && !saved.sample ? { ...saved, updatedAt: saved.updatedAt ?? new Date().toISOString() } : { ...blankState(), intro: false };
   });
   const [toastMsg, setToast] = useState<string | null>(null);
   const timer = useRef<number>();
@@ -52,6 +54,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setS((prev) => {
       const next = structuredClone(prev);
       fn(next);
+      next.updatedAt = new Date().toISOString();
       return next;
     });
   }, []);
@@ -75,7 +78,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: Store = {
     S,
     update,
-    replace: setS,
+    replace: (next, opts) => setS(opts?.keepStamp ? next : { ...next, updatedAt: new Date().toISOString() }),
     todayLog: S.logs[todayKey()] || {},
     updateToday,
     toast,

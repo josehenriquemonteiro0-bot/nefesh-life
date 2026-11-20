@@ -24,10 +24,13 @@ import { Profile } from './screens/Profile';
 import { PrintReport } from './components/PrintReport';
 import { bodySnapshot } from './domain/progress';
 import { sendDailyPing } from './domain/analytics';
+import { AccountScreen, ConflictSheet } from './components/Account';
+import { getAuth, logout } from './domain/account';
+import { useCloudSync } from './state/cloud';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros' | 'perfil';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta';
 export type Nav = (t: Tab) => void;
 
 const TABS: [Tab, string, IconName][] = [
@@ -58,6 +61,17 @@ export function App() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [S.ans]);
+  const cloud = useCloudSync();
+  /** para onde ir depois do ecrã de conta */
+  const [afterAccount, setAfterAccount] = useState<'quiz' | 'perfil'>('perfil');
+  const [accountMode, setAccountMode] = useState<'criar' | 'entrar'>('criar');
+  const openAccount = (next: 'quiz' | 'perfil', mode: 'criar' | 'entrar' = 'criar') => {
+    setAfterAccount(next);
+    setAccountMode(mode);
+    setQuiz(null);
+    setTab('conta');
+    window.scrollTo(0, 0);
+  };
   const [reportOpen, setReportOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
   const printReport = () => setPrinting(true);
@@ -130,18 +144,30 @@ export function App() {
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil') {
-    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} />;
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta') {
+    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} />,
+      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
       nutri: <Nutrition />,
       treino: <Training />,
       pros: <Pros openReport={() => setReportOpen(true)} />,
-      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} />,
+      conta: (
+        <AccountScreen
+          key={accountMode}
+          initial={accountMode}
+          onSkip={afterAccount === 'quiz' ? () => startQuiz() : () => go('perfil')}
+          onDone={(r) => {
+            // com dados na nuvem, a sincronização traz o plano; sem plano, segue para a avaliação
+            if (afterAccount === 'quiz' && !r.updatedAt && !S.ans) startQuiz();
+            else go(r.updatedAt && !S.ans ? 'home' : 'perfil');
+          }}
+        />
+      ),
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} />,
     }[tab];
   }
 
@@ -188,17 +214,25 @@ export function App() {
             setIntro(null);
             update((d) => { d.intro = true; });
             if (a === 'reset') {
+              // os dados da conta ficam na nuvem; este telemóvel sai da conta para não os substituir
+              if (getAuth()) logout();
               replace({ ...blankState(), intro: true });
               clearFiles().catch(() => undefined);
               toast('Dados apagados. Vamos começar do zero.');
               startQuiz(true);
-            } else if (a === 'reassess' || !S.ans) startQuiz();
+            } else if (a === 'reassess') startQuiz();
+            else if (!S.ans) {
+              // primeira utilização: conta primeiro (pode continuar sem conta), depois a avaliação
+              if (getAuth()) startQuiz();
+              else openAccount('quiz');
+            }
             // 'continue': fica no separador onde está (não interrompe um toque feito durante a animação)
           }}
         />
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} onPrint={() => { setReportOpen(false); printReport(); }} />}
       {printing && <PrintReport />}
+      {cloud.conflict && <ConflictSheet cloudAt={cloud.conflict.cloudAt} localAt={S.updatedAt} onPick={cloud.resolve} />}
       {scienceOpen && <ScienceSheet onClose={() => setScienceOpen(false)} />}
       {bottleOpen && <BottleSheet onClose={() => setBottleOpen(false)} doseGrams={S.ans ? planFor(S).g : undefined} />}
       <div className={`toast ${toastMsg ? 'show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>

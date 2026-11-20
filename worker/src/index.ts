@@ -19,6 +19,11 @@ import { LIMIT_MESSAGES, check, cleanDeviceId, count, type Limits } from './limi
 import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
 import { savePing, statsPage, summarize } from './stats';
+import { deleteAccount, getData, login, logout, recover, register, saveData, type Result } from './account';
+
+/** Tentativas falhadas de entrar e contas novas, por dia. */
+const LOGIN_LIMITS = { device: 20, ip: 40, global: 5000 };
+const SIGNUP_LIMITS = { device: 5, ip: 10, global: 500 };
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -119,6 +124,39 @@ export default {
     }
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
+
+    if (url.pathname.startsWith('/conta/')) {
+      let b: Record<string, unknown>;
+      try {
+        b = await req.json();
+      } catch {
+        return json({ error: 'pedido inválido' }, 400, h);
+      }
+      const store = env.LIMITS as never;
+      const dev = cleanDeviceId(b.device);
+      const ipc = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+      const send = (r: Result) => json(r.body, r.status, h);
+      const action = url.pathname.slice('/conta/'.length);
+      if (action === 'registar') {
+        const ok = await check(env.LIMITS, SIGNUP_LIMITS, dev, ipc, new Date(), 'r');
+        if (!ok.ok) return json({ error: 'Foram criadas muitas contas a partir desta rede hoje. Tente amanhã.' }, 429, h);
+        const r = await register(store, b.email, b.password);
+        if (r.status === 200) await count(env.LIMITS, SIGNUP_LIMITS, dev, ipc, new Date(), 'r');
+        return send(r);
+      }
+      if (action === 'entrar' || action === 'recuperar') {
+        const ok = await check(env.LIMITS, LOGIN_LIMITS, dev, ipc, new Date(), 'l');
+        if (!ok.ok) return json({ error: 'Demasiadas tentativas hoje. Tente amanhã.' }, 429, h);
+        const r = action === 'entrar' ? await login(store, b.email, b.password) : await recover(store, b.email, b.code, b.password);
+        if (r.status === 401) await count(env.LIMITS, LOGIN_LIMITS, dev, ipc, new Date(), 'l');
+        return send(r);
+      }
+      if (action === 'sair') return send(await logout(store, b.token));
+      if (action === 'dados') return send(await getData(store, b.token));
+      if (action === 'guardar') return send(await saveData(store, b.token, b.data, b.updatedAt));
+      if (action === 'apagar') return send(await deleteAccount(store, b.token, b.email, b.password));
+      return json({ error: 'rota desconhecida' }, 404, h);
+    }
 
     let body: { image?: string; media_type?: string; device?: string; hint?: string; notes?: string } & PlanBody;
     try {

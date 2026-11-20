@@ -5,12 +5,14 @@ import { blankState } from '../domain/sample';
 import { clearFiles } from '../domain/files';
 import { useStore } from '../state/store';
 import { PrivacyText } from './Consent';
+import { getAuth, logout, useAuth } from '../domain/account';
 
 /** Os meus dados: cópia de segurança, recuperação, privacidade e opinião. */
 export function DataCard() {
   const { S, replace, toast } = useStore();
   const file = useRef<HTMLInputElement>(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const auth = useAuth();
 
   const save = async () => {
     const name = backupFileName();
@@ -47,7 +49,11 @@ export function DataCard() {
   return (
     <section className="card">
       <h2>Os meus dados</h2>
-      <p className="small mute">Os seus dados ficam só neste telemóvel. Se apagar a app, perdem-se: guarde uma cópia de vez em quando (no iCloud, no e-mail ou no WhatsApp).</p>
+      <p className="small mute">
+        {auth
+          ? `Os seus dados estão neste telemóvel e na sua conta (${auth.email}). Também pode guardar uma cópia em ficheiro.`
+          : 'Os seus dados ficam só neste telemóvel. Se apagar a app, perdem-se: crie uma conta no Perfil ou guarde uma cópia de vez em quando (no iCloud, no e-mail ou no WhatsApp).'}
+      </p>
       <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
         <button className="btn sm" onClick={save}>Guardar cópia</button>
         <button className="btn ghost sm" onClick={() => file.current?.click()}>Recuperar cópia</button>
@@ -75,6 +81,7 @@ export function DataCard() {
           style={{ color: 'var(--warn)' }}
           onClick={() => {
             if (!confirm('Apagar todos os seus dados deste telemóvel? Esta ação não pode ser desfeita.')) return;
+            if (getAuth()) logout();
             replace({ ...blankState(), intro: false });
             clearFiles().catch(() => undefined);
             toast('Dados apagados.');

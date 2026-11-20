@@ -11,8 +11,11 @@ import { BODY_GOAL_LABEL, bodyGoalOf, bodyOf } from '../domain/body';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import { useStore } from '../state/store';
 import { Comparison } from './Evolution';
+import { AccountCard } from '../components/Account';
 
-export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport }: {
+export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow }: {
+  openAccount: () => void;
+  syncNow: () => Promise<void>;
   startQuiz: () => void;
   replayIntro: () => void;
   openBottle: () => void;
@@ -28,6 +31,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <p className="small mute">Ainda não fez a avaliação.</p>
           <button className="btn" onClick={startQuiz}>Começar a avaliação</button>
         </section>
+        <AccountCard openAccount={openAccount} syncNow={syncNow} />
         <DataCard />
       </>
     );
@@ -51,6 +55,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           {ev ? ` · Índice ${indexOf(ev.sc)}` : ''}
         </p>
       </section>
+
+      <AccountCard openAccount={openAccount} syncNow={syncNow} />
 
       <section className="card">
         <div className="row">

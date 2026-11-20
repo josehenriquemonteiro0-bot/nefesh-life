@@ -88,7 +88,7 @@ function WeekCard({ go }: { go: Nav }) {
   );
 }
 
-export function Home({ go, startQuiz, onReset, openBottle }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void }) {
+export function Home({ go, startQuiz, onReset, openBottle, openLogin }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void }) {
   const { S, updateToday, todayLog: l, toast } = useStore();
 
   if (!S.ans)
@@ -102,7 +102,8 @@ export function Home({ go, startQuiz, onReset, openBottle }: { go: Nav; startQui
         </section>
         <section className="card">
           <h2>Já usava a NEFESH Life?</h2>
-          <p className="small mute">Se guardou uma cópia dos seus dados, recupere-a em "Os meus dados", aqui em baixo.</p>
+          <p className="small mute">Entre na sua conta para trazer o seu plano. Se guardou uma cópia em ficheiro, recupere-a em "Os meus dados", aqui em baixo.</p>
+          <button className="btn ghost sm" onClick={openLogin}>Entrar na minha conta</button>
         </section>
         <DataCard />
       </>
