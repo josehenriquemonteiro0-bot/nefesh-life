@@ -134,18 +134,27 @@ export default {
       const key = env.STATS_KEY?.trim();
       const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
       if (!key || !env.DB) return html('Página indisponível: falta configurar o segredo STATS_KEY.', 403);
+      const same = (v: unknown) => typeof v === 'string' && v.trim() === key;
       if (req.method === 'POST') {
         const f = await req.formData();
-        if (f.get('key') !== key) return html('Acesso reservado.', 403);
+        if (!same(f.get('key'))) return html(admin.adminLogin(true), 403);
+        // entrada com a palavra-passe: mostra o formulário
+        if (url.pathname === '/admin') return html(admin.adminForm(key));
         const r = await admin.generateCodes(env.DB, String(f.get('produto') ?? 'caps'), Number(f.get('quantidade')) || 1);
         return html(admin.adminResult(key, r.product, r.codes, String(f.get('nome') ?? '').slice(0, 60), String(f.get('telefone') ?? ''), String(f.get('email') ?? '').slice(0, 120)));
       }
-      if (url.searchParams.get('key') !== key) return html('Acesso reservado.', 403);
+      if (!same(url.searchParams.get('key'))) return html(admin.adminLogin(url.searchParams.has('key')));
       return html(admin.adminForm(key));
     }
-    if (req.method === 'GET' && url.pathname === '/stats') {
+    if (url.pathname === '/stats' && (req.method === 'GET' || req.method === 'POST')) {
       const key = env.STATS_KEY?.trim();
-      if (key && url.searchParams.get('key') !== key) return new Response('Acesso reservado.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      const given = req.method === 'POST' ? String((await req.formData()).get('key') ?? '') : url.searchParams.get('key') ?? '';
+      if (key && given.trim() !== key) {
+        return new Response(admin.adminLogin(!!given).replace('action="/admin"', 'action="/stats"').replace('Códigos de frasco para enviar aos clientes.', 'Estatísticas da NEFESH Life.'), {
+          status: given ? 403 : 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
+        });
+      }
       const html = statsPage(await summarize(env.LIMITS as never));
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
     }

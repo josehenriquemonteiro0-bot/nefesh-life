@@ -49,6 +49,17 @@ button,.btn{display:inline-block;background:#00FE8A;color:#00140d;border:0;borde
 code{color:#00FE8A;font-size:18px}.m{color:#97a69f;font-size:14px}textarea{min-height:220px}
 </style></head><body>${body}</body></html>`;
 
+/** Entrada da página da equipa: pede a palavra-passe (STATS_KEY). */
+export function adminLogin(error = false) {
+  return page(`<h1>Equipa NEFESH</h1>
+<p class="m">Códigos de frasco para enviar aos clientes.</p>
+<form method="post" action="/admin" class="card">
+${error ? '<p style="color:#ffb37a">Palavra-passe errada. Use a mesma que guardou no GitHub como STATS_KEY.</p>' : ''}
+<label>Palavra-passe<input name="key" type="password" autocomplete="current-password" required autofocus></label>
+<button>Entrar</button>
+</form>`);
+}
+
 export function adminForm(key: string) {
   return page(`<h1>Códigos de frasco</h1>
 <p class="m">Gera códigos únicos e prepara a mensagem para enviar ao cliente por WhatsApp ou e-mail. Cada código só pode ser usado uma vez.</p>
@@ -74,5 +85,5 @@ export function adminResult(key: string, product: string, codes: string[], name:
 <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener">${digits ? 'Enviar por WhatsApp' : 'Abrir no WhatsApp (escolher contacto)'}</a>
 ${email ? `<a class="btn" href="${esc(mail)}">Enviar por e-mail</a>` : ''}
 <button class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('msg').value).then(()=>this.textContent='Copiada ✓')">Copiar mensagem</button></div>
-<form method="get" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Gerar mais códigos</button></form>`);
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Gerar mais códigos</button></form>`);
 }
