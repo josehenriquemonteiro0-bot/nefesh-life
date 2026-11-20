@@ -28,9 +28,9 @@ export async function generateCodes(db: DB, product: string, n: number, now = ne
 }
 
 /** Mensagem para o cliente, com o código e o link que regista o frasco na app. */
-export function customerMessage(name: string, product: string, codes: string[]) {
+export function customerMessage(name: string, product: string, codes: string[], appUrl = APP_URL) {
   const many = codes.length > 1;
-  const lines = codes.map((c) => `• ${c}\n  ${APP_URL}?frasco=${c}`).join('\n');
+  const lines = codes.map((c) => `• ${c}\n  ${appUrl}?frasco=${c}`).join('\n');
   return `Olá${name ? ` ${name}` : ''}! Obrigado pela sua compra NEFESH 🌿
 
 ${many ? `Estes são os códigos dos seus ${codes.length} frascos` : 'Este é o código do seu frasco'} de ${PRODUCT_NAME[product]}:
@@ -74,8 +74,8 @@ export function adminForm(key: string) {
 </form>`);
 }
 
-export function adminResult(key: string, product: string, codes: string[], name: string, phone: string, email: string) {
-  const msg = customerMessage(name, product, codes);
+export function adminResult(key: string, product: string, codes: string[], name: string, phone: string, email: string, appUrl = APP_URL) {
+  const msg = customerMessage(name, product, codes, appUrl);
   const digits = phone.replace(/\D/g, '');
   const wa = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
   const mail = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('O código do seu frasco NEFESH')}&body=${encodeURIComponent(msg)}`;

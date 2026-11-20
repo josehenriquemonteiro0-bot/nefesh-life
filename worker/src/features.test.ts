@@ -18,3 +18,15 @@ describe('feature flags no servidor', () => {
     expect(p.premiumUses).toEqual({ fotoPrato: 3, lerPlano: 999 });
   });
 });
+
+describe('origens permitidas (CORS)', async () => {
+  const { originAllowed } = await import('./index');
+  it('aceita a origem exata, listas e curingas', () => {
+    expect(originAllowed('https://josehenriquemonteiro0-bot.github.io', 'https://josehenriquemonteiro0-bot.github.io')).toBe(true);
+    expect(originAllowed('https://josehenriquemonteiro0-bot.github.io', 'https://outro.site')).toBe(false);
+    expect(originAllowed('https://*nefesh-life-v2*.pages.dev', 'https://nefesh-life-v2.pages.dev')).toBe(true);
+    expect(originAllowed('https://*nefesh-life-v2*.pages.dev', 'https://abc123.nefesh-life-v2-9x.pages.dev')).toBe(true);
+    expect(originAllowed('https://*nefesh-life-v2*.pages.dev', 'https://nefesh-life-v2.pages.dev.mau.com')).toBe(false);
+    expect(originAllowed('', 'https://qualquer.coisa')).toBe(true);
+  });
+});

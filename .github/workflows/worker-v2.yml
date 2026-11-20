@@ -1,0 +1,110 @@
+name: Publicar servidor de teste (v2)
+
+# Publica o Cloudflare Worker que analisa as fotos das refeições.
+# Precisa de 3 segredos em Settings → Secrets and variables → Actions → Secrets:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY
+# Sem eles, o workflow termina sem publicar nada.
+
+# Cópia de teste da v2: Worker nefesh-foto-v2 com armazenamento e base de dados próprios
+# (nada é partilhado com o servidor da versão em uso).
+on:
+  push:
+    branches: [nefesh-life-v2]
+    paths: ['worker/**', '.github/workflows/worker-v2.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # aceita também o nome com erro de digitação usado na configuração inicial
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
+      # opcional: protege a página de estatísticas (/stats?key=...)
+      STATS_KEY: ${{ secrets.STATS_KEY }}
+    steps:
+      - name: Verificar segredos
+        id: check
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::Faltam segredos (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY). Nada foi publicado."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: .
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+        if: steps.check.outputs.ready == 'true'
+      - run: npx tsc --noEmit
+        if: steps.check.outputs.ready == 'true'
+      # os segredos colados no GitHub podem trazer espaços ou quebras de linha a mais: limpamos antes de usar
+      - name: Limpar espaços dos segredos
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          trim() { printf '%s' "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ANTHROPIC_API_KEY; do
+            clean="$(trim "${!v}")"
+            echo "::add-mask::$clean"
+            { echo "$v<<NEFESH_EOF"; echo "$clean"; echo "NEFESH_EOF"; } >> "$GITHUB_ENV"
+          done
+      - name: Configurar como servidor de teste
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          sed -i -e 's/^name = "nefesh-foto"/name = "nefesh-foto-v2"/' \
+                 -e 's#^ALLOWED_ORIGIN = .*#ALLOWED_ORIGIN = "https://*nefesh-life-v2*.pages.dev"#' \
+                 -e 's#^APP_URL = .*#APP_URL = "https://nefesh-life-v2.pages.dev/"#' wrangler.toml
+          grep -nE '^(name|ALLOWED_ORIGIN|APP_URL) =' wrangler.toml
+      - name: Preparar o armazenamento dos limites diários (KV)
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          find_id() { npx wrangler kv namespace list 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const n=a.find(x=>String(x.title).includes('nefeshv2-limites'));process.stdout.write(n?n.id:'')}catch(e){}})"; }
+          ID="$(find_id)"
+          if [ -z "$ID" ]; then
+            npx wrangler kv namespace create nefeshv2-limites
+            ID="$(find_id)"
+          fi
+          if [ -z "$ID" ]; then echo "::error::Não foi possível criar ou encontrar o KV nefeshv2-limites"; exit 1; fi
+          sed -i "s/KV_ID_PLACEHOLDER/$ID/" wrangler.toml
+          grep -n "^id = " wrangler.toml
+      # comunidade (pontos, ligas, amigos): base de dados D1. Se o token não tiver permissão para D1,
+      # o Worker é publicado na mesma, sem a comunidade, e aparece um aviso aqui.
+      - name: Preparar a base de dados da comunidade (D1)
+        if: steps.check.outputs.ready == 'true'
+        continue-on-error: true
+        run: |
+          find_d1() { npx wrangler d1 list --json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const n=a.find(x=>x.name==='nefesh-social-v2');process.stdout.write(n?(n.uuid||n.id||''):'')}catch(e){}})"; }
+          ID="$(find_d1)"
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create nefesh-social-v2 || true
+            ID="$(find_d1)"
+          fi
+          if [ -z "$ID" ]; then
+            echo "::warning::Não foi possível criar a base de dados D1 nefesh-social-v2. Dê ao token da Cloudflare a permissão 'D1: Edit'. A comunidade fica desligada até lá."
+            exit 1
+          fi
+          printf '\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "nefesh-social-v2"\ndatabase_id = "%s"\n' "$ID" >> wrangler.toml
+          npx wrangler d1 execute nefesh-social-v2 --remote --file=schema.sql
+      - name: Publicar o Worker
+        if: steps.check.outputs.ready == 'true'
+        run: npx wrangler deploy
+      - name: Guardar a chave da Anthropic no Worker
+        if: steps.check.outputs.ready == 'true'
+        run: printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
+      - name: Guardar a chave das estatísticas no Worker
+        if: steps.check.outputs.ready == 'true' && env.STATS_KEY != ''
+        run: printf '%s' "$(printf '%s' "$STATS_KEY" | tr -d '\r\n')" | npx wrangler secret put STATS_KEY

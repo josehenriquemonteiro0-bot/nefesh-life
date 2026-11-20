@@ -6,6 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 # fase de teste: tudo aberto a todos ("false" no lançamento ativa o Premium)
 TEST_MODE = "true"
+# endereço da app usado nos links das mensagens (códigos de frasco)
+APP_URL = "https://josehenriquemonteiro0-bot.github.io/nefesh-life/"
 # Só a app NEFESH Life pode chamar o serviço a partir do navegador
 ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io"
 MODEL = "claude-opus-5-5"

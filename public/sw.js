@@ -1,7 +1,7 @@
 // Service worker NEFESH Life: app shell em cache para funcionar offline.
 const CACHE = 'nefesh-life-v3';
 // serviço que guarda as mensagens das notificações
-const API = 'https://nefesh-foto.josehenriquemonteiro0.workers.dev';
+const API = new URL(self.location).searchParams.get('api') || 'https://nefesh-foto.josehenriquemonteiro0.workers.dev';
 // caminhos relativos ao âmbito do service worker (funciona na raiz ou numa subpasta)
 const BASE = new URL('./', self.location).pathname;
 const SHELL = ['', 'index.html', 'manifest.webmanifest', 'brand/logo-header.png', 'brand/mark.png', 'brand/wordmark.png', 'icons/icon-192.png'].map((p) => BASE + p);

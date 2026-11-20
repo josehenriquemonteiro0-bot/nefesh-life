@@ -46,6 +46,8 @@ export interface Env {
   STATS_KEY?: string;
   /** "true" na fase de teste (tudo aberto); "false" no lançamento */
   TEST_MODE?: string;
+  /** endereço da app (para os links das mensagens) */
+  APP_URL?: string;
   /** base de dados da comunidade (D1); opcional até estar criada */
   DB?: social.DB;
 }
@@ -100,11 +102,19 @@ Se a imagem não mostrar comida nem bebida, responde com is_food false e items v
 
 A nota final é uma frase curta e útil para a pessoa (ex.: o que pesou mais na estimativa, ou o que conferir). Não faças juízos sobre a alimentação nem conselhos médicos.`;
 
+/** ALLOWED_ORIGIN aceita uma lista separada por vírgulas e * como curinga (ex.: https://*nefesh-life-v2*.pages.dev). */
+export function originAllowed(allowed: string | undefined, origin: string | null) {
+  const list = (allowed ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (!list.length) return true;
+  if (!origin) return false;
+  return list.some((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[a-z0-9.-]*')}$`, 'i').test(origin));
+}
+
 function cors(env: Env, origin: string | null): Record<string, string> {
-  const allowed = env.ALLOWED_ORIGIN?.trim();
-  const ok = !allowed || origin === allowed;
+  const ok = originAllowed(env.ALLOWED_ORIGIN, origin);
+  const first = (env.ALLOWED_ORIGIN ?? '').split(',')[0]?.trim();
   return {
-    'Access-Control-Allow-Origin': ok ? origin ?? '*' : allowed!,
+    'Access-Control-Allow-Origin': ok ? origin ?? '*' : first || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
@@ -147,7 +157,7 @@ export default {
         // entrada com a palavra-passe: mostra o formulário
         if (url.pathname === '/admin') return html(admin.adminForm(key));
         const r = await admin.generateCodes(env.DB, String(f.get('produto') ?? 'caps'), Number(f.get('quantidade')) || 1);
-        return html(admin.adminResult(key, r.product, r.codes, String(f.get('nome') ?? '').slice(0, 60), String(f.get('telefone') ?? ''), String(f.get('email') ?? '').slice(0, 120)));
+        return html(admin.adminResult(key, r.product, r.codes, String(f.get('nome') ?? '').slice(0, 60), String(f.get('telefone') ?? ''), String(f.get('email') ?? '').slice(0, 120), env.APP_URL?.trim() || undefined));
       }
       if (!same(url.searchParams.get('key'))) return html(admin.adminLogin(url.searchParams.has('key')));
       return html(admin.adminForm(key));
