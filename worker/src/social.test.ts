@@ -131,3 +131,17 @@ describe('mural de conquistas', () => {
     expect(again).toMatchObject({ cheers: 1, cheered: true });
   });
 });
+
+describe('foto do perfil na comunidade', () => {
+  it('atualiza a foto depois de entrar e permite removê-la', async () => {
+    const db = memoryDB();
+    await so.upsertProfile(db, 'ana', { nick: 'Ana' }, MON);
+    const img = 'data:image/jpeg;base64,' + 'A'.repeat(30000);
+    expect((await so.updateAvatar(db, 'ana', img, MON)).status).toBe(200);
+    expect((await so.getProfile(db, 'ana'))!.avatar).toBe(img);
+    expect((await so.updateAvatar(db, 'ana', 'javascript:alert(1)', MON)).status).toBe(400);
+    await so.updateAvatar(db, 'ana', null, MON);
+    expect((await so.getProfile(db, 'ana'))!.avatar).toBeNull();
+    expect((await so.updateAvatar(db, 'rui', img, MON)).status).toBe(404);
+  });
+});

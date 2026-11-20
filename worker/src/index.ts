@@ -227,6 +227,7 @@ export default {
       const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
         estado: () => social.state(db, uid),
         perfil: () => social.upsertProfile(db, uid, b),
+        'perfil-foto': () => social.updateAvatar(db, uid, b.avatar),
         sincronizar: async () => {
           // dados do app Saúde recebidos pelo atalho contam como verificados
           const raw = await env.LIMITS.get(`hd:${uid}`);

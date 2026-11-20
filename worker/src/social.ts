@@ -141,7 +141,7 @@ const randomCode = () => {
   return [...crypto.getRandomValues(new Uint8Array(6))].map((x) => abc[x % abc.length]).join('');
 };
 const cleanNick = (v: unknown) => String(v ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 24);
-const cleanAvatar = (v: unknown) => (typeof v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 40_000 ? v : null);
+const cleanAvatar = (v: unknown) => (typeof v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 120_000 ? v : null);
 const parseDays = (s: unknown): Record<string, Day> => {
   try {
     return typeof s === 'string' ? JSON.parse(s) : {};
@@ -192,6 +192,15 @@ export async function upsertProfile(db: DB, id: string, b: Record<string, unknow
     db.prepare('INSERT INTO feed (uid, kind, value, created) VALUES (?, ?, 0, ?)').bind(id, 'entrou', at),
   ]);
   return ok({ code });
+}
+
+/** Atualiza só a foto (ou a remove, com avatar vazio): a app chama sempre que a foto do Perfil muda. */
+export async function updateAvatar(db: DB, id: string, avatarRaw: unknown, now = new Date()): Promise<Ok> {
+  if (!(await getProfile(db, id))) return fail(404, 'Entre primeiro na comunidade.');
+  const avatar = avatarRaw ? cleanAvatar(avatarRaw) : null;
+  if (avatarRaw && !avatar) return fail(400, 'Foto inválida ou demasiado grande.');
+  await db.prepare('UPDATE profiles SET avatar = ?, updated = ? WHERE id = ?').bind(avatar, now.toISOString(), id).run();
+  return ok({ ok: true });
 }
 
 /** Sair da comunidade: apaga tudo o que está na D1 sobre a pessoa. */

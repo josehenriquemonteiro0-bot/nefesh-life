@@ -207,6 +207,7 @@ export const unreadCount = (s: SocialState | null) => (s?.messages ?? []).filter
 /* ---------- ações ---------- */
 
 export const join = (nick: string, avatar: string | undefined, evo: boolean) => call<{ code: string }>('perfil', { nick, avatar, evo });
+export const updateAvatar = (avatar: string | null) => call('perfil-foto', { avatar });
 export const syncWeek = (payload: Record<string, unknown>) => call<{ points: number; league: number; bonus: number }>('sincronizar', payload);
 export const addFriend = (code: string) => call<{ nick: string }>('amigo', { code });
 export const removeFriend = (id: string) => call('remover-amigo', { id });
