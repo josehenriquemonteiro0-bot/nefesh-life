@@ -9,6 +9,7 @@ import {
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
+import { Moments } from '../components/Moments';
 import { HealthShotButton } from '../components/HealthShot';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
@@ -684,7 +685,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
         ))}
       </div>
 
-      {view === 'mural' && <FeedView st={st} />}
+      {view === 'mural' && <><Moments st={st} /><FeedView st={st} /></>}
       {view === 'liga' && <><LeagueView st={st} /><EvolutionView /></>}
       {view === 'equipa' && <TeamView st={st} />}
       {view === 'amigos' && <FriendsView st={st} />}

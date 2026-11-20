@@ -26,6 +26,7 @@ import { checkSpirulinaPhoto } from './spirulinaPhoto';
 import { acceptShot, readHealthShot } from './healthShot';
 import * as admin from './admin';
 import * as together from './together';
+import * as photos from './photos';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -160,6 +161,13 @@ export default {
       const html = statsPage(await summarize(env.LIMITS as never));
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
     }
+    // fotos dos momentos (públicas para a comunidade durante 24 horas)
+    if (req.method === 'GET' && url.pathname.startsWith('/foto/') && env.DB) {
+      const bytes = await photos.photoBytes(env.DB, url.pathname.slice(6));
+      if (!bytes) return new Response('Esta foto já não está disponível.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      return new Response(bytes, { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600', 'X-Robots-Tag': 'noindex' } });
+    }
+
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
 
@@ -225,6 +233,23 @@ export default {
           return social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {});
         },
         frasco: () => verify.registerBottle(db, uid, b.code, b.product),
+        foto: async () => {
+          const kind = String(b.kind);
+          if (!(photos.PHOTO_KINDS as readonly string[]).includes(kind)) return { status: 400, body: { error: 'Momento desconhecido.' } };
+          if (!photos.validImage(b.image)) return { status: 400, body: { error: 'Imagem inválida ou demasiado grande.' } };
+          const lim = { device: 2, ip: 30, global: 2000 };
+          const ipc = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+          if (!(await check(env.LIMITS, lim, uid, ipc, new Date(), 'f')).ok) return { status: 429, body: { error: 'Já partilhou 2 fotos hoje. Amanhã há mais!' } };
+          if (!(await verify.newPhoto(db, uid, b.image))) return { status: 200, body: { ok: false, note: 'Esta foto já foi partilhada.' } };
+          const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+          const m = await photos.moderate(client, env.MODEL?.trim() || 'claude-opus-5-5', b.image, kind);
+          if (!m.safe || !m.fits) return { status: 200, body: { ok: false, note: m.safe ? `Esta foto não parece ser de ${kind === 'spirulina' ? 'Spirulina' : kind === 'treino' ? 'um treino' : 'comida'}. ${m.note}` : 'Esta foto não pode ser partilhada na comunidade.' } };
+          await count(env.LIMITS, lim, uid, ipc, new Date(), 'f');
+          const id = await photos.savePhoto(db, uid, b.image, kind, Math.round(Number(b.value) || 0));
+          return { status: 200, body: { ok: true, id, note: m.other_people ? 'Publicada. Lembre-se de pedir autorização a quem aparece na foto.' : 'Publicada nos Momentos de hoje durante 24 horas.' } };
+        },
+        'denunciar-foto': () => photos.report(db, uid, b.id),
+        'apagar-foto': () => photos.deletePhoto(db, uid, b.id),
         'equipa-criar': () => together.createTeam(db, uid, b.name),
         'equipa-entrar': () => together.joinTeam(db, uid, b.code),
         'equipa-sair': () => together.leaveTeam(db, uid),

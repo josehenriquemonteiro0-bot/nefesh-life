@@ -7,6 +7,7 @@
  */
 
 import { feedExtras, leaveTeam, partnerState, teamState } from './together';
+import { recentPhotos } from './photos';
 import { FULL, anomaly, bottlesOf, cleanParts, isCheckDay, overStock, proofsFor, scoreDay, type Habit, type Proofs } from './verify';
 
 /** O subconjunto da API D1 que usamos (permite testar com SQLite local). */
@@ -71,6 +72,9 @@ CREATE TABLE IF NOT EXISTS reactions (fid INTEGER NOT NULL, uid TEXT NOT NULL, k
 CREATE TABLE IF NOT EXISTS replies (id INTEGER PRIMARY KEY AUTOINCREMENT, fid INTEGER NOT NULL, uid TEXT NOT NULL, kind TEXT NOT NULL, created TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS replies_fid ON replies (fid);
 CREATE TABLE IF NOT EXISTS pairs (uid TEXT PRIMARY KEY, partner TEXT NOT NULL, status TEXT NOT NULL, since TEXT NOT NULL, best INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, fid INTEGER, uid TEXT NOT NULL, kind TEXT NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL, hidden INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS photos_created ON photos (created);
+CREATE TABLE IF NOT EXISTS photo_reports (pid TEXT NOT NULL, uid TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY (pid, uid));
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */
@@ -210,6 +214,7 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM pairs WHERE uid = ? OR partner = ?').bind(id, id),
   ]);
   await leaveTeam(db, id);
+  await db.batch([db.prepare('DELETE FROM photo_reports WHERE pid IN (SELECT id FROM photos WHERE uid = ?)').bind(id), db.prepare('DELETE FROM photos WHERE uid = ?').bind(id), db.prepare('DELETE FROM photo_reports WHERE uid = ?').bind(id)]);
   return ok({ ok: true });
 }
 
@@ -511,7 +516,7 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
         (SELECT COUNT(*) FROM cheers c WHERE c.fid = f.id) AS cheers,
         (SELECT COUNT(*) FROM cheers c WHERE c.fid = f.id AND c.uid = ?) AS mine
        FROM feed f JOIN profiles p ON p.id = f.uid
-       WHERE f.uid IN (${circle.map(() => '?').join(',')}) AND f.created > ? ORDER BY f.created DESC LIMIT 40`,
+       WHERE f.uid IN (${circle.map(() => '?').join(',')}) AND f.created > ? AND f.kind NOT LIKE 'foto-%' ORDER BY f.created DESC LIMIT 40`,
     )
     .bind(id, ...circle, since)
     .all<Record<string, unknown>>();
@@ -521,6 +526,10 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     return { id: r.id, me: r.uid === id, kind: r.kind, value: r.value, created: r.created, nick: r.nick, avatar: r.avatar, cheers: Number(r.cheers) || 0, cheered: Number(r.mine) > 0, reactions: x?.reactions ?? {}, myReaction: x?.mine ?? null, replies: x?.replies ?? [] };
   });
   const teams = await teamState(db, id, week, today);
+  // momentos com foto (24 h, toda a comunidade), com as reações de cada um
+  const ph = await recentPhotos(db, id, now);
+  const phx = await feedExtras(db, id, ph.map((x) => x.fid).filter(Boolean));
+  const photos = ph.map((x) => ({ ...x, reactions: phx.get(x.fid)?.reactions ?? {}, myReaction: phx.get(x.fid)?.mine ?? null }));
   const partner = await partnerState(db, id, today, now);
 
   // desafio oficial da semana
@@ -555,6 +564,7 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     messages: msgs.map((m) => ({ id: m.id, kind: m.kind, created: m.created, seen: !!m.seen, nick: m.nick ?? 'Ex-membro', avatar: m.avatar, from: m.from_id })),
     challenges,
     feed,
+    photos,
     team: teams.team,
     teams: teams.ranking,
     partner,

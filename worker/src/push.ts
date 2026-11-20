@@ -8,6 +8,7 @@
  *   (se a Spirulina ainda não foi marcada nesse dia) e, ao domingo à noite, o aviso de fim da liga.
  */
 import type { DB } from './social';
+import { cleanupPhotos } from './photos';
 
 export interface KeyStore {
   get(key: string): Promise<string | null>;
@@ -126,6 +127,8 @@ const minutes = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3,
 
 /** Agendamento: lembrete da toma e aviso de fim da liga. */
 export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fetcher: typeof fetch = fetch) {
+  // fotos da comunidade só ficam 24 horas
+  await cleanupPhotos(db, now).catch(() => 0);
   const { results } = await db
     .prepare('SELECT endpoint, uid, remind, tz, done, sent, league_sent FROM push_subs')
     .all<{ endpoint: string; uid: string | null; remind: string | null; tz: string; done: string | null; sent: string | null; league_sent: string | null }>();

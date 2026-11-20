@@ -9,6 +9,7 @@ export function PrivacyText() {
       <p><b>O que guardamos:</b> as suas respostas à avaliação (incluindo informação de saúde como sono, peso ou gravidez), as tomas, a água, os check-ins e os passos e o sono que registar.</p>
       <p><b>Onde:</b> neste telemóvel. Se criar uma conta, também numa base de dados na Cloudflare (Europa e outras regiões), ligada ao seu e-mail, para não perder nada ao trocar de telemóvel. As fotos de refeições e os planos que enviar para leitura são analisados e não ficam guardados.</p>
       <p><b>Notificações:</b> se as ativar, guardamos o endereço de notificações do telemóvel, a hora do lembrete e se já fez o ritual nesse dia, só para lhe enviar o lembrete, as mensagens dos amigos e o aviso da liga. Pode desligá-las no Perfil.</p>
+      <p><b>Comunidade:</b> se entrar, os outros membros veem a sua alcunha, foto de perfil, pontos, sequência e conquistas. As fotos que partilhar nos Momentos ficam visíveis para toda a comunidade durante 24 horas e depois são apagadas; antes de serem publicadas, são revistas por IA.</p>
       <p><b>Estatísticas anónimas:</b> uma vez por dia contamos que partes da app foram usadas, sem cookies, sem nome, sem e-mail e sem dados de saúde. Pode desligar em Perfil.</p>
       <p><b>Partilha:</b> só quando escolher enviar o relatório ou falar connosco pelo WhatsApp.</p>
       <p><b>Os seus direitos:</b> pode guardar uma cópia, ou apagar tudo a qualquer momento em "Os meus dados" e "Conta", no Perfil (botão redondo no topo).</p>

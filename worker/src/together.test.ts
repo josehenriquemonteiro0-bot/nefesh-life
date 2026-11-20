@@ -76,3 +76,24 @@ describe('parceiro de ritual', () => {
     expect(((await so.state(db, 'rui', WED)).body as any).partner).toBeNull();
   });
 });
+
+describe('momentos com foto (24 horas)', async () => {
+  const ph = await import('./photos');
+  it('aparece para toda a comunidade, esconde-se com denúncias e apaga-se ao fim de 24 h', async () => {
+    const db = await setup();
+    await so.upsertProfile(db, 'eva', { nick: 'Eva' }, WED); // não é amiga de ninguém
+    const id = await ph.savePhoto(db, 'ana', 'QUJD'.repeat(40), 'treino', 30, WED);
+    const seen = ((await so.state(db, 'eva', WED)).body as any).photos;
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ id, nick: 'Ana', kind: 'treino' });
+    // não aparece duplicada no mural
+    expect(((await so.state(db, 'eva', WED)).body as any).feed.some((f: any) => f.kind.startsWith('foto'))).toBe(false);
+    expect(await ph.photoBytes(db, id, WED)).not.toBeNull();
+    await ph.report(db, 'eva', id, WED);
+    expect(((await so.state(db, 'eva', WED)).body as any).photos).toHaveLength(0); // escondida para quem denunciou
+    expect(((await so.state(db, 'rui', WED)).body as any).photos).toHaveLength(1);
+    const later = new Date(WED.getTime() + 25 * 3600 * 1000);
+    expect(await ph.cleanupPhotos(db, later)).toBe(1);
+    expect(await ph.photoBytes(db, id, later)).toBeNull();
+  });
+});

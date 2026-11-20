@@ -59,6 +59,7 @@ export interface SocialState {
   challenges?: { id: string; kind: string; start: string; end: string; target: number; days: number; mine: boolean; members: { id: string; me: boolean; nick: string; avatar: string | null; done: number }[] }[];
   official?: { kind: string; target: number; done: number; bonus: number };
   feed?: FeedItem[];
+  photos?: PhotoMoment[];
   team?: TeamInfo | null;
   teams?: { rank: number; name: string; members: number; avg: number; mine: boolean }[];
   partner?: { status: 'ativo' | 'enviado' | 'recebido'; nick: string; avatar: string | null; streak: number; todayMe: boolean; todayThem: boolean } | null;
@@ -89,6 +90,21 @@ export const REPLIES: Record<string, string> = {
   inspiras: 'Inspiraste-me hoje 🌿',
   continua: 'Continua assim! 🔥',
 };
+
+export interface PhotoMoment {
+  id: string;
+  fid: number;
+  me: boolean;
+  kind: 'treino' | 'receita' | 'spirulina' | 'refeicao';
+  created: string;
+  nick: string;
+  avatar: string | null;
+  reactions: Record<string, number>;
+  myReaction: string | null;
+}
+
+export const PHOTO_LABEL: Record<PhotoMoment['kind'], string> = { treino: '💪 Treino', receita: '🥤 Receita', spirulina: '🌿 Spirulina', refeicao: '🍽️ Refeição' };
+export const photoUrl = (id: string) => `${PHOTO_API}/foto/${id}`;
 
 export interface TeamInfo {
   name: string;
@@ -211,6 +227,9 @@ export function shareMoment(kind: 'receita' | 'treino', value: number) {
   if (!getAuth()) return;
   call('momento', { kind, value }).then(() => refresh()).catch(() => undefined);
 }
+export const sharePhoto = (kind: string, image: string, value = 0) => call<{ ok: boolean; note: string; id?: string }>('foto', { kind, image, value });
+export const reportPhoto = (id: string) => call('denunciar-foto', { id });
+export const deletePhoto = (id: string) => call('apagar-foto', { id });
 export const proveHealth = (image: string, media_type: string) =>
   call<{ ok: boolean; note: string; steps?: number; exMin?: number; sleepH?: number }>('prova-saude', { image, media_type });
 export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });
