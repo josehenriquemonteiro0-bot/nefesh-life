@@ -16,7 +16,8 @@ import { blankState } from './domain/sample';
 import { clearFiles } from './domain/files';
 import { stock, took } from './domain/stats';
 import { scheduleReminder } from './reminders';
-import { pushStockEnd, pushSupported, updatePush } from './domain/push';
+import { pushMedTimes, pushStockEnd, pushSupported, updatePush } from './domain/push';
+import { reminderTimes } from './domain/meds';
 import { Check } from './screens/Check';
 import { Evolution } from './screens/Evolution';
 import { Home } from './screens/Home';
@@ -24,6 +25,7 @@ import { Plan } from './screens/Plan';
 import { Pros } from './screens/Pros';
 import { Sleep } from './screens/Sleep';
 import { Women } from './screens/Women';
+import { Care } from './screens/Care';
 import { showWomen } from './domain/women';
 import { Coach } from './screens/Coach';
 import { Profile } from './screens/Profile';
@@ -60,6 +62,7 @@ const HEALTH_TABS: [Tab, string, IconName][] = [
   ['nutri', 'Nutrição', 'recipes'],
   ['treino', 'Treino', 'flame'],
   ['sono', 'Sono', 'moon'],
+  ['cuidados', 'Cuidados', 'care'],
   ['ciclo', 'Ciclo', 'cycle'],
 ];
 /** separadores sem botão próprio na barra: Check-in pertence ao Início, Receitas à Nutrição */
@@ -154,6 +157,11 @@ export function App() {
   useEffect(() => {
     if (S.notifications && S.ans && pushSupported()) updatePush(S.reminder);
   }, [authToken, S.notifications]);
+  // lembretes de medicação: o servidor só recebe as horas
+  const medTimes = reminderTimes(S).join(',');
+  useEffect(() => {
+    if (S.notifications && !S.sample && pushSupported()) pushMedTimes(medTimes ? medTimes.split(',') : []);
+  }, [medTimes, S.notifications, authToken]);
   // consentimentos: as escolhas vão para a conta (marketing com o e-mail; I&D para prova)
   const consentMark = `${authToken ?? ''}|${S.consents?.rd?.on ? 1 : 0}|${S.consents?.marketing?.on ? 1 : 0}`;
   useEffect(() => {
@@ -256,7 +264,7 @@ export function App() {
       ciclo: <Women />,
       mente: null,
       corpo: null,
-      cuidados: null,
+      cuidados: <Care />,
       coach: <Coach go={go} />,
       saude: null,
       pros: <Pros openReport={() => setReportOpen(true)} />,

@@ -99,3 +99,20 @@ describe('relatório semanal', () => {
     expect(await push.runSchedule(db, store, new Date('2026-11-23T20:05:00Z'), fetcher)).toBe(0); // segunda
   });
 });
+
+describe('lembretes de medicação', () => {
+  it('avisa à hora certa, uma vez por hora e dia, sem nomes', async () => {
+    const db = memoryDB();
+    const store = kv();
+    const fetcher = (async () => new Response(null, { status: 201 })) as unknown as typeof fetch;
+    await push.subscribe(db, { endpoint: EP, remind: null, tz: 'Europe/Lisbon' }, null);
+    expect((await push.setMedTimes(db, { endpoint: EP, times: ['13:00', '07:30', 'xx', '07:30'] })).body.times).toEqual(['07:30', '13:00']);
+    expect(await push.runSchedule(db, store, new Date('2026-11-20T07:20:00Z'), fetcher)).toBe(0);
+    expect(await push.runSchedule(db, store, new Date('2026-11-20T07:31:00Z'), fetcher)).toBe(1);
+    expect((await push.pendingMessage(db, { endpoint: EP })).body.title).toBe('💊 Lembrete das 07:30');
+    expect(await push.runSchedule(db, store, new Date('2026-11-20T07:40:00Z'), fetcher)).toBe(0);
+    expect(await push.runSchedule(db, store, new Date('2026-11-20T13:05:00Z'), fetcher)).toBe(1);
+    await push.setMedTimes(db, { endpoint: EP, times: [] });
+    expect(await push.runSchedule(db, store, new Date('2026-11-21T07:31:00Z'), fetcher)).toBe(0);
+  });
+});

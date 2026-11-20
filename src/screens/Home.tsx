@@ -217,11 +217,12 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         const na = nextAction(S, l);
         const run = () => {
           if (na.kind === 'dose' && na.slot !== undefined) toggleDose(na.slot);
+          else if (na.kind === 'med' && na.med) updateToday((t) => { t.meds = { ...(t.meds ?? {}), [na.med!]: true }; });
           else if (na.kind === 'agua') setWater(w + 1);
           else if (na.kind === 'refeicao') go('nutri');
           else if (na.kind === 'checkin') go('check');
         };
-        const label = { dose: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Check-in', treino: 'Treinar', feito: '' }[na.kind];
+        const label = { dose: 'Tomei', med: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Check-in', treino: 'Treinar', feito: '' }[na.kind];
         return (
           <section className="card next-action" data-tour="proxima">
             <div className="na-text">

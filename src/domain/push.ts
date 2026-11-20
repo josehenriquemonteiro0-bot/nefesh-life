@@ -86,6 +86,21 @@ export async function pushStockEnd(ends: string | null) {
   }
 }
 
+const MED_KEY = 'nefesh-life-medicacao';
+/** Horas dos lembretes de medicação (só as horas), enviadas quando mudam. */
+export async function pushMedTimes(times: string[]) {
+  try {
+    const sub = await currentSub();
+    if (!sub) return;
+    const mark = `${sub.endpoint}|${times.join(',')}`;
+    if (localStorage.getItem(MED_KEY) === mark) return;
+    const r = await post('medicacao', { endpoint: sub.endpoint, times });
+    if (r.ok) localStorage.setItem(MED_KEY, mark);
+  } catch {
+    /* sem rede: tenta na próxima abertura */
+  }
+}
+
 /** Avisa que o ritual de hoje está feito (não há lembrete hoje). */
 export async function pushRitualDone() {
   try {

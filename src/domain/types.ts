@@ -67,6 +67,13 @@ export interface DayLog {
   sleepH?: number;
   /** tomas feitas através de uma receita (índices), que não gastam cápsulas */
   viaRecipe?: Record<number, string>;
+  /** tomas de medicação e suplementos (id@HH:MM → tomada) */
+  meds?: Record<string, boolean>;
+  /** humor (1–5), stress (1–5), gratidão e minutos de respiração guiada */
+  mood?: number;
+  stress?: number;
+  grat?: string[];
+  breath?: number;
   /** ciclo menstrual / menopausa / gravidez: menstruação, fluxo (1–3) e sintomas */
   cycle?: { p?: boolean; flow?: 1 | 2 | 3; sy?: string[] };
   /** origem de cada valor medível (sem entrada = escrito pela pessoa) */
@@ -152,6 +159,13 @@ export interface AppState {
   updatedAt?: string;
   /** false quando a pessoa desliga as estatísticas anónimas */
   stats?: boolean;
+  /** prevenção (última data de cada check-up/rastreio/vacina), análises, consultas e medicação */
+  care?: {
+    prev?: Record<string, string>;
+    labs?: import('./care').LabResult[];
+    visits?: import('./care').Visit[];
+    meds?: import('./meds').Med[];
+  };
   /** saúde da mulher: modo, ciclo e menstruação habituais, data prevista do parto */
   women?: { mode: 'ciclo' | 'gravidez' | 'menopausa' | 'nao'; cycleLen?: number; periodLen?: number; lastStart?: string; due?: string; show?: boolean };
   /**

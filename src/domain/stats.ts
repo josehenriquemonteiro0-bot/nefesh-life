@@ -10,6 +10,7 @@ import { trainChanges, weekTrainAdherence } from './trainAdherence';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
 import { sourceCount, sourceSummary } from './sources';
+import { careReportLines } from './care';
 import type { AppState, DayLog } from './types';
 import type { IconName } from '../components/Icon';
 
@@ -217,6 +218,14 @@ export function report(S: AppState, now = new Date()) {
     meanOf(S, 'steps', now) !== null ? `Passos médios (7 dias): ${Math.round(meanOf(S, 'steps', now)!).toLocaleString('pt-PT')} (${sourceSummary(sourceCount(S, 'steps', 7, now))})` : null,
     meanOf(S, 'sleepH', now) !== null ? `Sono médio (7 dias): ${fmtNum(meanOf(S, 'sleepH', now)!.toFixed(1))} h (${sourceSummary(sourceCount(S, 'sleepH', 7, now))})` : null,
     `Hidratação média (7 dias): ${f((water7 * GLASS_ML) / 1000)} L/dia`,
+    (() => {
+      const c = careReportLines(S, now);
+      return [
+        c.meds.length ? `Medicação e suplementos:\n${c.meds.map((x) => `  - ${x}`).join('\n')}` : null,
+        c.labs.length ? `Análises (evolução):\n${c.labs.map((x) => `  - ${x}`).join('\n')}` : null,
+        c.prev.length ? `Prevenção por rever:\n${c.prev.map((x) => `  - ${x}`).join('\n')}` : null,
+      ].filter(Boolean).join('\n') || null;
+    })(),
   ];
   return lines.filter(Boolean).join('\n');
 }

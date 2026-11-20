@@ -23,3 +23,16 @@ describe('próxima ação do dia', () => {
     expect(nextAction(S(), { doses: [true, true], water: 20, e: 4 }, at(17)).kind).toBe('feito');
   });
 });
+
+describe('próxima ação: medicação', () => {
+  it('a medicação da hora aparece depois da Spirulina', async () => {
+    const { nextAction } = await import('./nextAction');
+    const { blankState } = await import('./sample');
+    const S = { ...blankState(), ans: { goal: 'energia' as const, peso: 70 }, planStart: '2026-11-01', care: { meds: [{ id: 'm', name: 'Levotiroxina', kind: 'medicamento' as const, times: ['09:00'], active: true }] } };
+    const at = new Date('2026-11-20T09:30:00');
+    const l = { doses: [true, true], water: 9 };
+    expect(nextAction(S, l, at)).toMatchObject({ kind: 'med', med: 'm@09:00', title: 'Levotiroxina (09:00)' });
+    expect(nextAction(S, { ...l, meds: { 'm@09:00': true } }, at).kind).not.toBe('med');
+    expect(nextAction(S, l, new Date('2026-11-20T13:30:00')).kind).not.toBe('med'); // mais de 3 h depois
+  });
+});

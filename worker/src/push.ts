@@ -105,6 +105,7 @@ export async function unsubscribe(db: DB, b: Record<string, unknown>) {
   if (validEndpoint(b.endpoint)) {
     await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(b.endpoint).run();
     await db.prepare('DELETE FROM stock_alerts WHERE endpoint = ?').bind(b.endpoint).run();
+    await db.prepare('DELETE FROM med_times WHERE endpoint = ?').bind(b.endpoint).run();
   }
   return { status: 200, body: { ok: true } };
 }
@@ -128,6 +129,20 @@ export async function setStockEnd(db: DB, b: Record<string, unknown>) {
     .bind(b.endpoint, ends)
     .run();
   return { status: 200, body: { ok: true } };
+}
+
+/** Horas dos lembretes de medicação deste telemóvel (só as horas: os nomes ficam na app). */
+export async function setMedTimes(db: DB, b: Record<string, unknown>) {
+  if (!validEndpoint(b.endpoint)) return { status: 400, body: { error: 'pedido inválido' } };
+  const times = (Array.isArray(b.times) ? b.times : []).map(validTime).filter((t): t is string => !!t);
+  const uniq = [...new Set(times)].sort().slice(0, 12);
+  if (!uniq.length) await db.prepare('DELETE FROM med_times WHERE endpoint = ?').bind(b.endpoint).run();
+  else
+    await db
+      .prepare('INSERT INTO med_times (endpoint, times) VALUES (?, ?) ON CONFLICT(endpoint) DO UPDATE SET times = excluded.times')
+      .bind(b.endpoint, JSON.stringify(uniq))
+      .run();
+  return { status: 200, body: { ok: true, times: uniq } };
 }
 
 /** Dias entre duas datas AAAA-MM-DD. */
@@ -208,6 +223,20 @@ export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fet
         await sendPush(db, store, s.endpoint, { title: 'A liga termina hoje 🏆', body: 'Ainda vai a tempo de somar pontos: a Spirulina de hoje conta a dobrar para os outros hábitos.', tag: 'nefesh-liga' }, fetcher);
         sent++;
       }
+    }
+  }
+  // lembretes de medicação: até 15 minutos depois de cada hora, uma vez por dia e hora
+  const { results: meds } = await db.prepare('SELECT m.endpoint, m.times, m.sent, s.tz FROM med_times m JOIN push_subs s ON s.endpoint = m.endpoint').all<{ endpoint: string; times: string; sent: string; tz: string | null }>();
+  for (const r of meds) {
+    const t = localNow(r.tz || 'Europe/Lisbon', now);
+    const m = minutes(t.time);
+    const sentMap = JSON.parse(r.sent || '{}') as Record<string, string>;
+    for (const hm of JSON.parse(r.times || '[]') as string[]) {
+      if (m < minutes(hm) || m >= minutes(hm) + 15 || sentMap[hm] === t.date) continue;
+      sentMap[hm] = t.date;
+      await db.prepare('UPDATE med_times SET sent = ? WHERE endpoint = ?').bind(JSON.stringify(sentMap), r.endpoint).run();
+      await sendPush(db, store, r.endpoint, { title: `💊 Lembrete das ${hm}`, body: 'Está na hora da sua medicação ou suplemento. Toque para marcar a toma na app.', tag: 'nefesh-med' }, fetcher);
+      sent++;
     }
   }
   // domingo às 20h: o relatório semanal está pronto (uma vez por telemóvel e por domingo)

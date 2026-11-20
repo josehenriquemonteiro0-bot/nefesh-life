@@ -10,6 +10,7 @@ import { compareEvals, weeklySummary, workoutKcal } from '../domain/progress';
 import { weekAdherence, weekChanges } from '../domain/planAdherence';
 import { trainChanges, weekTrainAdherence } from '../domain/trainAdherence';
 import { useStore } from '../state/store';
+import { careReportLines } from '../domain/care';
 
 /** Gráfico simples de 14 dias para papel (largura fixa, cores escuras). */
 function PrintChart({ series }: { series: { color: string; label: string; values: (number | undefined)[] }[] }) {
@@ -187,6 +188,20 @@ export function PrintReport() {
           {tc.length > 0 && <ul>{tc.map((x) => <li key={x}>{x}</li>)}</ul>}
         </section>
       )}
+
+      {(() => {
+        const c = careReportLines(S, now);
+        if (!c.meds.length && !c.labs.length && !c.prev.length) return null;
+        return (
+          <section>
+            <h3>Cuidados</h3>
+            {c.meds.length > 0 && <><p><b>Medicação e suplementos</b></p><ul>{c.meds.map((x) => <li key={x}>{x}</li>)}</ul></>}
+            {c.labs.length > 0 && <><p><b>Análises (evolução)</b></p><ul>{c.labs.map((x) => <li key={x}>{x}</li>)}</ul></>}
+            {c.prev.length > 0 && <><p><b>Prevenção por rever</b></p><ul>{c.prev.map((x) => <li key={x}>{x}</li>)}</ul></>}
+            <p className="pr-small">Valores de referência gerais ou do laboratório, quando indicados. A interpretação é do médico.</p>
+          </section>
+        );
+      })()}
 
       <footer className="pr-foot">
         A NEFESH Life é uma ferramenta de bem-estar: não faz diagnósticos nem substitui um profissional de saúde.

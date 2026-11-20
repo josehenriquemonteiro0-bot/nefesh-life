@@ -85,6 +85,8 @@ export function buildContext(S: AppState, now = new Date()): string {
       const opts: Record<string, string> = Object.fromEntries(q && 'o' in q ? q.o : []);
       lines.push(`Cuidados declarados: ${flags.map((f) => opts[f] ?? f).join(', ')} (não dês conselhos que dependam disto; sugere o profissional).`);
     }
+    const meds = (S.care?.meds ?? []).filter((m) => m.active);
+    if (meds.length) lines.push(`Medicação e suplementos (não alteres doses nem horários; perante dúvidas, o médico ou o farmacêutico): ${meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''} às ${m.times.join(', ')}`).join('; ')}.`);
     const wc = womenContext(S, now);
     if (wc) lines.push(wc);
     const tg = targetsFor(S);

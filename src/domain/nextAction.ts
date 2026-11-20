@@ -1,17 +1,20 @@
 /**
  * Próxima ação do dia no Início: a coisa mais útil a fazer agora, pela hora e pelo que já foi feito.
- * Ordem: a toma de Spirulina em falta → a água atrasada → a refeição da hora → o check-in à noite → tudo feito.
+ * Ordem: a toma de Spirulina em falta → a medicação da hora → a água atrasada → a refeição da hora → o check-in à noite → tudo feito.
  */
 import { planFor, slotsFor } from './plan';
 import type { AppState, DayLog } from './types';
+import { medsToday } from './meds';
 
-export type ActionKind = 'dose' | 'agua' | 'refeicao' | 'checkin' | 'treino' | 'feito';
+export type ActionKind = 'dose' | 'med' | 'agua' | 'refeicao' | 'checkin' | 'treino' | 'feito';
 export interface NextAction {
   kind: ActionKind;
   title: string;
   detail: string;
   /** índice da toma (para marcar com um toque) */
   slot?: number;
+  /** toma de medicação (id@hora) */
+  med?: string;
 }
 
 /** Hora (0–24) a partir da qual cada toma "conta" como devida. */
@@ -25,6 +28,9 @@ export function nextAction(S: AppState, l: DayLog, now = new Date()): NextAction
   // 1. a toma de Spirulina devida (ou a primeira, de manhã)
   const due = slots.findIndex((s, i) => !doses[i] && h >= slotHour(s.l) - 1);
   if (due >= 0) return { kind: 'dose', slot: due, title: `Tomar a Spirulina (${slots[due].l.toLowerCase()})`, detail: 'Um toque para marcar. É o centro do seu ritual.' };
+  // 1b. medicação ou suplemento já na hora e ainda por tomar (até 3 horas depois)
+  const med = medsToday(S, l, now).find((t) => t.due && !t.taken && h - (Number(t.time.slice(0, 2)) + Number(t.time.slice(3)) / 60) <= 3);
+  if (med) return { kind: 'med', med: med.key, title: `${med.med.name} (${med.time})`, detail: `${med.med.dose ? `${med.med.dose}. ` : ''}Um toque quando tomar.` };
   // 2. água atrasada face ao ritmo do dia (das 8h às 22h)
   const goal = planFor(S).water;
   const expected = Math.floor((goal * Math.min(1, Math.max(0, (h - 8) / 14))));
