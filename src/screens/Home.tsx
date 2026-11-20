@@ -9,6 +9,7 @@ import { doseText, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
 import { RecipeArt } from '../components/RecipeArt';
 import { DataCard } from '../components/DataCard';
+import { syncedLabel } from '../domain/account';
 import { mealForSlot, nextReassessment, spirulinaEntry, weeklySummary } from '../domain/progress';
 import type { Nav } from '../App';
 
@@ -25,8 +26,8 @@ export function SampleBanner({ onReset }: { onReset: () => void }) {
   );
 }
 
-function ActivityCard() {
-  const { todayLog: l, updateToday } = useStore();
+function ActivityCard({ openHealth }: { openHealth: () => void }) {
+  const { S, todayLog: l, updateToday } = useStore();
   const steps = l.steps ?? 0;
   const p = Math.min(1, steps / STEP_GOAL);
   const setSteps = (raw: string) => {
@@ -53,7 +54,17 @@ function ActivityCard() {
           <div><b>{fmtNum(Math.round(steps * 0.0007 * 10) / 10)} km</b><span>aprox.</span></div>
         </div>
       </div>
-      <p className="small mute" style={{ margin: '10px 0 0' }}>Veja o número no app Saúde e escreva-o aqui. As horas de sono registam-se no check-in.</p>
+      {S.health2 ? (
+        <p className="small mute" style={{ margin: '10px 0 0' }}>
+          Ligado ao app Saúde · últimos dados {syncedLabel(S.health2.lastAt)}.{' '}
+          <button className="link small inline" onClick={openHealth}>gerir</button>
+        </p>
+      ) : (
+        <>
+          <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={openHealth}><Icon name="steps" /> Ligar ao app Saúde e Apple Watch</button>
+          <p className="small mute" style={{ margin: '8px 0 0' }}>Ou escreva os passos aqui. As horas de sono registam-se no check-in.</p>
+        </>
+      )}
     </section>
   );
 }
@@ -88,7 +99,7 @@ function WeekCard({ go }: { go: Nav }) {
   );
 }
 
-export function Home({ go, startQuiz, onReset, openBottle, openLogin }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void }) {
+export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void }) {
   const { S, updateToday, todayLog: l, toast } = useStore();
 
   if (!S.ans)
@@ -220,7 +231,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin }: { go: Na
         </div>
       </section>
 
-      <ActivityCard />
+      <ActivityCard openHealth={openHealth} />
 
       <section className="card">
         <h2>Hábitos de hoje</h2>

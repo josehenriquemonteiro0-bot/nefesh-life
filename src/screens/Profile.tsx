@@ -13,8 +13,10 @@ import { useStore } from '../state/store';
 import { Comparison } from './Evolution';
 import { AccountCard } from '../components/Account';
 import { AvatarEdit } from '../components/Avatar';
+import { syncedLabel } from '../domain/account';
 
-export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow }: {
+export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth }: {
+  openHealth: () => void;
   openAccount: () => void;
   syncNow: () => Promise<void>;
   startQuiz: () => void;
@@ -73,6 +75,18 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
       </section>
 
       <AccountCard openAccount={openAccount} syncNow={syncNow} />
+
+      <section className="card">
+        <div className="row">
+          <div style={{ flex: '1 1 200px' }}>
+            <h2 style={{ margin: 0 }}>App Saúde e relógio</h2>
+            <p className="small mute" style={{ margin: '4px 0 0' }}>
+              {S.health2 ? `Ligado · últimos dados ${syncedLabel(S.health2.lastAt)}` : 'Passos, sono e exercício do iPhone, Apple Watch e outros relógios.'}
+            </p>
+          </div>
+          <button className={`btn sm ${S.health2 ? 'ghost' : ''}`} onClick={openHealth}>{S.health2 ? 'Gerir' : 'Ligar'}</button>
+        </div>
+      </section>
 
       <section className="card">
         <div className="row">

@@ -55,3 +55,27 @@ describe('contas', () => {
     expect(s.data.size).toBe(0);
   });
 });
+
+describe('app Saúde pelo atalho do iPhone', async () => {
+  const { healthKey, healthPull, healthPush, sleepHours } = await import('./account');
+  it('aceita sono em horas, minutos ou segundos', () => {
+    expect(sleepHours('7,5')).toBe(7.5);
+    expect(sleepHours(450)).toBe(7.5);
+    expect(sleepHours(27000)).toBe(7.5);
+    expect(sleepHours('')).toBeUndefined();
+  });
+  it('o atalho envia com a chave e a app recebe', async () => {
+    const s = memory();
+    const r = await register(s, 'a@b.pt', 'segredo123');
+    const k = await healthKey(s, r.body.token);
+    expect((await healthKey(s, r.body.token)).body.key).toBe(k.body.key);
+    expect((await healthPush(s, { chave: 'f'.repeat(24), passos: 10 }, '2026-11-20')).status).toBe(401);
+    const ok = await healthPush(s, { chave: k.body.key, passos: '7 200', sono: '450', exercicio: '32' }, '2026-11-20');
+    expect(ok.status).toBe(200);
+    await healthPush(s, { chave: k.body.key, passos: 9000 }, '2026-11-20');
+    const d = await healthPull(s, r.body.token);
+    expect(d.body.days).toMatchObject({ '2026-11-20': { steps: 9000, sleepH: 7.5, exMin: 32 } });
+    await deleteAccount(s, r.body.token, 'a@b.pt', 'segredo123');
+    expect(s.data.size).toBe(0);
+  });
+});

@@ -106,6 +106,8 @@ export interface AppState {
   trainPlan?: (import('./planRead').ParsedWorkoutPlan & { at: string; name: string }) | null;
   /** plano do nutricionista lido pela IA */
   nutriPlan?: (import('./planRead').ParsedPlan & { at: string; name: string }) | null;
+  /** ligação ao app Saúde pelo atalho: data em que foi ligada e última receção */
+  health2?: { since: string; lastAt?: string };
   /** foto de perfil (JPEG pequeno em data URL) */
   avatar?: string;
   /** última alteração (ISO), para sincronizar com a conta */

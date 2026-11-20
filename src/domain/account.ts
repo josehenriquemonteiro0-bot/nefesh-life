@@ -80,7 +80,7 @@ async function call<T = Record<string, unknown>>(action: string, body: Record<st
   const out = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) {
     // sessão expirada (não confundir com palavra-passe errada ao apagar a conta)
-    if (res.status === 401 && (action === 'dados' || action === 'guardar')) setAuth(null);
+    if (res.status === 401 && (action === 'dados' || action === 'guardar' || action === 'saude-dados')) setAuth(null);
     throw new AccountError(out.error || `Erro ${res.status}`, res.status);
   }
   return out;
@@ -145,6 +145,19 @@ export function mergeDecision(local: AppState, cloudAt: string | null, lastCloud
   // este telemóvel não mudou desde a última sincronização: só a nuvem mudou
   if (lastCloudAt && local.updatedAt && local.updatedAt <= lastCloudAt) return 'usar-nuvem';
   return 'perguntar';
+}
+
+/** Chave pessoal para o atalho do iPhone. */
+export async function healthKey(): Promise<string> {
+  const a = current;
+  if (!a) throw new AccountError('Crie uma conta ou entre primeiro.', 401);
+  return (await call<{ key: string }>('saude-chave', { token: a.token })).key;
+}
+
+export async function healthDays(): Promise<Record<string, import('./healthSync').HealthDay>> {
+  const a = current;
+  if (!a) return {};
+  return (await call<{ days: Record<string, import('./healthSync').HealthDay> }>('saude-dados', { token: a.token })).days;
 }
 
 /** Hora curta para "sincronizado às". */

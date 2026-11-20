@@ -363,3 +363,9 @@ table.cmp td.up,table.cmp td.down{color:var(--gold, #C9A85C)}
 .avatar.big svg{width:30px;height:30px}
 .avatar.big .cam{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;background:var(--neon);color:#00140d;display:grid;place-items:center}
 .avatar.big .cam svg{width:15px;height:15px}
+
+/* ligação ao app Saúde */
+code.key{flex:1 1 160px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:600 15px/1.2 ui-monospace,monospace;letter-spacing:.04em;color:var(--neon);word-break:break-all}
+.ok-box{background:rgba(0,254,138,.08);border:1px solid rgba(0,254,138,.35);border-radius:12px;padding:10px 12px;margin:8px 0 12px}
+.sheet h3{margin:16px 0 8px}
+.steps code{word-break:break-all}

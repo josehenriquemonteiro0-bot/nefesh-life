@@ -28,6 +28,7 @@ import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout } from './domain/account';
 import { useCloudSync } from './state/cloud';
 import { AvatarImg } from './components/Avatar';
+import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
@@ -73,6 +74,8 @@ export function App() {
     setTab('conta');
     window.scrollTo(0, 0);
   };
+  const [healthOpen, setHealthOpen] = useState(false);
+  const openHealth = () => setHealthOpen(true);
   const [reportOpen, setReportOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
   const printReport = () => setPrinting(true);
@@ -146,10 +149,10 @@ export function App() {
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
   } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta') {
-    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} />;
+    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} />,
+      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
@@ -168,7 +171,7 @@ export function App() {
           }}
         />
       ),
-      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} />,
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} />,
     }[tab];
   }
 
@@ -233,6 +236,13 @@ export function App() {
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} onPrint={() => { setReportOpen(false); printReport(); }} />}
       {printing && <PrintReport />}
+      {healthOpen && (
+        <HealthConnectSheet
+          onClose={() => setHealthOpen(false)}
+          openAccount={() => { setHealthOpen(false); openAccount('perfil'); }}
+          refresh={cloud.reconcile}
+        />
+      )}
       {cloud.conflict && <ConflictSheet cloudAt={cloud.conflict.cloudAt} localAt={S.updatedAt} onPick={cloud.resolve} />}
       {scienceOpen && <ScienceSheet onClose={() => setScienceOpen(false)} />}
       {bottleOpen && <BottleSheet onClose={() => setBottleOpen(false)} doseGrams={S.ans ? planFor(S).g : undefined} />}

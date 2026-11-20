@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAuth, mergeDecision, patchAuth, pull, push, useAuth } from '../domain/account';
+import { getAuth, healthDays, mergeDecision, patchAuth, pull, push, useAuth } from '../domain/account';
+import { applyHealthDays, lastHealthAt } from '../domain/healthSync';
 import type { AppState } from '../domain/types';
 import { useStore } from './store';
 
@@ -12,7 +13,7 @@ const DEBOUNCE_MS = 60_000;
  * - depois de cada alteração, envia ao fim de 1 minuto, ou logo que a app vai para segundo plano.
  */
 export function useCloudSync() {
-  const { S, replace, toast } = useStore();
+  const { S, replace, update, toast } = useStore();
   const auth = useAuth();
   const ref = useRef<AppState>(S);
   ref.current = S;
@@ -38,12 +39,24 @@ export function useCloudSync() {
       } else {
         patchAuth({ cloudAt: cloud.updatedAt, syncedAt: new Date().toISOString() });
       }
+      // dados do app Saúde enviados pelo atalho
+      if (ref.current.health2) {
+        const days = await healthDays();
+        const probe = structuredClone(ref.current);
+        const lastAt = lastHealthAt(days);
+        if (applyHealthDays(probe, days) || (lastAt && lastAt !== ref.current.health2.lastAt)) {
+          update((dr) => {
+            applyHealthDays(dr, days);
+            if (dr.health2 && lastAt) dr.health2.lastAt = lastAt;
+          });
+        }
+      }
     } catch {
       /* sem rede: tenta mais tarde */
     } finally {
       busy.current = false;
     }
-  }, [replace, toast]);
+  }, [replace, update, toast]);
 
   // ao entrar na conta e ao abrir a app
   useEffect(() => {
@@ -57,7 +70,7 @@ export function useCloudSync() {
     return () => window.clearTimeout(t);
   }, [S.updatedAt, auth, conflict, S.sample]);
 
-  // segundo plano: envia já; ao voltar depois de 5 minutos: compara com a nuvem
+  // segundo plano: envia já; ao voltar depois de 1 minuto: compara com a nuvem e traz dados do app Saúde
   useEffect(() => {
     let hiddenAt = 0;
     const onVis = () => {
@@ -67,7 +80,7 @@ export function useCloudSync() {
         hiddenAt = Date.now();
         const cur = ref.current;
         if (!conflict && !cur.sample && cur.updatedAt && cur.updatedAt !== a.cloudAt) push(cur).catch(() => undefined);
-      } else if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000) reconcile();
+      } else if (hiddenAt && Date.now() - hiddenAt > 60 * 1000) reconcile();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);

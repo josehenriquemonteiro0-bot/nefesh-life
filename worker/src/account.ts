@@ -154,6 +154,81 @@ export async function deleteAccount(store: AccountStore, token: unknown, emailRa
   const email = cleanEmail(emailRaw);
   const u = id ? await userOf(store, email) : null;
   if (!u || u.id !== id || typeof password !== 'string' || !same(await pbkdf2(password, u.salt), u.hash)) return err(401, 'Palavra-passe incorreta.');
-  await Promise.all([store.delete(await emailKey(email)), store.delete(`d:${u.id}`), store.delete(`s:${String(token)}`)]);
+  const hk = await store.get(`hk:${u.id}`);
+  await Promise.all([
+    store.delete(await emailKey(email)),
+    store.delete(`d:${u.id}`),
+    store.delete(`s:${String(token)}`),
+    store.delete(`hd:${u.id}`),
+    store.delete(`hk:${u.id}`),
+    ...(hk ? [store.delete(`h:${hk}`)] : []),
+  ]);
   return { status: 200, body: { ok: true } };
+}
+
+/* ---------- app Saúde (Apple Watch e relógios que escrevem no app Saúde) ---------- */
+
+export interface HealthDay {
+  steps?: number;
+  sleepH?: number;
+  exMin?: number;
+  at: string;
+}
+
+/** Chave pessoal do atalho do iPhone (não é a sessão: só serve para enviar dados de saúde). */
+export async function healthKey(store: AccountStore, token: unknown): Promise<Result> {
+  const id = await sessionUser(store, token);
+  if (!id) return err(401, 'A sessão terminou. Entre outra vez.');
+  let key = await store.get(`hk:${id}`);
+  if (!key) {
+    key = random(12);
+    await Promise.all([store.put(`hk:${id}`, key), store.put(`h:${key}`, id)]);
+  }
+  return { status: 200, body: { key } };
+}
+
+/** Lê números como o Atalhos os envia: "7 200", "7,5", "7.5 h", "450 min". */
+export function looseNumber(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v ?? '').trim().replace(/\s/g, '').replace(',', '.');
+  const m = s.match(/-?\d+(\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+/** Sono em horas: aceita horas, minutos ou segundos (o Atalhos varia conforme a versão). */
+export function sleepHours(v: unknown): number | undefined {
+  const n = looseNumber(v);
+  if (n === null || n <= 0) return undefined;
+  const h = n <= 24 ? n : n <= 1440 ? n / 60 : n / 3600;
+  return h <= 24 ? Math.round(h * 4) / 4 : undefined;
+}
+
+export async function healthPush(store: AccountStore, body: Record<string, unknown>, today: string): Promise<Result> {
+  const key = String(body.chave ?? body.key ?? '').trim().toLowerCase();
+  if (!/^[0-9a-f]{24}$/.test(key)) return err(400, 'Chave em falta ou inválida. Copie-a outra vez na app NEFESH Life.');
+  const id = await store.get(`h:${key}`);
+  if (!id) return err(401, 'Chave desconhecida. Copie-a outra vez na app NEFESH Life.');
+  const steps = looseNumber(body.passos);
+  const ex = looseNumber(body.exercicio);
+  const day: HealthDay = { at: new Date().toISOString() };
+  if (steps !== null && steps >= 0 && steps <= 150000) day.steps = Math.round(steps);
+  const sl = sleepHours(body.sono);
+  if (sl !== undefined) day.sleepH = sl;
+  if (ex !== null && ex >= 0 && ex <= 1440) day.exMin = Math.round(ex);
+  if (day.steps === undefined && day.sleepH === undefined && day.exMin === undefined) return err(400, 'Não chegaram valores de passos, sono ou exercício.');
+  const raw = await store.get(`hd:${id}`);
+  const all = (raw ? JSON.parse(raw) : {}) as Record<string, HealthDay>;
+  all[today] = { ...all[today], ...day };
+  // guarda só as últimas 3 semanas
+  const keep = Object.keys(all).sort().slice(-21);
+  await store.put(`hd:${id}`, JSON.stringify(Object.fromEntries(keep.map((k) => [k, all[k]]))));
+  const parts = [day.steps !== undefined && `${day.steps} passos`, day.sleepH !== undefined && `${day.sleepH} h de sono`, day.exMin !== undefined && `${day.exMin} min de exercício`].filter(Boolean);
+  return { status: 200, body: { ok: true, mensagem: `NEFESH Life: ${parts.join(', ')} enviados.` } };
+}
+
+export async function healthPull(store: AccountStore, token: unknown): Promise<Result> {
+  const id = await sessionUser(store, token);
+  if (!id) return err(401, 'A sessão terminou. Entre outra vez.');
+  const raw = await store.get(`hd:${id}`);
+  return { status: 200, body: { days: raw ? JSON.parse(raw) : {} } };
 }

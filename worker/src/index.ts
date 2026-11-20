@@ -15,11 +15,11 @@
  *   STATS_KEY          segredo opcional - chave da página de estatísticas (/stats?key=...)
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { LIMIT_MESSAGES, check, cleanDeviceId, count, type Limits } from './limits';
+import { LIMIT_MESSAGES, check, cleanDeviceId, count, dayKey, type Limits } from './limits';
 import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
 import { savePing, statsPage, summarize } from './stats';
-import { deleteAccount, getData, login, logout, recover, register, saveData, type Result } from './account';
+import { deleteAccount, getData, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
 const LOGIN_LIMITS = { device: 20, ip: 40, global: 5000 };
@@ -125,6 +125,24 @@ export default {
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
 
+    // atalho do iPhone: envia passos, sono e minutos de exercício do app Saúde
+    if (url.pathname === '/saude' && req.method === 'POST') {
+      let b: Record<string, unknown>;
+      try {
+        b = await req.json();
+      } catch {
+        return json({ error: 'pedido inválido' }, 400, h);
+      }
+      const ipc = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+      const k = String(b.chave ?? '').slice(0, 24).replace(/[^0-9a-f]/gi, '') || 'sem-chave';
+      const lim = { device: 48, ip: 200, global: 20000 };
+      const ok = await check(env.LIMITS, lim, `hk-${k}`, ipc, new Date(), 'h');
+      if (!ok.ok) return json({ error: 'Muitos envios hoje. Tente amanhã.' }, 429, h);
+      const r = await healthPush(env.LIMITS as never, b, dayKey());
+      if (r.status === 200) await count(env.LIMITS, lim, `hk-${k}`, ipc, new Date(), 'h');
+      return json(r.body, r.status, h);
+    }
+
     if (url.pathname.startsWith('/conta/')) {
       let b: Record<string, unknown>;
       try {
@@ -154,6 +172,8 @@ export default {
       if (action === 'sair') return send(await logout(store, b.token));
       if (action === 'dados') return send(await getData(store, b.token));
       if (action === 'guardar') return send(await saveData(store, b.token, b.data, b.updatedAt));
+      if (action === 'saude-chave') return send(await healthKey(store, b.token));
+      if (action === 'saude-dados') return send(await healthPull(store, b.token));
       if (action === 'apagar') return send(await deleteAccount(store, b.token, b.email, b.password));
       return json({ error: 'rota desconhecida' }, 404, h);
     }
