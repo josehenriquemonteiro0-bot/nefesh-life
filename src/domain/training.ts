@@ -86,9 +86,9 @@ function session(kind: SessionKind, level: Level, variant = ''): Session {
   }
 }
 
-/** Plano de segunda a domingo, por nível e objetivo. */
-export function weekPlan(a: Answers | null | undefined): Session[] {
-  const level = levelOf(a);
+/** Plano de segunda a domingo, por nível e objetivo. O nível pode ser escolhido pela pessoa. */
+export function weekPlan(a: Answers | null | undefined, chosen?: Level): Session[] {
+  const level = chosen ?? levelOf(a);
   const goal: Goal = a?.goal ?? 'energia';
   const F = (v: string) => session('forca', level, v);
   const W = session('caminhada', level);

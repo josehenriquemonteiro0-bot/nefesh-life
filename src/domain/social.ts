@@ -162,6 +162,8 @@ export const sendMessage = (to: string, kind: string) => call('mensagem', { to, 
 export const markSeen = () => call('lidas');
 export const cheer = (id: number) => call('aplaudir', { id });
 export const registerBottle = (code: string | null, product: string) => call<{ ok: boolean; verified: boolean; note?: string }>('frasco', { code, product });
+export const proveHealth = (image: string, media_type: string) =>
+  call<{ ok: boolean; note: string; steps?: number; exMin?: number; sleepH?: number }>('prova-saude', { image, media_type });
 export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });
 export const resultSeen = () => call('resultado-visto');
 export const createChallenge = (kind: string, friends: string[]) => call('desafio', { kind, friends });

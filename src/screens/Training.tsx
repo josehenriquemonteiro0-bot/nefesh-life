@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Bar } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
 import { Icon } from '../components/Icon';
-import { GOAL_LABEL } from '../domain/content';
+import { GOAL_LABEL, whatsappLink } from '../domain/content';
 import { BODY_GOAL_LABEL } from '../domain/body';
 import { PlanUpload } from '../components/PlanUpload';
 import { PremiumTag } from '../components/PremiumTag';
@@ -168,15 +168,34 @@ function WeekSummary() {
   );
 }
 
+/** A importância do personal e o pedido de indicação à NEFESH. */
+function PersonalNote() {
+  const { S } = useStore();
+  return (
+    <section className="card personal-note">
+      <h2 style={{ marginTop: 0 }}>🏋️ Um personal faz a diferença</h2>
+      <p className="small" style={{ marginTop: 0 }}>
+        Estes treinos são uma sugestão geral para o seu objetivo. Um personal trainer avalia a sua postura e a sua condição, ajusta os exercícios e as cargas e faz-o progredir com segurança.
+      </p>
+      <p className="small mute">A NEFESH indica-lhe um profissional de exercício parceiro para montar um treino feito à sua medida. Depois, carregue esse plano em "Com personal".</p>
+      <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de uma indicação de personal trainer para montar um treino personalizado${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener">
+        Pedir indicação de personal
+      </a>
+    </section>
+  );
+}
+
 export function Training() {
-  const { S, todayLog } = useStore();
+  const { S, todayLog, update } = useStore();
   const hasProFile = !!S.plans?.treino;
   const hasPro = !!(S.trainPlan && S.plans?.treino?.name === S.trainPlan.name);
   const [tab, setTab] = useState<TrainTab>(hasProFile ? 'personal' : 'casa');
   const [open, setOpen] = useState<Session | null>(null);
   const [lib, setLib] = useState(false);
-  const level = levelOf(S.ans);
-  const plan = weekPlan(S.ans);
+  // nível dos treinos sugeridos: escolhido pela pessoa ou deduzido da avaliação (avançado conta como intermédio)
+  const auto = levelOf(S.ans);
+  const level: Level = S.trainLevel ?? (auto === 'iniciante' ? 'iniciante' : 'intermedio');
+  const plan = weekPlan(S.ans, level);
   const today = weekdayIndex();
 
   if (open) return <SessionView s={open} level={level} onBack={() => { setOpen(null); window.scrollTo(0, 0); }} />;
@@ -205,6 +224,7 @@ export function Training() {
             </>
           ) : (
             <>
+              {!hasProFile && <PersonalNote />}
               {!hasProFile && (
                 <section className="card">
                   <h2>Treina com um personal?</h2>
@@ -221,11 +241,25 @@ export function Training() {
       ) : (
         <>
           <div className="row" style={{ marginBottom: 6 }}>
-            <p className="mute small" style={{ margin: 0 }}>
-              Plano {LEVEL_LABEL[level].toLowerCase()} · {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · sem material
-            </p>
+            <h2 style={{ margin: 0 }}>Treinos sugeridos</h2>
             <PremiumTag f="treinoObjetivo" />
           </div>
+          <p className="mute small" style={{ margin: '0 0 10px' }}>
+            Para o seu objetivo: {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · sem material
+          </p>
+          <div className="seg seg-wide" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', marginBottom: 14 }} role="group" aria-label="Nível">
+            {(['iniciante', 'intermedio'] as const).map((lv) => (
+              <button key={lv} className={level === lv ? 'on' : ''} aria-pressed={level === lv} onClick={() => update((d) => { d.trainLevel = lv; })}>
+                {lv === 'iniciante' ? 'Iniciante' : 'Intermediário'}
+              </button>
+            ))}
+          </div>
+          <p className="small mute" style={{ margin: '-6px 0 12px' }}>
+            {level === 'iniciante'
+              ? 'Iniciante: 2 voltas por circuito, versões mais fáceis quando precisar e caminhada em vez de cardio intenso.'
+              : 'Intermediário: 3 voltas por circuito, mais repetições e um dia de cardio intervalado.'}
+          </p>
+
           <button className="card today-session" onClick={() => setOpen(s)}>
             <span className="small" style={{ opacity: 0.8 }}>Hoje · {DAYS[today]}{doneToday ? ' · registado ✓' : ''}</span>
             <span className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
@@ -235,8 +269,15 @@ export function Training() {
                 <span className="small" style={{ display: 'block', opacity: 0.85 }}>{s.minutes} min · {s.text}</span>
               </span>
             </span>
+            {s.exercises.length > 0 && (
+              <span className="anim-strip" aria-hidden="true">
+                {s.exercises.slice(0, 4).map((id) => <ExerciseAnim key={id} id={id} size="sm" />)}
+              </span>
+            )}
             <span className="btn sm" style={{ alignSelf: 'flex-start' }}>Começar</span>
           </button>
+
+          <PersonalNote />
 
           <section className="card">
             <h2>O plano da semana</h2>

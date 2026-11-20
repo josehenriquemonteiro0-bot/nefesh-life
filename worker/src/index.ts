@@ -23,6 +23,7 @@ import * as social from './social';
 import * as push from './push';
 import * as verify from './verify';
 import { checkSpirulinaPhoto } from './spirulinaPhoto';
+import { acceptShot, readHealthShot } from './healthShot';
 import * as admin from './admin';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
@@ -223,6 +224,28 @@ export default {
           return social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {});
         },
         frasco: () => verify.registerBottle(db, uid, b.code, b.product),
+        'prova-saude': async () => {
+          const image = String(b.image ?? '');
+          if (!image || image.length > MAX_IMAGE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) return { status: 400, body: { error: 'imagem inválida' } };
+          const lim = { device: 6, ip: 60, global: 3000 };
+          const ipc = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+          if (!(await check(env.LIMITS, lim, uid, ipc, new Date(), 'k')).ok) return { status: 429, body: { error: 'Já enviou capturas suficientes hoje.' } };
+          await count(env.LIMITS, lim, uid, ipc, new Date(), 'k');
+          if (!(await verify.newPhoto(db, uid, image))) return { status: 200, body: { ok: false, note: 'Esta captura já foi usada. Tire uma captura nova.' } };
+          const today = social.lisbonDay();
+          const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+          const mt = b.media_type === 'image/png' ? 'image/png' : b.media_type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+          const shot = await readHealthShot(client, env.MODEL?.trim() || 'claude-opus-5-5', image, mt, today);
+          const got = acceptShot(shot);
+          if (!got) return { status: 200, body: { ok: false, note: shot.day === 'outro' ? 'Esta captura não é de hoje. Tire uma captura do dia de hoje.' : shot.looks_edited ? 'A captura parece editada, por isso não conta.' : shot.note } };
+          // junta aos dados de saúde da conta (os mesmos do atalho do iPhone)
+          const raw = await env.LIMITS.get(`hd:${uid}`);
+          const all = (raw ? JSON.parse(raw) : {}) as Record<string, Record<string, unknown>>;
+          all[today] = { ...all[today], ...got, at: new Date().toISOString(), src: 'captura' };
+          const keep = Object.keys(all).sort().slice(-21);
+          await env.LIMITS.put(`hd:${uid}`, JSON.stringify(Object.fromEntries(keep.map((k) => [k, all[k]]))));
+          return { status: 200, body: { ok: true, date: today, ...got, note: shot.note } };
+        },
         'prova-spirulina': async () => {
           const image = String(b.image ?? '');
           if (!image || image.length > MAX_IMAGE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) return { status: 400, body: { error: 'imagem inválida' } };

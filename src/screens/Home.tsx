@@ -11,6 +11,7 @@ import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
 import { pushRitualDone } from '../domain/push';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
+import { HealthShotButton } from '../components/HealthShot';
 import { activityStreak, dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
 import { mealForSlot, nextReassessment, spirulinaEntry, spirulinaInsight, weeklySummary } from '../domain/progress';
@@ -65,6 +66,7 @@ function ActivityCard({ openHealth }: { openHealth: () => void }) {
       ) : (
         <>
           <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={openHealth}><Icon name="steps" /> Ligar ao app Saúde e Apple Watch</button>
+          <HealthShotButton compact />
           <p className="small mute" style={{ margin: '8px 0 0' }}>Ou escreva os passos aqui. As horas de sono registam-se no check-in.</p>
         </>
       )}

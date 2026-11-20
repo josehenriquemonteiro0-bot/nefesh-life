@@ -427,3 +427,6 @@ details.more .more-body{padding:0 18px 16px}
 .card.insight{border:1px solid rgba(0,254,138,.35)}
 .chip.cheer{min-height:32px;padding:4px 10px;font-size:14px}
 .feed li{align-items:flex-start}
+.anim-strip{display:flex;gap:6px;margin:8px 0 4px}
+.anim-strip .exanim.sm{width:64px;flex:none}
+.personal-note{border:1px solid rgba(201,168,92,.45)}

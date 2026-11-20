@@ -9,6 +9,7 @@ import {
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
+import { HealthShotButton } from '../components/HealthShot';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
 
@@ -107,12 +108,13 @@ function TodayPoints({ st }: { st: SocialState }) {
           );
         })}
       </div>
+      <HealthShotButton />
       {open && (
         <ul className="small plan-list" style={{ marginTop: 10 }}>
           {HABIT_POINTS.map((h) => (
             <li key={h.flag}>{FLAG_ICON[h.flag]} {h.label}: {h.full} pontos{h.part ? ` (${h.partLabel}: ${h.part})` : ''}</li>
           ))}
-          <li>✅ Verificados contam por inteiro: Spirulina dentro do stock dos frascos registados (e com foto nos dias de verificação), fotos do prato e dados do app Saúde ou do relógio.</li>
+          <li>✅ Verificados contam por inteiro: Spirulina dentro do stock dos frascos registados (e com foto nos dias de verificação), fotos do prato e dados do app Saúde ou do relógio (pelo atalho ou por captura de ecrã lida pela IA).</li>
           <li>☑️ Declarados (marcados à mão) contam até 50 pontos por dia no total.</li>
           <li>🌿 A Spirulina é a chave do dia: sem nenhuma toma, os outros hábitos valem metade.</li>
           <li>🔥 A sequência conta os dias seguidos com o ritual da Spirulina. Com 7 dias, +5% por dia; com 30, +10% (máximo 100 por dia). Um dia falhado por semana conta como descanso.</li>

@@ -88,3 +88,17 @@ describe('códigos de frasco por WhatsApp ou e-mail', async () => {
     expect(admin.adminResult('k', 'po', codes, 'Ana', '+351 912 345 678', '')).toContain('wa.me/351912345678');
   });
 });
+
+describe('captura do app Saúde', async () => {
+  const { acceptShot } = await import('./healthShot');
+  const base = { is_health_screenshot: true, steps: 9123.4, exercise_minutes: 35, sleep_hours: 7.4, looks_edited: false, note: '' };
+  it('aceita valores de hoje e o sono da noite passada', () => {
+    expect(acceptShot({ ...base, day: 'hoje' })).toEqual({ steps: 9123, exMin: 35, sleepH: 7.5 });
+    expect(acceptShot({ ...base, day: 'ontem' })).toEqual({ sleepH: 7.5 });
+  });
+  it('recusa capturas antigas, editadas ou que não são de uma app de saúde', () => {
+    expect(acceptShot({ ...base, day: 'outro' })).toBeNull();
+    expect(acceptShot({ ...base, day: 'hoje', looks_edited: true })).toBeNull();
+    expect(acceptShot({ ...base, day: 'hoje', is_health_screenshot: false })).toBeNull();
+  });
+});
