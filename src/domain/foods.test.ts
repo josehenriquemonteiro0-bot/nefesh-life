@@ -24,3 +24,11 @@ describe('base de alimentos', () => {
     expect(t.p).toBeCloseTo(41.3, 1);
   });
 });
+
+import { photoEntry } from './photo';
+describe('itens da foto', () => {
+  it('ajusta calorias e macros à quantidade escolhida', () => {
+    const e = photoEntry({ name: 'Arroz', grams: 180, kcal: 234, protein_g: 4.9, carbs_g: 50.4, fat_g: 0.5, confidence: 'alta' }, 90);
+    expect(e).toMatchObject({ name: 'Arroz', grams: 90, kcal: 117, p: 2.5, c: 25.2, f: 0.3 });
+  });
+});

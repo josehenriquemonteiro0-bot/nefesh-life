@@ -83,6 +83,8 @@ export interface AppState {
   followLabel?: boolean;
   /** data em que aceitou o aviso de privacidade */
   consent?: string;
+  /** código de acesso ao serviço de fotos (fase de testes) */
+  photoCode?: string;
 }
 
 /** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */

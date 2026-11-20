@@ -34,3 +34,10 @@ npm run build     # build de produção em dist/
 3. Lembretes com Local Notifications.
 4. Backend (contas, sincronização, painel dos profissionais, pedidos de contacto).
 5. Validação científica das referências e da fórmula da dose.
+
+## Foto do prato (serviço `worker/`)
+A análise das fotos corre num Cloudflare Worker (`worker/`), que guarda a chave da Anthropic. A chave nunca vai para a app.
+- Modelo: `claude-opus-5-5` com esforço baixo e saída JSON estruturada. Pode mudar-se em `worker/wrangler.toml` (`MODEL`); `claude-haiku-5-5` é muito mais barato.
+- Acesso: só com o código `PHOTO_ACCESS_CODE`, que os testadores escrevem uma vez na app.
+- Publicação automática (`.github/workflows/worker.yml`) quando existem os segredos `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY` e `PHOTO_ACCESS_CODE`.
+- Depois de publicado, guardar o endereço do Worker na variável `PHOTO_API_URL` do repositório e voltar a publicar a app.

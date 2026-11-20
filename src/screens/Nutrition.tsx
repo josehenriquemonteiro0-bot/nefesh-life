@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bar, Ring } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
-import { Icon } from '../components/Icon';
+import { PhotoMealCard } from '../components/PhotoMeal';
 import { bodyOf } from '../domain/body';
 import { fmtNum, keyDaysAgo, longToday } from '../domain/dates';
 import { FOODS, MEALS, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
@@ -165,15 +165,7 @@ function Diary() {
         {!b && <p className="small" style={{ margin: '8px 0 0', opacity: 0.85 }}>Complete a avaliação com altura e peso para ter a sua meta personalizada.</p>}
       </section>
 
-      <section className="card photo-soon">
-        <div className="row" style={{ alignItems: 'flex-start' }}>
-          <div style={{ flex: '1 1 200px' }}>
-            <h3 style={{ margin: 0 }}>Fotografar o prato <span className="lvl lvl-seguranca" style={{ marginLeft: 6 }}>Em breve</span></h3>
-            <p className="small mute" style={{ margin: '4px 0 0' }}>Tire uma foto e a NEFESH Life estima os alimentos e as calorias. Por agora, adicione os alimentos pela lista.</p>
-          </div>
-          <Icon name="recipes" />
-        </div>
-      </section>
+      <PhotoMealCard />
 
       {MEALS.map(([k, name]) => {
         const items = meals[k] || [];
