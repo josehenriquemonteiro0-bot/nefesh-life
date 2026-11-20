@@ -57,6 +57,40 @@ export interface SocialState {
   messages?: { id: number; kind: string; created: string; seen: boolean; nick: string; avatar: string | null; from: string }[];
   challenges?: { id: string; kind: string; start: string; end: string; target: number; days: number; mine: boolean; members: { id: string; me: boolean; nick: string; avatar: string | null; done: number }[] }[];
   official?: { kind: string; target: number; done: number; bonus: number };
+  feed?: FeedItem[];
+}
+
+export interface FeedItem {
+  id: number;
+  me: boolean;
+  kind: string;
+  value: number;
+  created: string;
+  nick: string;
+  avatar: string | null;
+  cheers: number;
+  cheered: boolean;
+}
+
+const LEVEL_NAMES = ['Semente', 'Broto', 'Folha', 'Raiz', 'Árvore', 'Floresta', 'Oceano', 'Nefesh'];
+
+/** Texto de uma conquista do mural. */
+export function feedText(f: FeedItem) {
+  const who = f.me ? 'Chegou' : `${f.nick} chegou`;
+  switch (f.kind) {
+    case 'ritual':
+      return `🌿 ${who} aos ${f.value} dias de ritual da Spirulina!`;
+    case 'nivel':
+      return `🌱 ${f.me ? 'Subiu' : `${f.nick} subiu`} ao nível ${LEVEL_NAMES[f.value] ?? f.value}`;
+    case 'indice':
+      return f.me ? `📈 O seu Índice NEFESH subiu ${f.value} pontos` : `📈 O Índice NEFESH de ${f.nick} subiu ${f.value} pontos`;
+    case 'liga':
+      return `🏆 ${f.me ? 'Subiu' : `${f.nick} subiu`} para a liga ${LEAGUES[f.value] ?? ''}`;
+    case 'entrou':
+      return `👋 ${f.me ? 'Entrou' : `${f.nick} entrou`} na comunidade NEFESH`;
+    default:
+      return '';
+  }
 }
 
 async function call<T = Record<string, unknown>>(action: string, body: Record<string, unknown> = {}): Promise<T> {
@@ -124,6 +158,7 @@ export const addFriend = (code: string) => call<{ nick: string }>('amigo', { cod
 export const removeFriend = (id: string) => call('remover-amigo', { id });
 export const sendMessage = (to: string, kind: string) => call('mensagem', { to, kind });
 export const markSeen = () => call('lidas');
+export const cheer = (id: number) => call('aplaudir', { id });
 export const resultSeen = () => call('resultado-visto');
 export const createChallenge = (kind: string, friends: string[]) => call('desafio', { kind, friends });
 export const leaveChallenge = (id: string) => call('sair-desafio', { id });

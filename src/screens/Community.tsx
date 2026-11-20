@@ -4,14 +4,14 @@ import { useAuth } from '../domain/account';
 import { todayKey } from '../domain/dates';
 import { HABIT_POINTS, activityStreak, dayScore, levelOf, totalPoints, weekPayload, weekTotal, type Flag } from '../domain/points';
 import {
-  CHALLENGES, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
+  CHALLENGES, cheer, feedText, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
   leaveCommunity, markSeen, refresh, removeFriend, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type Member, type SocialState,
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
 
-type View = 'liga' | 'amigos' | 'desafios' | 'evolucao';
+type View = 'mural' | 'liga' | 'amigos' | 'desafios';
 
 const FLAG_ICON: Record<string, string> = { s: '🌿', a: '💧', c: '📝', m: '🍽️', t: '💪', p: '👟', n: '😴' };
 
@@ -109,6 +109,47 @@ function TodayPoints() {
           <li>🏅 Desafio da semana cumprido: +50.</li>
         </ul>
       )}
+    </section>
+  );
+}
+
+function FeedView({ st }: { st: SocialState }) {
+  const { toast } = useStore();
+  const feed = st.feed ?? [];
+  return (
+    <section className="card">
+      <h2 style={{ marginTop: 0 }}>Mural</h2>
+      {!feed.length && <p className="small mute">Ainda sem conquistas. Os 7 dias seguidos de ritual são a primeira!</p>}
+      <ul className="msgs feed">
+        {feed.map((f) => (
+          <li key={f.id}>
+            <Face nick={f.nick} avatar={f.avatar} size={34} />
+            <span style={{ flex: 1 }}>
+              {feedText(f)}
+              <small className="mute"> · {new Date(f.created).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })}</small>
+            </span>
+            {f.me ? (
+              f.cheers ? <span className="small mute">👏 {f.cheers}</span> : null
+            ) : (
+              <button
+                className={`chip cheer ${f.cheered ? 'on' : ''}`}
+                disabled={f.cheered}
+                onClick={async () => {
+                  try {
+                    await cheer(f.id);
+                    refresh();
+                  } catch (e) {
+                    toast((e as Error).message);
+                  }
+                }}
+                aria-label={`Aplaudir ${f.nick}`}
+              >
+                👏 {f.cheers || ''}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -377,7 +418,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
   const auth = useAuth();
   const { S, update, toast } = useStore();
   const { state: st, error, loading } = useSocial(20_000);
-  const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('amigo') ? 'amigos' : 'liga'));
+  const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('amigo') ? 'amigos' : 'mural'));
   const lvl = useMemo(() => levelOf(totalPoints(S)), [S]);
   const streak = useMemo(() => activityStreak(S), [S]);
   const week = useMemo(() => weekTotal(weekPayload(S)), [S]);
@@ -415,7 +456,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       </>
     );
   if (!st) return <><h1>Comunidade NEFESH</h1><p className="mute">{loading ? 'A carregar…' : ''}</p></>;
-  if (!st.joined) return <Join onJoined={() => setView('liga')} />;
+  if (!st.joined) return <Join onJoined={() => setView('mural')} />;
 
   const res = st.me?.result;
   return (
@@ -453,15 +494,15 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       <TodayPoints />
 
       <div className="seg acc-seg four" role="group" aria-label="Comunidade">
-        {([['liga', 'Liga'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}`], ['desafios', 'Desafios'], ['evolucao', 'Evolução']] as [View, string][]).map(([k, t]) => (
+        {([['mural', 'Mural'], ['liga', 'Liga'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (
           <button key={k} className={view === k ? 'on' : ''} aria-pressed={view === k} onClick={() => setView(k)}>{t}</button>
         ))}
       </div>
 
-      {view === 'liga' && <LeagueView st={st} />}
+      {view === 'mural' && <FeedView st={st} />}
+      {view === 'liga' && <><LeagueView st={st} /><EvolutionView /></>}
       {view === 'amigos' && <FriendsView st={st} />}
       {view === 'desafios' && <ChallengesView st={st} />}
-      {view === 'evolucao' && <EvolutionView />}
 
       <p style={{ textAlign: 'center' }}>
         <button

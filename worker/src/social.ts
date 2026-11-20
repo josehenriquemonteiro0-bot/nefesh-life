@@ -41,7 +41,15 @@ CREATE TABLE IF NOT EXISTS challenges (
   id TEXT PRIMARY KEY, owner TEXT NOT NULL, kind TEXT NOT NULL, start TEXT NOT NULL, created TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS challenge_members (cid TEXT NOT NULL, uid TEXT NOT NULL, PRIMARY KEY (cid, uid));
+CREATE TABLE IF NOT EXISTS feed (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT NOT NULL, kind TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS feed_created ON feed (created);
+CREATE TABLE IF NOT EXISTS cheers (fid INTEGER NOT NULL, uid TEXT NOT NULL, PRIMARY KEY (fid, uid));
 `;
+
+/** Marcos da sequência do ritual que aparecem no mural. */
+export const RITUAL_MILESTONES = [7, 14, 30, 60, 90, 180, 365];
 
 export const LEAGUES = ['Bronze', 'Prata', 'Ouro', 'Esmeralda', 'Diamante'];
 export const GROUP_SIZE = 20;
@@ -148,10 +156,10 @@ export async function upsertProfile(db: DB, id: string, b: Record<string, unknow
   }
   let code = randomCode();
   for (let i = 0; i < 5 && (await db.prepare('SELECT 1 FROM profiles WHERE code = ?').bind(code).first()); i++) code = randomCode();
-  await db
-    .prepare('INSERT INTO profiles (id, nick, avatar, code, evo, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, nick, avatar, code, evo, at, at)
-    .run();
+  await db.batch([
+    db.prepare('INSERT INTO profiles (id, nick, avatar, code, evo, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(id, nick, avatar, code, evo, at, at),
+    db.prepare('INSERT INTO feed (uid, kind, value, created) VALUES (?, ?, 0, ?)').bind(id, 'entrou', at),
+  ]);
   return ok({ code });
 }
 
@@ -164,6 +172,8 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM messages WHERE to_id = ? OR from_id = ?').bind(id, id),
     db.prepare('DELETE FROM challenge_members WHERE uid = ?').bind(id),
     db.prepare('DELETE FROM challenges WHERE owner = ?').bind(id),
+    db.prepare('DELETE FROM cheers WHERE uid = ? OR fid IN (SELECT id FROM feed WHERE uid = ?)').bind(id, id),
+    db.prepare('DELETE FROM feed WHERE uid = ?').bind(id),
   ]);
   return ok({ ok: true });
 }
@@ -231,10 +241,21 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date()): P
   };
   const idx = num(b.idx);
   const idxFirst = num(b.idxFirst) ?? idx;
+  // conquistas para o mural
+  const newStreak = Math.max(0, Math.min(3650, Math.round(Number(b.streak) || 0)));
+  const newLevel = Math.max(0, Math.min(20, Math.round(Number(b.level) || 0)));
+  const ev = (kind: string, value: number) => db.prepare('INSERT INTO feed (uid, kind, value, created) VALUES (?, ?, ?, ?)').bind(id, kind, value, at);
+  const prevStreak = Number(prof.streak) || 0;
+  const hit = RITUAL_MILESTONES.filter((m) => prevStreak < m && newStreak >= m).pop();
+  if (hit) stmts.push(ev('ritual', hit));
+  if (newLevel > (Number(prof.level) || 0)) stmts.push(ev('nivel', newLevel));
+  const prevIdx = prof.idx_now === null || prof.idx_now === undefined ? null : Number(prof.idx_now);
+  if (prof.evo && idx !== null && prevIdx !== null && idx > prevIdx) stmts.push(ev('indice', idx - prevIdx));
+  if (league > (Number(prof.league) || 0)) stmts.push(ev('liga', league));
   stmts.push(
     db
       .prepare('UPDATE profiles SET streak = ?, level = ?, idx_now = COALESCE(?, idx_now), idx_first = COALESCE(idx_first, ?), updated = ? WHERE id = ?')
-      .bind(Math.max(0, Math.min(3650, Math.round(Number(b.streak) || 0))), Math.max(0, Math.min(20, Math.round(Number(b.level) || 0))), idx, idxFirst, at, id),
+      .bind(newStreak, newLevel, idx, idxFirst, at, id),
   );
   await db.batch(stmts);
   return ok({ points, league, bonus });
@@ -280,6 +301,16 @@ export async function sendMessage(db: DB, id: string, to: unknown, kind: unknown
   const b = await db.prepare('SELECT COUNT(*) AS n FROM messages WHERE from_id = ? AND created > ?').bind(id, since).first<{ n: number }>();
   if ((b?.n ?? 0) >= 40) return fail(429, 'Chegou ao limite de mensagens de hoje.');
   await db.prepare('INSERT INTO messages (to_id, from_id, kind, created) VALUES (?, ?, ?, ?)').bind(t, id, k, now.toISOString()).run();
+  return ok({ ok: true });
+}
+
+/** Aplauso a uma conquista do mural (um por pessoa). */
+export async function cheer(db: DB, id: string, fid: unknown): Promise<Ok> {
+  const f = Math.round(Number(fid));
+  const item = await db.prepare('SELECT uid FROM feed WHERE id = ?').bind(f).first<{ uid: string }>();
+  if (!item) return fail(404, 'Esta conquista já não existe.');
+  if (item.uid === id) return fail(400, 'Não pode aplaudir as suas próprias conquistas.');
+  await db.prepare('INSERT OR IGNORE INTO cheers (fid, uid) VALUES (?, ?)').bind(f, id).run();
   return ok({ ok: true });
 }
 
@@ -398,6 +429,21 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     });
   }
 
+  // mural: conquistas dos amigos, da liga e minhas (últimos 14 dias)
+  const leagueIds = (league as { id: string }[]).map((m) => m.id);
+  const circle = [...new Set([id, ...friends.map((f) => String(f.id)), ...leagueIds])].slice(0, 200);
+  const { results: fd } = await db
+    .prepare(
+      `SELECT f.id, f.uid, f.kind, f.value, f.created, p.nick, p.avatar,
+        (SELECT COUNT(*) FROM cheers c WHERE c.fid = f.id) AS cheers,
+        (SELECT COUNT(*) FROM cheers c WHERE c.fid = f.id AND c.uid = ?) AS mine
+       FROM feed f JOIN profiles p ON p.id = f.uid
+       WHERE f.uid IN (${circle.map(() => '?').join(',')}) AND f.created > ? ORDER BY f.created DESC LIMIT 40`,
+    )
+    .bind(id, ...circle, since)
+    .all<Record<string, unknown>>();
+  const feed = fd.map((r) => ({ id: r.id, me: r.uid === id, kind: r.kind, value: r.value, created: r.created, nick: r.nick, avatar: r.avatar, cheers: Number(r.cheers) || 0, cheered: Number(r.mine) > 0 }));
+
   // desafio oficial da semana
   const okind = officialChallenge(week);
   const odef = CHALLENGE_KINDS[okind];
@@ -412,6 +458,7 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     friends,
     messages: msgs.map((m) => ({ id: m.id, kind: m.kind, created: m.created, seen: !!m.seen, nick: m.nick ?? 'Ex-membro', avatar: m.avatar, from: m.from_id })),
     challenges,
+    feed,
     official: { kind: okind, target: odef.target - 1, done: countFlag(myDays, odef.flag, week, addDays(week, 6)), bonus: CHALLENGE_BONUS },
   });
 }

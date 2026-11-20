@@ -425,3 +425,5 @@ details.more[open] summary::after{content:'−'}
 details.more .more-body{padding:0 18px 16px}
 .key-warn{background:rgba(201,168,92,.12);border:1px solid rgba(201,168,92,.4);border-radius:12px;padding:8px 10px;margin:10px 0 0}
 .card.insight{border:1px solid rgba(0,254,138,.35)}
+.chip.cheer{min-height:32px;padding:4px 10px;font-size:14px}
+.feed li{align-items:flex-start}

@@ -170,6 +170,7 @@ export default {
         'remover-amigo': () => social.removeFriend(db, uid, b.id),
         mensagem: () => social.sendMessage(db, uid, b.to, b.kind),
         lidas: () => social.markSeen(db, uid),
+        aplaudir: () => social.cheer(db, uid, b.id),
         'resultado-visto': () => social.clearResult(db, uid),
         desafio: () => social.createChallenge(db, uid, b.kind, b.friends),
         'sair-desafio': () => social.leaveChallenge(db, uid, b.id),

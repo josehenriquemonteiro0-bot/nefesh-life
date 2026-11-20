@@ -109,3 +109,23 @@ describe('desafios com a Spirulina', () => {
     expect(so.countFlag(days, 's', '2026-11-16', '2026-11-22')).toBe(2);
   });
 });
+
+describe('mural de conquistas', () => {
+  it('regista marcos do ritual, nível e Índice, e aceita aplausos de outros', async () => {
+    const db = memoryDB();
+    const a = await so.upsertProfile(db, 'ana', { nick: 'Ana' }, MON);
+    await so.upsertProfile(db, 'rui', { nick: 'Rui' }, MON);
+    await so.addFriend(db, 'rui', a.body.code, MON);
+    await so.sync(db, 'ana', { days: { '2026-11-16': { p: 50, f: 's' } }, streak: 6, level: 0, idx: 60 }, MON);
+    await so.sync(db, 'ana', { days: { '2026-11-17': { p: 50, f: 's' } }, streak: 7, level: 1, idx: 68 }, WED);
+    const feed = ((await so.state(db, 'rui', WED)).body as any).feed;
+    const kinds = feed.filter((f: any) => f.nick === 'Ana').map((f: any) => `${f.kind}:${f.value}`).sort();
+    expect(kinds).toEqual(['entrou:0', 'indice:8', 'nivel:1', 'ritual:7']);
+    const item = feed.find((f: any) => f.kind === 'ritual');
+    expect((await so.cheer(db, 'ana', item.id)).status).toBe(400);
+    await so.cheer(db, 'rui', item.id);
+    await so.cheer(db, 'rui', item.id);
+    const again = ((await so.state(db, 'rui', WED)).body as any).feed.find((f: any) => f.id === item.id);
+    expect(again).toMatchObject({ cheers: 1, cheered: true });
+  });
+});
