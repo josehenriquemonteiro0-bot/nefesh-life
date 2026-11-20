@@ -72,3 +72,19 @@ describe('pontos verificados', () => {
     expect(r2.body.points).toBeGreaterThan(r.body.points as number);
   });
 });
+
+describe('códigos de frasco por WhatsApp ou e-mail', async () => {
+  const admin = await import('./admin');
+  it('gera códigos únicos, a mensagem com o link e aceita o código sem hífenes', async () => {
+    const db = memoryDB();
+    const { codes } = await admin.generateCodes(db, 'po', 2);
+    expect(codes[0]).toMatch(/^NEF-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    const msg = admin.customerMessage('Ana', 'po', codes);
+    expect(msg).toContain(`?frasco=${codes[1]}`);
+    expect(msg).toContain('Spirulina em pó');
+    const r = await v.registerBottle(db, 'ana', codes[0].replace(/-/g, '').toLowerCase(), 'caps');
+    expect(r.body).toMatchObject({ verified: true, product: 'po' });
+    expect((await v.registerBottle(db, 'ana', 'NEF-ZZZZ-ZZZZ', 'caps')).status).toBe(404);
+    expect(admin.adminResult('k', 'po', codes, 'Ana', '+351 912 345 678', '')).toContain('wa.me/351912345678');
+  });
+});

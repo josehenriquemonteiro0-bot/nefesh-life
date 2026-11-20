@@ -23,6 +23,7 @@ import * as social from './social';
 import * as push from './push';
 import * as verify from './verify';
 import { checkSpirulinaPhoto } from './spirulinaPhoto';
+import * as admin from './admin';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -128,6 +129,20 @@ export default {
     const h = cors(env, req.headers.get('Origin'));
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
+    // página da equipa: códigos únicos de frasco (só com o segredo STATS_KEY configurado)
+    if (url.pathname === '/admin' || url.pathname === '/admin/gerar') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html('Página indisponível: falta configurar o segredo STATS_KEY.', 403);
+      if (req.method === 'POST') {
+        const f = await req.formData();
+        if (f.get('key') !== key) return html('Acesso reservado.', 403);
+        const r = await admin.generateCodes(env.DB, String(f.get('produto') ?? 'caps'), Number(f.get('quantidade')) || 1);
+        return html(admin.adminResult(key, r.product, r.codes, String(f.get('nome') ?? '').slice(0, 60), String(f.get('telefone') ?? ''), String(f.get('email') ?? '').slice(0, 120)));
+      }
+      if (url.searchParams.get('key') !== key) return html('Acesso reservado.', 403);
+      return html(admin.adminForm(key));
+    }
     if (req.method === 'GET' && url.pathname === '/stats') {
       const key = env.STATS_KEY?.trim();
       if (key && url.searchParams.get('key') !== key) return new Response('Acesso reservado.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

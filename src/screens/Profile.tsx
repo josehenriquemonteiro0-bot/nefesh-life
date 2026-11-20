@@ -14,6 +14,7 @@ import { useStore } from '../state/store';
 import { Comparison } from './Evolution';
 import { AccountCard } from '../components/Account';
 import { AvatarEdit } from '../components/Avatar';
+import { BottleCodeForm } from '../components/BottleCode';
 import { syncedLabel } from '../domain/account';
 
 /** Ativar ou desligar as notificações (lembrete da toma, amigos e liga). */
@@ -178,6 +179,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <a className="btn ghost sm" href={SHOP_URL} target="_blank" rel="noopener">Loja online</a>
           <button className="btn ghost sm" onClick={openBottle}><Icon name="qr" /> {lastLot ? 'Ver análises' : 'Ler QR do frasco'}</button>
         </div>
+        <BottleCodeForm />
       </section>
 
       <section className="card">

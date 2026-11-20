@@ -158,7 +158,9 @@ export async function bottlesOf(db: DB, uid: string) {
  * Sem código único (QR do lote), conta como declarado: no máximo um frasco a cada 15 dias.
  */
 export async function registerBottle(db: DB, uid: string, codeRaw: unknown, productRaw: unknown, now = new Date()) {
-  const code = String(codeRaw ?? '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
+  let code = String(codeRaw ?? '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
+  // aceita o código escrito sem hífenes (ex.: NEFABCD2345)
+  if (/^NEF[A-Z0-9]{8}$/.test(code)) code = `NEF-${code.slice(3, 7)}-${code.slice(7)}`;
   const product = ['caps', 'po', 'nibs'].includes(String(productRaw)) ? String(productRaw) : 'caps';
   const at = now.toISOString();
   if (code) {
@@ -169,9 +171,10 @@ export async function registerBottle(db: DB, uid: string, codeRaw: unknown, prod
         db.prepare('UPDATE bottle_codes SET used_by = ?, used_at = ? WHERE code = ?').bind(uid, at, code),
         db.prepare('INSERT INTO bottles (uid, code, product, units, verified, created) VALUES (?, ?, ?, ?, 1, ?)').bind(uid, code, unique.product, UNITS_PER_BOTTLE, at),
       ]);
-      return { status: 200, body: { ok: true, verified: true } };
+      return { status: 200, body: { ok: true, verified: true, product: unique.product } };
     }
   }
+  if (/^NEF-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) return { status: 404, body: { error: 'Código de frasco não encontrado. Confirme as letras e os números.' } };
   const since = new Date(now.getTime() - 15 * 86400000).toISOString();
   const recent = await db.prepare('SELECT COUNT(*) AS n FROM bottles WHERE uid = ? AND verified = 0 AND created > ?').bind(uid, since).first<{ n: number }>();
   if ((recent?.n ?? 0) >= 1) return { status: 200, body: { ok: true, verified: false, note: 'Frasco guardado. Frascos sem código único contam no máximo um a cada 15 dias.' } };

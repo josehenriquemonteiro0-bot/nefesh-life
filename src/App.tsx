@@ -31,6 +31,7 @@ import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { Community } from './screens/Community';
 import { AvatarImg } from './components/Avatar';
+import { savePendingCode, takePendingCode, useRedeemBottle } from './components/BottleCode';
 import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
@@ -78,6 +79,22 @@ export function App() {
     setTab('conta');
     window.scrollTo(0, 0);
   };
+  // código de frasco recebido por link (?frasco=NEF-XXXX-XXXX): regista logo, ou depois de entrar na conta
+  const redeemBottle = useRedeemBottle();
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+    const code = p.get('frasco');
+    if (code) {
+      savePendingCode(code);
+      p.delete('frasco');
+      history.replaceState(null, '', `${location.pathname}${p.toString() ? `?${p}` : ''}`);
+    }
+  }, []);
+  useEffect(() => {
+    if (!getAuth() || !S.ans) return;
+    const pending = takePendingCode();
+    if (pending) redeemBottle(pending);
+  }, [getAuth()?.token, S.ans]);
   const [healthOpen, setHealthOpen] = useState(false);
   const openHealth = () => setHealthOpen(true);
   const [reportOpen, setReportOpen] = useState(false);
