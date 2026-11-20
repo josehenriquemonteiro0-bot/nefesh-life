@@ -124,6 +124,8 @@ export interface AppState {
   trainWhere?: 'personal' | 'ginasio' | 'casa';
   /** últimas cargas usadas no ginásio, por exercício */
   gymLoads?: Record<string, string>;
+  /** histórico das cargas no ginásio, por exercício (mais antigo primeiro) */
+  gymLoadLog?: Record<string, { d: string; v: string }[]>;
   /** false quando a pessoa desliga as notificações da comunidade */
   communityPush?: boolean;
   /** tutorial guiado já visto */

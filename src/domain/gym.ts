@@ -88,3 +88,34 @@ export function setsFor(id: string, level: GymLevel, a: Answers | null | undefin
   if (!gain || level !== 'intermedio') return base;
   return base.replace(/^(\d+)/, (n) => String(Math.min(5, Number(n) + 1)));
 }
+
+/** Número da carga escrita ("25", "25 kg", "2x10 kg" → 25 / 10); null se não houver número. */
+export function loadKg(v: string): number | null {
+  const m = v.replace(',', '.').match(/(\d+(?:\.\d+)?)\s*(?:kg)?\s*$/i) ?? v.replace(',', '.').match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : null;
+}
+
+/** Junta as cargas de hoje ao histórico (uma por dia e exercício; guarda as últimas 12). */
+export function logLoads(log: Record<string, { d: string; v: string }[]> | undefined, loads: Record<string, string>, day: string) {
+  const out = { ...(log ?? {}) };
+  for (const [id, raw] of Object.entries(loads)) {
+    const v = raw.trim();
+    if (!v) continue;
+    const list = (out[id] ?? []).filter((x) => x.d !== day);
+    out[id] = [...list, { d: day, v }].slice(-12);
+  }
+  return out;
+}
+
+/** Evolução das cargas: primeira e última, por exercício com pelo menos 2 registos. */
+export function loadProgress(log: Record<string, { d: string; v: string }[]> | undefined) {
+  return Object.entries(log ?? {})
+    .filter(([id, l]) => l.length >= 2 && GYM[id])
+    .map(([id, l]) => {
+      const a = loadKg(l[0].v);
+      const b = loadKg(l[l.length - 1].v);
+      return { id, name: GYM[id].name, first: l[0], last: l[l.length - 1], times: l.length, delta: a !== null && b !== null ? Math.round((b - a) * 10) / 10 : null };
+    })
+    .sort((x, y) => (y.last.d > x.last.d ? 1 : -1));
+}
+

@@ -52,3 +52,18 @@ describe('guia de atividade física', () => {
     }
   });
 });
+
+describe('histórico do treino', () => {
+  it('lista os dias com treino e soma os minutos por semana', async () => {
+    const { workoutHistory, weeklyActivity } = await import('./training');
+    const { blankState } = await import('./sample');
+    const { keyDaysAgo } = await import('./dates');
+    const NOW = new Date('2026-11-20T12:00:00'); // sexta-feira
+    const S = blankState(NOW);
+    S.logs[keyDaysAgo(0, NOW)] = { workouts: [{ sessionId: 'x', title: 'Corrida', minutes: 30, mvpa: 30, strength: false }] };
+    S.logs[keyDaysAgo(7, NOW)] = { workouts: [{ sessionId: 'y', title: 'Ginásio', minutes: 50, mvpa: 50, strength: true }] };
+    expect(workoutHistory(S, 14, NOW).map((d) => d.day)).toEqual([keyDaysAgo(0, NOW), keyDaysAgo(7, NOW)]);
+    const w = weeklyActivity(S, 3, NOW);
+    expect(w).toEqual([{ mvpa: 0, strength: 0 }, { mvpa: 50, strength: 1 }, { mvpa: 30, strength: 0 }]);
+  });
+});

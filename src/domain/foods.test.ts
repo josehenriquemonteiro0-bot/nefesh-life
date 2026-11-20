@@ -32,3 +32,22 @@ describe('itens da foto', () => {
     expect(e).toMatchObject({ name: 'Arroz', grams: 90, kcal: 117, p: 2.5, c: 25.2, f: 0.3 });
   });
 });
+
+describe('corrigir uma entrada do diário', () => {
+  it('mudar as gramas reescala tudo e a estimativa continua estimativa', async () => {
+    const { editEntry } = await import('./foods');
+    const e = { id: 'foto-1', name: 'Arroz', grams: 100, kcal: 130, p: 2.7, c: 28, f: 0.3, est: true };
+    const g = editEntry(e, { grams: 150 });
+    expect(g).toMatchObject({ grams: 150, kcal: 195, p: 4.1, c: 42, est: true });
+  });
+  it('escrever as calorias do rótulo deixa de ser estimativa e acerta os macros', async () => {
+    const { editEntry } = await import('./foods');
+    const e = { id: 'foto-1', name: 'Panetone', grams: 500, kcal: 1850, p: 35, c: 270, f: 70, est: true };
+    const k = editEntry(e, { kcal: 1600 });
+    expect(k.kcal).toBe(1600);
+    expect(k.est).toBeUndefined();
+    expect(k.c).toBeCloseTo(233.5, 0);
+    // sem mudanças, fica igual
+    expect(editEntry(e, { grams: 500, kcal: 1850 })).toEqual(e);
+  });
+});

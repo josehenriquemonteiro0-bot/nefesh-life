@@ -7,7 +7,7 @@ import { workoutKcal } from '../domain/progress';
 import { PlanUpload } from '../components/PlanUpload';
 import { NutriPlanCard } from '../components/NutriPlan';
 import { fmtNum, keyDaysAgo, longToday, todayKey } from '../domain/dates';
-import { FOODS, MEALS, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
+import { FOODS, MEALS, editEntry, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
 import { useStore } from '../state/store';
 import { Recipes } from './Recipes';
 
@@ -24,6 +24,34 @@ function useRecent(): Food[] {
     .map(([id]) => FOODS.find((f) => f.id === id))
     .filter((f): f is Food => !!f)
     .slice(0, 8);
+}
+
+/** Corrigir uma entrada do diário: quantidade (reescala tudo) e calorias (ex.: do rótulo). */
+function EditEntry({ e, hide, onSave, onClose }: { e: FoodEntry; hide: boolean; onSave: (e: FoodEntry) => void; onClose: () => void }) {
+  const [g, setG] = useState<number | undefined>(e.grams || undefined);
+  const [kcal, setKcal] = useState<number | undefined>(e.kcal);
+  const preview = editEntry(e, { grams: g });
+  return (
+    <div className="entry-edit">
+      <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
+        <label className="hin" style={{ width: 100 }}>
+          <span>gramas</span>
+          <DecimalInput value={g} onValue={(v) => { setG(v); if (v && e.grams) setKcal(editEntry(e, { grams: v }).kcal); }} aria-label={`Gramas de ${e.name}`} />
+        </label>
+        {!hide && (
+          <label className="hin" style={{ width: 100 }}>
+            <span>kcal</span>
+            <DecimalInput value={kcal} onValue={setKcal} aria-label={`Calorias de ${e.name}`} />
+          </label>
+        )}
+      </div>
+      {!hide && <p className="small mute" style={{ margin: '6px 0 0' }}>Proteína {fmtNum(preview.p)} g · hidratos {fmtNum(preview.c)} g · gordura {fmtNum(preview.f)} g. Se souber as calorias exatas (rótulo), escreva-as.</p>}
+      <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
+        <button className="btn sm" onClick={() => onSave(editEntry(e, { grams: g, kcal: kcal !== preview.kcal ? kcal : undefined }))}>Guardar</button>
+        <button className="btn ghost sm" onClick={onClose}>Cancelar</button>
+      </div>
+    </div>
+  );
 }
 
 function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
@@ -138,8 +166,9 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
 }
 
 function Diary() {
-  const { S, todayLog: l, updateToday, update } = useStore();
+  const { S, todayLog: l, updateToday, update, toast } = useStore();
   const [adding, setAdding] = useState<MealKey | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const meals = l.meals || {};
   const all = MEALS.flatMap(([k]) => meals[k] || []);
   const t = totals(all);
@@ -205,21 +234,47 @@ function Diary() {
             {items.length > 0 && (
               <ul className="meal">
                 {items.map((e) => (
-                  <li key={e.id}>
-                    <span>
-                      <span>{e.name}{e.planRef !== undefined && <span className="plan-chip">plano</span>}</span>
-                      <span className="small mute">{e.grams ? `${fmtNum(e.grams)} g` : ''}{hide ? '' : `${e.grams ? ' · ' : ''}${e.kcal} kcal`}</span>
-                    </span>
-                    <button
-                      className="x"
-                      aria-label={`Remover ${e.name}`}
-                      onClick={() => updateToday((d) => {
-                        d.meals = { ...(d.meals || {}) };
-                        d.meals[k] = (d.meals[k] || []).filter((x) => x.id !== e.id);
-                      })}
-                    >
-                      ×
+                  <li key={e.id} className={editing === e.id ? 'editing' : ''}>
+                    {editing === e.id ? (
+                      <EditEntry
+                        e={e}
+                        hide={hide}
+                        onClose={() => setEditing(null)}
+                        onSave={(ne) => {
+                          updateToday((d) => {
+                            d.meals = { ...(d.meals || {}) };
+                            d.meals[k] = (d.meals[k] || []).map((x) => (x.id === e.id ? ne : x));
+                          });
+                          setEditing(null);
+                          toast('Corrigido.');
+                        }}
+                      />
+                    ) : (
+                    <button className="entry-btn" onClick={() => !e.auto && setEditing(e.id)} disabled={!!e.auto} aria-label={e.auto ? e.name : `Corrigir ${e.name}`}>
+                      <span>
+                        {e.name}
+                        {e.planRef !== undefined && <span className="plan-chip">plano</span>}
+                        {e.est && <span className="est-chip" title="Valores estimados: toque para corrigir">≈ estimativa</span>}
+                      </span>
+                      <span className="small mute">
+                        {e.id.startsWith('foto-') ? '📷 ' : e.coach ? '🎙️ ' : ''}
+                        {e.grams ? `${fmtNum(e.grams)} g` : ''}{hide ? '' : `${e.grams ? ' · ' : ''}${e.kcal} kcal`}
+                        {!e.auto && <span className="edit-hint"> · corrigir</span>}
+                      </span>
                     </button>
+                    )}
+                    {editing !== e.id && (
+                      <button
+                        className="x"
+                        aria-label={`Remover ${e.name}`}
+                        onClick={() => updateToday((d) => {
+                          d.meals = { ...(d.meals || {}) };
+                          d.meals[k] = (d.meals[k] || []).filter((x) => x.id !== e.id);
+                        })}
+                      >
+                        ×
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

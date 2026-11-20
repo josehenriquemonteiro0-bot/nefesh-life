@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DAYS, weekdayIndex, type WorkoutLog } from '../domain/training';
-import { GYM, gymWeek, setsFor, type GymLevel, type GymSession } from '../domain/gym';
+import { GYM, gymWeek, logLoads, setsFor, type GymLevel, type GymSession } from '../domain/gym';
+import { shortDate, todayKey } from '../domain/dates';
 import { useStore } from '../state/store';
 import { shareMoment } from '../domain/social';
 import { DecimalInput } from './DecimalInput';
@@ -23,7 +24,12 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
       d.t = Math.max(d.t ?? 0, 2);
     });
     // guarda as cargas para a próxima vez
-    update((d) => { d.gymLoads = { ...(d.gymLoads ?? {}), ...Object.fromEntries(Object.entries(loads).filter(([, v]) => v.trim())) }; });
+    const used = Object.fromEntries(Object.entries(loads).filter(([id, v]) => v.trim() && s.exercises.includes(id)));
+    update((d) => {
+      d.gymLoads = { ...(d.gymLoads ?? {}), ...used };
+      // histórico das cargas, para ver a evolução
+      d.gymLoadLog = logLoads(d.gymLoadLog, used, todayKey());
+    });
     toast(`Ginásio: ${s.title} registado (${m} min).`);
     // treino concluído aparece no mural da comunidade
     if (S.community && m >= 10) shareMoment('treino', m);
@@ -59,6 +65,11 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
                       <input value={loads[id] ?? ''} placeholder="kg" onChange={(ev) => setLoads({ ...loads, [id]: ev.target.value })} aria-label={`Carga de ${e.name}`} />
                     </label>
                   </div>
+                  {(() => {
+                    const hist = (S.gymLoadLog?.[id] ?? []).filter((x) => x.d !== todayKey());
+                    const last = hist[hist.length - 1];
+                    return last ? <p className="small neon" style={{ margin: '6px 0 0' }}>Da última vez ({shortDate(last.d)}): {last.v}{/kg/i.test(last.v) ? '' : ' kg'}</p> : null;
+                  })()}
                   <p className="small mute" style={{ margin: '6px 0 0' }}>{e.tip}</p>
                   <ExerciseHelp name={e.name} />
                 </div>

@@ -514,3 +514,14 @@ button.coach-mic.on{animation:micPulse 1.2s infinite}
 .next-action .talk-big svg{width:18px;height:18px}
 .coach-note{background:rgba(0,254,138,.08);border:1px solid rgba(0,254,138,.35);border-radius:12px;padding:8px 12px}
 .coach-warn{border:1px solid var(--warn);background:rgba(255,179,107,.08);color:var(--ink);border-radius:12px;padding:10px 12px;margin:6px 0}
+/* diário: corrigir entradas e estimativas */
+.meal .entry-btn{all:unset;display:grid;flex:1;cursor:pointer;min-width:0}
+.meal .entry-btn:disabled{cursor:default}
+.meal .entry-btn:focus-visible{outline:2px solid var(--neon);border-radius:6px}
+.meal .edit-hint{color:var(--neon);opacity:.8}
+.meal li.editing{display:block}
+.est-chip{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:6px;background:rgba(201,168,92,.15);color:var(--gold);vertical-align:middle}
+.entry-edit{padding:4px 0}
+ul.plain{list-style:none;margin:0;padding:0}
+ul.plain li{padding:6px 0;border-top:1px solid var(--line)}
+ul.plain li.row{gap:8px}

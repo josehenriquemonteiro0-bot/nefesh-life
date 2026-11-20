@@ -206,3 +206,28 @@ export function entryOf(food: Food, grams: number): FoodEntry {
 export function totals(entries: FoodEntry[]) {
   return entries.reduce((t, e) => ({ kcal: t.kcal + e.kcal, p: r1(t.p + e.p), c: r1(t.c + e.c), f: r1(t.f + e.f) }), { kcal: 0, p: 0, c: 0, f: 0 });
 }
+
+/**
+ * Correção manual de uma entrada do diário: mudar a quantidade reescala as calorias e os
+ * macros; escrever as calorias (ex.: do rótulo) passa a valer o valor escrito e deixa de
+ * ser estimativa.
+ */
+export function editEntry(e: FoodEntry, change: { grams?: number; kcal?: number }): FoodEntry {
+  let out: FoodEntry = { ...e };
+  if (change.grams !== undefined && change.grams > 0 && change.grams !== e.grams) {
+    const g = Math.round(change.grams);
+    if (e.grams > 0) {
+      const k = g / e.grams;
+      out = { ...out, grams: g, kcal: Math.round(e.kcal * k), p: r1(e.p * k), c: r1(e.c * k), f: r1(e.f * k) };
+    } else out = { ...out, grams: g };
+  }
+  if (change.kcal !== undefined && change.kcal >= 0 && Math.round(change.kcal) !== out.kcal) {
+    const kcal = Math.round(change.kcal);
+    // os macros acompanham a proporção das calorias
+    const k = out.kcal > 0 ? kcal / out.kcal : 0;
+    out = { ...out, kcal, p: r1(out.p * k), c: r1(out.c * k), f: r1(out.f * k) };
+    delete out.est;
+  }
+  return out;
+}
+

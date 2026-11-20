@@ -91,7 +91,7 @@ export function LineChart({ series, days }: { series: Series[]; days: number }) 
 }
 
 /** Colunas diárias (água, passos) relativas a uma meta. */
-export function Columns({ values, goal, variant, label }: { values: number[]; goal: number; variant?: 'steps'; label: (v: number) => string }) {
+export function Columns({ values, goal, variant, label, axis }: { values: number[]; goal: number; variant?: 'steps'; label: (v: number) => string; axis?: [string, string] }) {
   return (
     <>
       <div className="cols">
@@ -100,8 +100,8 @@ export function Columns({ values, goal, variant, label }: { values: number[]; go
         ))}
       </div>
       <div className="cols-l">
-        <span>há {values.length} dias</span>
-        <span>hoje</span>
+        <span>{axis ? axis[0] : `há ${values.length} dias`}</span>
+        <span>{axis ? axis[1] : 'hoje'}</span>
       </div>
     </>
   );

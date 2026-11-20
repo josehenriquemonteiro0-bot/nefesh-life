@@ -104,5 +104,7 @@ export function photoEntry(item: PhotoItem, grams: number): FoodEntry {
     p: r1(item.protein_g),
     c: r1(item.carbs_g),
     f: r1(item.fat_g),
+    // estimativa visual da IA: fica assinalada no diário
+    est: true,
   };
 }

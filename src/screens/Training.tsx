@@ -10,7 +10,11 @@ import { PremiumTag } from '../components/PremiumTag';
 import { ExerciseAnim } from '../components/ExerciseAnim';
 import { GymPlan } from '../components/GymPlan';
 import { TrainPlanCard } from '../components/TrainPlan';
-import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
+import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, weeklyActivity, workoutHistory, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
+import { loadProgress } from '../domain/gym';
+import { fmtNum, shortDate } from '../domain/dates';
+import { Columns } from '../components/Charts';
+import { HEALTH_WORKOUT_ID } from '../domain/healthSync';
 import { useStore } from '../state/store';
 import { shareMoment } from '../domain/social';
 
@@ -174,6 +178,62 @@ function WeekSummary() {
   );
 }
 
+/** Histórico dos treinos, minutos por semana e evolução das cargas. */
+function TrainingHistory() {
+  const { S } = useStore();
+  const [all, setAll] = useState(false);
+  const hist = workoutHistory(S, 30);
+  const weeks = weeklyActivity(S, 8);
+  const loads = loadProgress(S.gymLoadLog);
+  if (!hist.length && !loads.length) return null;
+  const shown = all ? hist : hist.slice(0, 5);
+  const avg = Math.round(weeks.slice(0, 7).reduce((t, w) => t + w.mvpa, 0) / 7);
+  return (
+    <section className="card">
+      <div className="row">
+        <h2 style={{ margin: 0 }}>Histórico e evolução</h2>
+        <PremiumTag f="treinoCompleto" />
+      </div>
+      <p className="small mute" style={{ margin: '6px 0 4px' }}>Minutos de atividade por semana (meta 150)</p>
+      <Columns values={weeks.map((w) => w.mvpa)} goal={150} label={(v) => `${v} min`} axis={['há 8 semanas', 'esta semana']} />
+      <p className="small" style={{ margin: '6px 0 0' }}>
+        Média das 7 semanas anteriores: <b>{avg} min</b> · força em <b>{weeks.slice(0, 7).reduce((t, w) => t + w.strength, 0)}</b> dias
+      </p>
+      {loads.length > 0 && (
+        <>
+          <h3 style={{ margin: '16px 0 6px' }}>Cargas no ginásio</h3>
+          <ul className="plain small">
+            {loads.slice(0, 8).map((x) => (
+              <li key={x.id} className="row">
+                <span>{x.name}</span>
+                <span className={x.delta && x.delta > 0 ? 'neon' : 'mute'}>
+                  {x.first.v} → {x.last.v}{x.delta ? ` (${x.delta > 0 ? '+' : ''}${fmtNum(x.delta)} kg)` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {hist.length > 0 && (
+        <>
+          <h3 style={{ margin: '16px 0 6px' }}>Últimos treinos</h3>
+          <ul className="plain small">
+            {shown.map((d) => (
+              <li key={d.day}>
+                <b>{shortDate(d.day)}</b>{' '}
+                <span className="mute">
+                  {d.items.map((w) => `${w.sessionId === HEALTH_WORKOUT_ID ? '⌚ ' : w.sessionId === 'coach' ? '🎙️ ' : ''}${w.title} · ${w.minutes} min`).join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {hist.length > 5 && <button className="link small inline" onClick={() => setAll(!all)}>{all ? 'Ver menos' : `Ver os ${hist.length} dias com treino`}</button>}
+        </>
+      )}
+    </section>
+  );
+}
+
 /** A importância do personal e o pedido de indicação à NEFESH. */
 function PersonalNote() {
   const { S } = useStore();
@@ -316,6 +376,8 @@ export function Training() {
           </section>
         </>
       )}
+
+      <TrainingHistory />
 
       <p className="small mute">
         Se sentir dor no peito, falta de ar fora do normal, tonturas ou dor nas articulações, pare e fale com um profissional de saúde. Se tem uma doença crónica ou está grávida, confirme o plano com o seu médico antes de começar.

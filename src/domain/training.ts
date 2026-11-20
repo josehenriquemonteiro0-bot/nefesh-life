@@ -139,3 +139,33 @@ export function weekProgress(S: AppState, now = new Date()) {
 }
 
 export const isToday = (k: string, now = new Date()) => parseKey(k).getTime() === parseKey(todayKey(now)).getTime();
+
+/** Treinos dos últimos n dias com registo, do mais recente para o mais antigo. */
+export function workoutHistory(S: AppState, n = 14, now = new Date()) {
+  const out: { day: string; items: WorkoutLog[] }[] = [];
+  for (let i = 0; i < n; i++) {
+    const k = keyDaysAgo(i, now);
+    const ws = S.logs[k]?.workouts || [];
+    if (ws.length) out.push({ day: k, items: ws });
+  }
+  return out;
+}
+
+/** Minutos de atividade (moderada a vigorosa) e dias de força por semana, das últimas n semanas (a última é a atual). */
+export function weeklyActivity(S: AppState, n = 8, now = new Date()) {
+  const today = weekdayIndex(now);
+  return Array.from({ length: n }, (_, w) => {
+    const back = n - 1 - w;
+    let mvpa = 0;
+    let strength = 0;
+    for (let d = 0; d < 7; d++) {
+      const daysAgo = today + back * 7 - d;
+      if (daysAgo < 0) continue;
+      const ws = S.logs[keyDaysAgo(daysAgo, now)]?.workouts || [];
+      mvpa += ws.reduce((t, x) => t + x.mvpa, 0);
+      if (ws.some((x) => x.strength)) strength++;
+    }
+    return { mvpa, strength };
+  });
+}
+
