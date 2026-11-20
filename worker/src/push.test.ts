@@ -84,3 +84,18 @@ describe('notificações', () => {
     expect(await db.prepare('SELECT 1 FROM stock_alerts').first()).toBeNull();
   });
 });
+
+describe('relatório semanal', () => {
+  it('avisa ao domingo às 20h, uma vez', async () => {
+    const db = memoryDB();
+    const store = kv();
+    const calls: string[] = [];
+    const fetcher = (async (u: string) => { calls.push(u); return new Response(null, { status: 201 }); }) as unknown as typeof fetch;
+    await push.subscribe(db, { endpoint: EP, remind: null, tz: 'Europe/Lisbon' }, null);
+    expect(await push.runSchedule(db, store, new Date('2026-11-22T19:50:00Z'), fetcher)).toBe(0); // domingo 19:50
+    expect(await push.runSchedule(db, store, new Date('2026-11-22T20:05:00Z'), fetcher)).toBe(1);
+    expect((await push.pendingMessage(db, { endpoint: EP })).body.title).toMatch(/relatório da semana/);
+    expect(await push.runSchedule(db, store, new Date('2026-11-22T20:20:00Z'), fetcher)).toBe(0);
+    expect(await push.runSchedule(db, store, new Date('2026-11-23T20:05:00Z'), fetcher)).toBe(0); // segunda
+  });
+});

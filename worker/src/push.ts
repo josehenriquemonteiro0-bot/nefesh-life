@@ -158,7 +158,7 @@ export function localNow(tz: string, now = new Date()) {
 
 const minutes = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
 
-/** Agendamento: aviso de reposição, lembrete da toma e aviso de fim da liga. */
+/** Agendamento: aviso de reposição, lembrete da toma, fim da liga e relatório semanal. */
 export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fetcher: typeof fetch = fetch) {
   // fotos da comunidade só ficam 24 horas
   await cleanupPhotos(db, now).catch(() => 0);
@@ -209,6 +209,17 @@ export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fet
         sent++;
       }
     }
+  }
+  // domingo às 20h: o relatório semanal está pronto (uma vez por telemóvel e por domingo)
+  for (const s of results) {
+    const t = localNow(s.tz || 'Europe/Lisbon', now);
+    const m = minutes(t.time);
+    if (t.weekday !== 0 || m < 20 * 60 || m >= 21 * 60) continue;
+    const key = `relatorio:${s.endpoint}:${t.date}`;
+    if (await db.prepare('SELECT 1 FROM notif_once WHERE key = ?').bind(key).first()) continue;
+    await db.prepare('INSERT INTO notif_once (key, created) VALUES (?, ?)').bind(key, now.toISOString()).run();
+    await sendPush(db, store, s.endpoint, { title: 'O seu relatório da semana está pronto 📊', body: 'Veja a sua consistência, o que a IA percebeu e a prioridade para a próxima semana.', tag: 'nefesh-relatorio' }, fetcher);
+    sent++;
   }
   return sent;
 }

@@ -128,7 +128,7 @@ export const TAB_TIPS: Partial<Record<Tab, string>> = {
   quiz: 'O seu plano: a dose de Spirulina explicada passo a passo, o Índice NEFESH e as metas para o seu corpo. Em "Saber mais" está a ciência.',
   nutri: 'Diário de hoje, foto do prato com IA e o plano do seu nutricionista. Em "Receitas" há ideias com Spirulina para todos os dias.',
   treino: 'Escolha onde treina: com personal, no ginásio ou em casa. Toque num treino para ver os exercícios e registá-lo no fim.',
-  evo: 'A sua evolução: como se sente com e sem ritual, o antes e depois das reavaliações, a água, os passos e o sono.',
+  evo: 'O relatório da semana (todos os domingos à noite) e a sua evolução: como se sente com e sem ritual, o antes e depois das reavaliações, a água, os passos e o sono.',
   social: 'Ganhe pontos com os hábitos (a Spirulina vale mais), suba de liga todas as semanas e incentive os amigos. Toque em "como ganho pontos?".',
   perfil: 'Aqui estão a sua conta, as notificações, os frascos e a reposição, a reavaliação e o relatório para o seu médico ou nutricionista.',
 };

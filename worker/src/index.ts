@@ -20,6 +20,7 @@ import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
 import { coachLimits, handleCoach } from './coach';
 import { handleVoice, type AiBinding } from './voice';
+import { handleReport } from './report';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
 import * as push from './push';
@@ -425,6 +426,15 @@ export default {
         return await handleVoice(body as Record<string, unknown>, env.AI, env.LIMITS, device, ip, (b, st) => json(b, st, h));
       } catch {
         return json({ error: 'Não foi possível perceber a gravação. Tente outra vez ou escreva.' }, 502, h);
+      }
+    }
+    // relatório semanal: o que a IA percebeu
+    if (path === '/relatorio') {
+      try {
+        const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+        return await handleReport(body as Record<string, unknown>, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+      } catch (err) {
+        return apiError(err, h);
       }
     }
     // AI Coach por texto

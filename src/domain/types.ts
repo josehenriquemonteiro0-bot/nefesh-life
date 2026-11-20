@@ -134,6 +134,10 @@ export interface AppState {
   voiceLang?: 'pt-PT' | 'pt-BR';
   /** o Coach lê as respostas em voz alta */
   voiceReply?: boolean;
+  /** "O que a IA percebeu" de cada relatório semanal (segunda-feira da semana → texto) */
+  reportNotes?: Record<string, string>;
+  /** último relatório semanal aberto (segunda-feira da semana) */
+  reportSeen?: string;
   /** dicas de primeira visita já fechadas, por separador */
   tipsSeen?: Record<string, boolean>;
   /** nível escolhido para os treinos sugeridos (sobrepõe-se ao da avaliação) */

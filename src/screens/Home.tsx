@@ -9,6 +9,7 @@ import { nextAction } from '../domain/nextAction';
 import { useStore } from '../state/store';
 import { useDoseToggle } from '../state/doses';
 import { requestListen } from '../domain/voice';
+import { weeklyReport } from '../domain/weekReport';
 import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
@@ -232,6 +233,25 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
             <button className="btn ghost full talk talk-big" onClick={() => { requestListen(); go('coach'); }} aria-label="Toca para falar com o Coach">
               <Icon name="mic" /> Toca para falar
             </button>
+          </section>
+        );
+      })()}
+
+      {(() => {
+        // relatório semanal pronto (domingo à noite e segunda-feira), até ser aberto
+        const now = new Date();
+        const show = (now.getDay() === 0 && now.getHours() >= 18) || now.getDay() === 1;
+        if (!show || S.sample) return null;
+        const r = weeklyReport(S, now);
+        if (r.index === null || S.reportSeen === r.week) return null;
+        return (
+          <section className="card next-action">
+            <div className="na-text">
+              <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>📊 Relatório da semana</p>
+              <h2 style={{ margin: '2px 0 2px' }}>Consistência: {r.index}/100</h2>
+              <p className="small mute" style={{ margin: 0 }}>Veja o que a IA percebeu e a sua prioridade para a próxima semana.</p>
+            </div>
+            <div className="na-actions"><button className="btn sm" onClick={() => go('evo')}>Ver</button></div>
           </section>
         );
       })()}
