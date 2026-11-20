@@ -8,6 +8,7 @@ import {
   leaveCommunity, markSeen, refresh, removeFriend, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type Member, type SocialState,
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
+import { SpirulinaCheck } from '../components/SpirulinaCheck';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
 
@@ -77,23 +78,31 @@ function Join({ onJoined }: { onJoined: () => void }) {
 }
 
 /** Pontos de hoje, por hábito. */
-function TodayPoints() {
+function TodayPoints({ st }: { st: SocialState }) {
   const { S } = useStore();
   const d = dayScore(S, todayKey());
   const [open, setOpen] = useState(false);
+  const v = st.verify;
+  const official = v ? v.points : d.points;
   return (
     <section className="card">
       <div className="row">
-        <h2 style={{ margin: 0 }}>Hoje: {d.points} pontos</h2>
-        <button className="link small inline" onClick={() => setOpen((v) => !v)}>{open ? 'fechar' : 'como ganho pontos?'}</button>
+        <h2 style={{ margin: 0 }}>Hoje: {official} pontos</h2>
+        <button className="link small inline" onClick={() => setOpen((x) => !x)}>{open ? 'fechar' : 'como ganho pontos?'}</button>
       </div>
+      {v && (
+        <p className="small mute" style={{ margin: '4px 0 0' }}>
+          ✅ {v.verified} verificados · ☑️ {v.declared} declarados (máximo 50)
+        </p>
+      )}
+      {v?.review && <p className="small key-warn">A sua conta está em verificação pela equipa NEFESH. Enquanto isso, os seus pontos não aparecem no ranking dos outros.</p>}
       {d.halved && <p className="small key-warn">🌿 Ainda sem Spirulina hoje: os outros hábitos estão a valer metade. Tome a sua dose para os pontos contarem por inteiro.</p>}
       <div className="flags">
         {HABIT_POINTS.map((h) => {
           const got = d.parts[h.flag as Flag];
           return (
             <span key={h.flag} className={`flag ${got >= h.full ? 'on' : got ? 'half' : ''}`} title={h.label}>
-              {FLAG_ICON[h.flag]} {got ? `+${got}` : h.full}
+              {FLAG_ICON[h.flag]} {got ? `+${got}` : h.full}{got ? (v?.v.includes(h.flag) ? ' ✅' : ' ☑️') : ''}
             </span>
           );
         })}
@@ -103,6 +112,8 @@ function TodayPoints() {
           {HABIT_POINTS.map((h) => (
             <li key={h.flag}>{FLAG_ICON[h.flag]} {h.label}: {h.full} pontos{h.part ? ` (${h.partLabel}: ${h.part})` : ''}</li>
           ))}
+          <li>✅ Verificados contam por inteiro: Spirulina dentro do stock dos frascos registados (e com foto nos dias de verificação), fotos do prato e dados do app Saúde ou do relógio.</li>
+          <li>☑️ Declarados (marcados à mão) contam até 50 pontos por dia no total.</li>
           <li>🌿 A Spirulina é a chave do dia: sem nenhuma toma, os outros hábitos valem metade.</li>
           <li>🔥 A sequência conta os dias seguidos com o ritual da Spirulina. Com 7 dias, +5% por dia; com 30, +10% (máximo 100 por dia). Um dia falhado por semana conta como descanso.</li>
           <li>📈 Reavaliação nesta semana: +20, mais 5 por cada ponto que o Índice NEFESH subir, ou +30 por manter um Índice de 70 ou mais.</li>
@@ -483,7 +494,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
             <h2 style={{ margin: '2px 0 0' }}>{lvl.name}</h2>
           </div>
           <div className="hero-stats">
-            <div><b>{week}</b><span>pontos na semana</span></div>
+            <div><b>{st.me?.points ?? week}</b><span>pontos na semana</span></div>
             <div><b>🔥 {streak}</b><span>dias de ritual</span></div>
           </div>
         </div>
@@ -491,7 +502,8 @@ export function Community({ openAccount }: { openAccount: () => void }) {
         <p className="small" style={{ margin: '6px 0 0', opacity: 0.85 }}>{lvl.next ? `Faltam ${lvl.toNext.toLocaleString('pt-PT')} pontos para ${lvl.next}.` : 'Chegou ao nível mais alto!'}</p>
       </section>
 
-      <TodayPoints />
+      <SpirulinaCheck />
+      <TodayPoints st={st} />
 
       <div className="seg acc-seg four" role="group" aria-label="Comunidade">
         {([['mural', 'Mural'], ['liga', 'Liga'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (

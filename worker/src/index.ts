@@ -21,6 +21,8 @@ import { handleTip } from './tips';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
 import * as push from './push';
+import * as verify from './verify';
+import { checkSpirulinaPhoto } from './spirulinaPhoto';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -73,8 +75,9 @@ const SCHEMA = {
       },
     },
     note: { type: 'string', description: 'uma frase curta para a pessoa, em português de Portugal' },
+    is_screen_photo: { type: 'boolean', description: 'true se é uma foto de um ecrã, de uma imagem impressa ou de outra fotografia (e não do prato ao vivo)' },
   },
-  required: ['is_food', 'items', 'note'],
+  required: ['is_food', 'items', 'note', 'is_screen_photo'],
   additionalProperties: false,
 } as const;
 
@@ -190,7 +193,27 @@ export default {
       const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
         estado: () => social.state(db, uid),
         perfil: () => social.upsertProfile(db, uid, b),
-        sincronizar: () => social.sync(db, uid, b as social.SyncBody),
+        sincronizar: async () => {
+          // dados do app Saúde recebidos pelo atalho contam como verificados
+          const raw = await env.LIMITS.get(`hd:${uid}`);
+          return social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {});
+        },
+        frasco: () => verify.registerBottle(db, uid, b.code, b.product),
+        'prova-spirulina': async () => {
+          const image = String(b.image ?? '');
+          if (!image || image.length > MAX_IMAGE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) return { status: 400, body: { error: 'imagem inválida' } };
+          const lim = { device: 4, ip: 40, global: 2000 };
+          const ipc = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+          if (!(await check(env.LIMITS, lim, uid, ipc, new Date(), 'v')).ok) return { status: 429, body: { error: 'Já enviou fotos suficientes hoje.' } };
+          await count(env.LIMITS, lim, uid, ipc, new Date(), 'v');
+          if (!(await verify.newPhoto(db, uid, image))) return { status: 200, body: { ok: false, note: 'Esta foto já foi usada. Tire uma foto nova da sua Spirulina.' } };
+          const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+          const mt = b.media_type === 'image/png' ? 'image/png' : b.media_type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+          const r = await checkSpirulinaPhoto(client, env.MODEL?.trim() || 'claude-opus-5-5', image, mt);
+          const accepted = r.shows_spirulina && !r.is_screen_photo;
+          if (accepted) await verify.addProof(db, uid, social.lisbonDay(), 'spirulina');
+          return { status: 200, body: { ok: accepted, note: r.is_screen_photo ? 'Parece uma foto de um ecrã ou de uma imagem. Fotografe a sua Spirulina ao vivo.' : r.note } };
+        },
         amigo: () => social.addFriend(db, uid, b.code),
         'remover-amigo': () => social.removeFriend(db, uid, b.id),
         mensagem: async () => {
@@ -327,6 +350,16 @@ export default {
       const result = JSON.parse(text.text);
       // só conta as fotos analisadas com sucesso
       const remaining = await count(env.LIMITS, limits, device, ip);
+      // prova para os pontos: foto real de comida, nunca usada antes, de alguém com conta
+      let verified = false;
+      if (env.DB && result.is_food && !result.is_screen_photo) {
+        const uid = await sessionUser(env.LIMITS as never, (body as { token?: string }).token);
+        if (uid && (await verify.newPhoto(env.DB, uid, image))) {
+          await verify.addProof(env.DB, uid, social.lisbonDay(), 'refeicao');
+          verified = true;
+        }
+      }
+      result.verified = verified;
       return json({ ...result, remaining, limit: limits.device, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens } }, 200, h);
     } catch (err) {
       return apiError(err, h);

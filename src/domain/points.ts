@@ -4,7 +4,7 @@
  */
 import { STEP_GOAL } from './content';
 import { dayKey, keyDaysAgo } from './dates';
-import { indexOf, planFor } from './plan';
+import { indexOf, planFor, slotsFor } from './plan';
 import { streak, took } from './stats';
 import type { AppState, DayLog } from './types';
 
@@ -113,12 +113,13 @@ export function evolutionPoints(S: AppState, now = new Date()) {
 export function weekPayload(S: AppState, now = new Date()) {
   const ws = weekStart(now);
   const streak = activityStreak(S, now);
-  const days: Record<string, { p: number; f: string }> = {};
+  const days: Record<string, { p: number; f: string; parts: Record<Flag, number> }> = {};
   for (let i = 0; i < 7; i++) {
     const k = keyDaysAgo(i, now);
     if (k < ws) break;
     const sc = dayScore(S, k, now);
-    if (sc.points) days[k] = { p: dayPoints(S, k, streak, now), f: sc.flags };
+    // a app envia os hábitos; os pontos oficiais são calculados no servidor, com as provas
+    if (sc.points) days[k] = { p: dayPoints(S, k, streak, now), f: sc.flags, parts: sc.parts };
   }
   const evo = evolutionPoints(S, now);
   const first = S.evals[0];
@@ -130,6 +131,7 @@ export function weekPayload(S: AppState, now = new Date()) {
     level: levelOf(totalPoints(S, now)).index,
     idx: last ? indexOf(last.sc) : undefined,
     idxFirst: first ? indexOf(first.sc) : undefined,
+    dose: S.ans ? slotsFor(S, now).reduce((t, x) => t + x.n, 0) : undefined,
   };
 }
 

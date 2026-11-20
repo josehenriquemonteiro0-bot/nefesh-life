@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { PRODUCTS, capsEquivalent, doseNutrients, lotFor, parseScan, type LotAnalysis, type ProductId, type ScanResult } from '../domain/lots';
 import { useStore } from '../state/store';
+import { getAuth } from '../domain/account';
+import { registerBottle } from '../domain/social';
 
 const POS_LABEL: Record<LotAnalysis['values'][number]['pos'], [string, string]> = {
   acima: ['Acima da referência', 'pos-up'],
@@ -135,6 +137,8 @@ export function BottleSheet({ onClose, doseGrams }: { onClose: () => void; doseG
       d.bottles = [...(d.bottles || []), { at: todayKey(), product, code: scan?.code ?? null, url: scan?.url ?? null }];
     });
     toast(`${PRODUCTS[product].name} adicionado ao stock.`);
+    // com conta, o frasco conta para a verificação dos pontos da Spirulina
+    if (getAuth()) registerBottle(scan?.code ?? null, product).catch(() => undefined);
     onClose();
   };
 

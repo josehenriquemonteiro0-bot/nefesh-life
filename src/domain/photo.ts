@@ -1,6 +1,8 @@
 import type { FoodEntry, MealKey } from './foods';
 
 /** Endereço do serviço de fotos (Cloudflare Worker). Pode ser trocado no build com VITE_PHOTO_API. */
+import { getAuth } from './account';
+
 export const PHOTO_API: string =
   (import.meta.env.VITE_PHOTO_API as string | undefined)?.trim() || 'https://nefesh-foto.josehenriquemonteiro0.workers.dev';
 
@@ -69,7 +71,8 @@ export async function analyzePhoto(image: { data: string; media_type: string }, 
     res = await fetch(PHOTO_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: image.data, media_type: image.media_type, device: deviceId(), hint }),
+      // com conta, a foto conta como prova da refeição para os pontos
+      body: JSON.stringify({ image: image.data, media_type: image.media_type, device: deviceId(), hint, token: getAuth()?.token }),
     });
   } catch {
     throw new PhotoError('Sem ligação à internet. Tente outra vez.', 0);

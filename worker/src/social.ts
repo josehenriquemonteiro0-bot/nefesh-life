@@ -6,6 +6,8 @@
  * Peso, medidas e restantes dados de saúde nunca chegam aqui.
  */
 
+import { FULL, anomaly, bottlesOf, cleanParts, isCheckDay, overStock, proofsFor, scoreDay, type Habit, type Proofs } from './verify';
+
 /** O subconjunto da API D1 que usamos (permite testar com SQLite local). */
 export interface Stmt {
   bind(...v: unknown[]): Stmt;
@@ -51,6 +53,16 @@ CREATE TABLE IF NOT EXISTS push_subs (
   done TEXT, sent TEXT, league_sent TEXT, msg TEXT, created TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS push_uid ON push_subs (uid);
+CREATE TABLE IF NOT EXISTS proofs (uid TEXT NOT NULL, date TEXT NOT NULL, kind TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 1, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS proofs_uid ON proofs (uid, date);
+CREATE TABLE IF NOT EXISTS photo_hashes (hash TEXT PRIMARY KEY, uid TEXT NOT NULL, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS bottles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT NOT NULL, code TEXT, product TEXT NOT NULL, units INTEGER NOT NULL,
+  verified INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS bottles_uid ON bottles (uid);
+CREATE TABLE IF NOT EXISTS bottle_codes (code TEXT PRIMARY KEY, product TEXT NOT NULL, used_by TEXT, used_at TEXT, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS reviews (uid TEXT PRIMARY KEY, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'aberto', created TEXT NOT NULL);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */
@@ -84,6 +96,8 @@ export const CHALLENGE_KINDS: Record<string, { flag: string; days: number; targe
 const OFFICIAL = ['ritual', 'ritual_agua', 'ritual_treino', 'ritual_checkin', 'ritual_refeicoes'] as const;
 
 type Day = { p: number; f: string };
+/** dia guardado: pontos, letras declaradas, letras verificadas, Spirulina declarada e totais */
+export type StoredDay = Day & { v?: string; ds?: number; dv?: number; dd?: number };
 type Ok = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown>): Ok => ({ status: 200, body });
 const fail = (status: number, error: string): Ok => ({ status, body: { error } });
@@ -179,6 +193,10 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM challenges WHERE owner = ?').bind(id),
     db.prepare('DELETE FROM cheers WHERE uid = ? OR fid IN (SELECT id FROM feed WHERE uid = ?)').bind(id, id),
     db.prepare('DELETE FROM feed WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM proofs WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM bottles WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM reviews WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM photo_hashes WHERE uid = ?').bind(id),
   ]);
   return ok({ ok: true });
 }
@@ -212,19 +230,51 @@ export interface SyncBody {
   idx?: unknown;
   /** Índice da primeira avaliação */
   idxFirst?: unknown;
+  /** unidades de 0,5 g por dia no plano (para o stock) */
+  dose?: unknown;
 }
 
+export type HealthDays = Record<string, { steps?: number; sleepH?: number; exMin?: number }>;
+
 /** Guarda os pontos da semana atual (a app envia os dias de segunda até hoje). */
-export async function sync(db: DB, id: string, b: SyncBody, now = new Date()): Promise<Ok> {
+export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), health: HealthDays = {}): Promise<Ok> {
   const prof = await getProfile(db, id);
   if (!prof) return fail(404, 'Entre primeiro na comunidade.');
   const today = lisbonDay(now);
   const week = weekOf(today);
-  const days = cleanDays(b.days, week, today);
+  // o servidor calcula os pontos: a app só diz o que foi feito; as provas vêm do servidor
+  const flagsIn = cleanDays(b.days, week, today);
+  const raw = (b.days && typeof b.days === 'object' ? b.days : {}) as Record<string, { parts?: unknown; f?: string }>;
+  const proofs = await proofsFor(db, id, week, today);
+  const dose = Math.max(1, Math.min(12, Math.round(Number(b.dose) || 4)));
+  const streakIn = Math.max(0, Math.min(3650, Math.round(Number(b.streak) || 0)));
+  // dias anteriores com Spirulina (para o stock)
+  const { results: hist } = await db.prepare('SELECT days FROM weeks WHERE id = ? AND week < ?').bind(id, week).all<{ days: string }>();
+  const sDates: string[] = [];
+  for (const h of hist) for (const [d, v] of Object.entries(parseDays(h.days) as Record<string, StoredDay>)) if ((v.ds ?? (v.f.includes('s') ? 1 : 0)) > 0) sDates.push(d);
+  const parts: Record<string, Record<Habit, number>> = {};
+  for (const d of Object.keys(flagsIn)) {
+    const fromFlags = Object.fromEntries((Object.keys(FULL) as Habit[]).map((k) => [k, flagsIn[d].f.includes(k) ? FULL[k] : 0]));
+    parts[d] = cleanParts(raw[d]?.parts ?? fromFlags);
+    if (parts[d].s > 0) sDates.push(d);
+  }
+  const over = overStock(sDates, dose, await bottlesOf(db, id));
+  const days: Record<string, StoredDay> = {};
+  for (const d of Object.keys(parts).sort()) {
+    const pr: Proofs = { ...(proofs.get(d) ?? { meals: 0, spirulinaPhoto: false }), ...(health[d] ?? {}) };
+    const check = await isCheckDay(id, d);
+    const sOk = !over.has(d) && (!check || pr.spirulinaPhoto);
+    const sc = scoreDay(parts[d], pr, sOk, streakIn);
+    days[d] = { p: sc.points, f: flagsIn[d].f, v: sc.v, ds: parts[d].s, dv: sc.verified, dd: sc.declared };
+  }
   const evo = Math.max(0, Math.min(EVO_CAP, Math.round(Number(b.evo) || 0)));
   const official = CHALLENGE_KINDS[officialChallenge(week)];
   const bonus = countFlag(days, official.flag, week, addDays(week, 6)) >= official.target - 1 ? CHALLENGE_BONUS : 0;
   const points = Object.values(days).reduce((t, d) => t + d.p, 0) + evo + bonus;
+  // sinais de fraude: a pessoa sai do ranking dos outros até a equipa rever
+  const repeated = [...proofs.values()].reduce((t, p) => t + p.repeated, 0);
+  const reason = anomaly(Object.values(days).map((d) => ({ declared: d.dd ?? 0, verified: d.dv ?? 0 })), repeated);
+  if (reason) await db.prepare("INSERT OR IGNORE INTO reviews (uid, reason, status, created) VALUES (?, ?, 'aberto', ?)").bind(id, reason, now.toISOString()).run();
   const at = now.toISOString();
   const row = await db.prepare('SELECT league, grp FROM weeks WHERE id = ? AND week = ?').bind(id, week).first<{ league: number; grp: number }>();
   const stmts: Stmt[] = [];
@@ -247,7 +297,7 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date()): P
   const idx = num(b.idx);
   const idxFirst = num(b.idxFirst) ?? idx;
   // conquistas para o mural
-  const newStreak = Math.max(0, Math.min(3650, Math.round(Number(b.streak) || 0)));
+  const newStreak = streakIn;
   const newLevel = Math.max(0, Math.min(20, Math.round(Number(b.level) || 0)));
   const ev = (kind: string, value: number) => db.prepare('INSERT INTO feed (uid, kind, value, created) VALUES (?, ?, ?, ?)').bind(id, kind, value, at);
   const prevStreak = Number(prof.streak) || 0;
@@ -263,7 +313,7 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date()): P
       .bind(newStreak, newLevel, idx, idxFirst, at, id),
   );
   await db.batch(stmts);
-  return ok({ points, league, bonus });
+  return ok({ points, league, bonus, review: !!reason });
 }
 
 /* ---------- amigos e mensagens ---------- */
@@ -372,9 +422,11 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     const { results } = await db
       .prepare(
         `SELECT w.id, w.points, p.nick, p.avatar, p.streak, p.level FROM weeks w JOIN profiles p ON p.id = w.id
-         WHERE w.week = ? AND w.league = ? AND w.grp = ? ORDER BY w.points DESC, w.updated ASC LIMIT 50`,
+         WHERE w.week = ? AND w.league = ? AND w.grp = ?
+           AND (w.id = ? OR w.id NOT IN (SELECT uid FROM reviews WHERE status = 'aberto'))
+         ORDER BY w.points DESC, w.updated ASC LIMIT 50`,
       )
-      .bind(week, mine.league, mine.grp)
+      .bind(week, mine.league, mine.grp, id)
       .all<Record<string, unknown>>();
     league = results.map((r, i) => ({ rank: i + 1, me: r.id === id, nick: r.nick, avatar: r.avatar, points: r.points, streak: r.streak, level: r.level, id: r.id }));
   }
@@ -454,8 +506,25 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
   const odef = CHALLENGE_KINDS[okind];
   const myDays = (await daysOf(db, [id], [week])).get(id) ?? {};
 
+  // verificação de hoje
+  const todayRow = await db.prepare('SELECT days FROM weeks WHERE id = ? AND week = ?').bind(id, week).first<{ days: string }>();
+  const td = (parseDays(todayRow?.days) as Record<string, StoredDay>)[today];
+  const tp = (await proofsFor(db, id, today, today)).get(today);
+  const review = await db.prepare("SELECT reason FROM reviews WHERE uid = ? AND status = 'aberto'").bind(id).first<{ reason: string }>();
+  const verify = {
+    points: td?.p ?? 0,
+    verified: td?.dv ?? 0,
+    declared: td?.dd ?? 0,
+    v: td?.v ?? '',
+    checkDay: await isCheckDay(id, today),
+    spirulinaPhoto: !!tp?.spirulinaPhoto,
+    meals: tp?.meals ?? 0,
+    review: !!review,
+  };
+
   return ok({
     joined: true,
+    verify,
     me: { nick: me.nick, avatar: me.avatar, code: me.code, league: me.league, evo: !!me.evo, streak: me.streak, level: me.level, points: mine?.points ?? 0, result: me.result ? JSON.parse(String(me.result)) : null },
     week,
     leagueName: LEAGUES[Number(mine?.league ?? me.league) || 0],

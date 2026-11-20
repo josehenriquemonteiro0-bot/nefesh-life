@@ -58,6 +58,8 @@ export interface SocialState {
   challenges?: { id: string; kind: string; start: string; end: string; target: number; days: number; mine: boolean; members: { id: string; me: boolean; nick: string; avatar: string | null; done: number }[] }[];
   official?: { kind: string; target: number; done: number; bonus: number };
   feed?: FeedItem[];
+  /** pontos de hoje calculados pelo servidor, com as provas */
+  verify?: { points: number; verified: number; declared: number; v: string; checkDay: boolean; spirulinaPhoto: boolean; meals: number; review: boolean };
 }
 
 export interface FeedItem {
@@ -159,6 +161,8 @@ export const removeFriend = (id: string) => call('remover-amigo', { id });
 export const sendMessage = (to: string, kind: string) => call('mensagem', { to, kind });
 export const markSeen = () => call('lidas');
 export const cheer = (id: number) => call('aplaudir', { id });
+export const registerBottle = (code: string | null, product: string) => call<{ ok: boolean; verified: boolean; note?: string }>('frasco', { code, product });
+export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });
 export const resultSeen = () => call('resultado-visto');
 export const createChallenge = (kind: string, friends: string[]) => call('desafio', { kind, friends });
 export const leaveChallenge = (id: string) => call('sair-desafio', { id });

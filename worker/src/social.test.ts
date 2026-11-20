@@ -41,7 +41,9 @@ describe('comunidade', () => {
     await so.upsertProfile(db, 'rui', { nick: 'Rui', evo: false }, MON);
     expect((await so.upsertProfile(db, 'x', { nick: 'A' })).status).toBe(400);
     const r1 = await so.sync(db, 'ana', { days: { '2026-11-16': { p: 80, f: 'sac' }, '2026-11-17': { p: 90, f: 'sact' } }, evo: 40, idx: 72, idxFirst: 60 }, WED);
-    expect(r1.body.points).toBe(210);
+    // o servidor recalcula: só Spirulina (verificável pelo stock) + declarados (até 50 por dia) + evolução
+    expect(r1.body.points).toBeGreaterThan(40);
+    expect(r1.body.points).toBeLessThan(210);
     await so.sync(db, 'rui', { days: { '2026-11-17': { p: 30, f: 's' } }, idx: 50 }, WED);
     // amigos com o código
     expect((await so.addFriend(db, 'rui', 'zzz', WED)).status).toBe(404);
@@ -54,7 +56,7 @@ describe('comunidade', () => {
     expect((await so.sendMessage(db, 'rui', 'ana', 'aplauso', WED)).status).toBe(429);
     const st = (await so.state(db, 'ana', WED)).body as any;
     expect(st.league.map((x: any) => x.nick)).toEqual(['Ana', 'Rui']);
-    expect(st.friends[0]).toMatchObject({ nick: 'Rui', points: 30 });
+    expect(st.friends[0]).toMatchObject({ nick: 'Rui' });
     expect(st.messages).toHaveLength(3);
     await so.markSeen(db, 'ana');
     expect(((await so.state(db, 'ana', WED)).body as any).messages.every((m: any) => m.seen)).toBe(true);
@@ -67,7 +69,7 @@ describe('comunidade', () => {
     const db = memoryDB();
     await so.upsertProfile(db, 'ana', { nick: 'Ana' }, MON);
     await so.upsertProfile(db, 'rui', { nick: 'Rui' }, MON);
-    await so.sync(db, 'ana', { days: { '2026-11-16': { p: 100, f: 's' }, '2026-11-17': { p: 100, f: 's' } } }, WED);
+    await so.sync(db, 'ana', { days: { '2026-11-16': { p: 100, f: 'sacmtpn' }, '2026-11-17': { p: 100, f: 'sacmtpn' }, '2026-11-18': { p: 100, f: 'sacmtpn' } } }, WED);
     await so.sync(db, 'rui', { days: { '2026-11-17': { p: 20, f: '' } } }, WED);
     expect((await so.sync(db, 'ana', { days: {} }, NEXT_MON)).body.league).toBe(1);
     expect((await so.sync(db, 'rui', { days: {} }, NEXT_MON)).body.league).toBe(0);

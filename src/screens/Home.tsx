@@ -10,6 +10,7 @@ import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
 import { pushRitualDone } from '../domain/push';
+import { SpirulinaCheck } from '../components/SpirulinaCheck';
 import { activityStreak, dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
 import { mealForSlot, nextReassessment, spirulinaEntry, spirulinaInsight, weeklySummary } from '../domain/progress';
@@ -77,7 +78,7 @@ function StatusStrip({ go }: { go: Nav }) {
   const auth = useAuth();
   const joined = !!auth && !!S.community;
   const { state: st } = useSocial(joined ? 120_000 : Infinity);
-  const pts = dayScore(S, todayKey()).points;
+  const pts = st?.verify ? st.verify.points : dayScore(S, todayKey()).points;
   const streakN = useMemo(() => activityStreak(S), [S]);
   const me = st?.league?.find((m) => m.me);
   const unread = unreadCount(st);
@@ -262,6 +263,8 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </div>
         {inAdaptation(S) && <p className="small" style={{ margin: '12px 0 0', opacity: 0.85 }}>Semana de adaptação: está a tomar metade da dose.</p>}
       </section>
+
+      <SpirulinaCheck />
 
       {low && (
         <section className="card">
