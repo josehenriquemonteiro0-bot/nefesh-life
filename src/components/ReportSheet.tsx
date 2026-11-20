@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { report } from '../domain/stats';
 import { whatsappLink } from '../domain/content';
+import { PremiumTag } from './PremiumTag';
 import { useStore } from '../state/store';
 
 export function ReportSheet({ onClose }: { onClose: () => void }) {
@@ -32,7 +33,7 @@ export function ReportSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal show" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label="Relatório para o profissional">
-        <h2>Relatório para o profissional</h2>
+        <div className="row"><h2 style={{ margin: 0 }}>Relatório para o profissional</h2><PremiumTag f="relatorioCompleto" /></div>
         <p className="small mute">Só é partilhado com quem escolher.</p>
         <pre>{text}</pre>
         <div className="row">

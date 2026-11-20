@@ -4,6 +4,7 @@ import { DecimalInput } from '../components/DecimalInput';
 import { PhotoMealCard } from '../components/PhotoMeal';
 import { targetsFor } from '../domain/body';
 import { PlanUpload } from '../components/PlanUpload';
+import { NutriPlanCard } from '../components/NutriPlan';
 import { fmtNum, keyDaysAgo, longToday } from '../domain/dates';
 import { FOODS, MEALS, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
 import { useStore } from '../state/store';
@@ -186,6 +187,7 @@ function Diary() {
       </section>
 
       <PlanUpload kind="nutri" />
+      <NutriPlanCard />
 
       <PhotoMealCard />
 

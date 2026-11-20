@@ -92,6 +92,10 @@ export interface AppState {
   photoCode?: string;
   /** metas definidas pelo nutricionista, que substituem as da app */
   nutriPro?: { kcal?: number; protein?: number; by: string; at: string } | null;
+  /** assinatura Premium (para o lançamento; na fase de testes está tudo aberto) */
+  premium?: boolean;
+  /** plano do nutricionista lido pela IA */
+  nutriPlan?: (import('./planRead').ParsedPlan & { at: string; name: string }) | null;
   /** a pessoa prefere não ver calorias */
   hideCalories?: boolean;
   /** planos carregados pela pessoa (o ficheiro fica no IndexedDB) */

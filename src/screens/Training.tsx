@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon';
 import { GOAL_LABEL } from '../domain/content';
 import { BODY_GOAL_LABEL } from '../domain/body';
 import { PlanUpload } from '../components/PlanUpload';
+import { PremiumTag } from '../components/PremiumTag';
 import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
 import { useStore } from '../state/store';
 
@@ -148,7 +149,7 @@ export function Training() {
 
   return (
     <>
-      <h1>Treino</h1>
+      <div className="row"><h1>Treino</h1><PremiumTag f="treinoObjetivo" /></div>
       <p className="mute small" style={{ marginTop: 0 }}>
         Plano {LEVEL_LABEL[level].toLowerCase()} · {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · exercícios em casa, sem material
       </p>

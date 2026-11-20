@@ -34,8 +34,9 @@ export const cleanDeviceId = (id: unknown) => {
 
 const TTL = 60 * 60 * 48;
 
-function keys(device: string, ip: string, day: string) {
-  return { d: `d:${day}:${device}`, i: `i:${day}:${ip}`, g: `g:${day}` };
+/** `scope` separa contadores de serviços diferentes (fotos: '', planos: 'p'). */
+function keys(device: string, ip: string, day: string, scope = '') {
+  return { d: `${scope}d:${day}:${device}`, i: `${scope}i:${day}:${ip}`, g: `${scope}g:${day}` };
 }
 
 async function read(store: CounterStore, k: string) {
@@ -43,8 +44,8 @@ async function read(store: CounterStore, k: string) {
 }
 
 /** Verifica se ainda há fotos disponíveis hoje (não conta). */
-export async function check(store: CounterStore, limits: Limits, device: string, ip: string, now = new Date()): Promise<LimitCheck> {
-  const k = keys(device, ip, dayKey(now));
+export async function check(store: CounterStore, limits: Limits, device: string, ip: string, now = new Date(), scope = ''): Promise<LimitCheck> {
+  const k = keys(device, ip, dayKey(now), scope);
   const [d, i, g] = await Promise.all([read(store, k.d), read(store, k.i), read(store, k.g)]);
   const remaining = Math.max(0, limits.device - d);
   if (d >= limits.device) return { ok: false, remaining, reason: 'device' };
@@ -54,8 +55,8 @@ export async function check(store: CounterStore, limits: Limits, device: string,
 }
 
 /** Conta uma foto analisada com sucesso. Devolve quantas restam ao telemóvel. */
-export async function count(store: CounterStore, limits: Limits, device: string, ip: string, now = new Date()): Promise<number> {
-  const k = keys(device, ip, dayKey(now));
+export async function count(store: CounterStore, limits: Limits, device: string, ip: string, now = new Date(), scope = ''): Promise<number> {
+  const k = keys(device, ip, dayKey(now), scope);
   const [d, i, g] = await Promise.all([read(store, k.d), read(store, k.i), read(store, k.g)]);
   await Promise.all([
     store.put(k.d, String(d + 1), { expirationTtl: TTL }),

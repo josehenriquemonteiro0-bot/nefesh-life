@@ -15,6 +15,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { LIMIT_MESSAGES, check, cleanDeviceId, count, type Limits } from './limits';
+import { handlePlan, type PlanBody } from './plan';
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -91,6 +92,15 @@ function json(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
+function apiError(err: unknown, h: Record<string, string>) {
+  if (err instanceof Anthropic.AuthenticationError) return json({ error: 'chave da Anthropic inválida no servidor' }, 500, h);
+  if (err instanceof Anthropic.RateLimitError) return json({ error: 'Muitos pedidos. Tente daqui a um minuto.' }, 429, h);
+  if (err instanceof Anthropic.BadRequestError) return json({ error: 'O ficheiro não pôde ser lido.' }, 400, h);
+  if (err instanceof Anthropic.APIError) return json({ error: `serviço indisponível (${err.status})` }, 502, h);
+  if (err instanceof SyntaxError) return json({ error: 'resposta inválida' }, 502, h);
+  return json({ error: 'erro inesperado' }, 500, h);
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const h = cors(env, req.headers.get('Origin'));
@@ -98,7 +108,7 @@ export default {
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
 
-    let body: { image?: string; media_type?: string; device?: string; hint?: string };
+    let body: { image?: string; media_type?: string; device?: string; hint?: string } & PlanBody;
     try {
       body = await req.json();
     } catch {
@@ -106,6 +116,17 @@ export default {
     }
     const device = cleanDeviceId(body.device);
     const ip = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+
+    // leitura do plano alimentar do nutricionista
+    if (new URL(req.url).pathname === '/plano') {
+      try {
+        const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+        return await handlePlan(body, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+      } catch (err) {
+        return apiError(err, h);
+      }
+    }
+
     const limits = limitsOf(env);
     const allowed = await check(env.LIMITS, limits, device, ip);
     if (!allowed.ok) return json({ error: LIMIT_MESSAGES[allowed.reason!], remaining: 0, limit: limits.device }, 429, h);
@@ -147,12 +168,7 @@ export default {
       const remaining = await count(env.LIMITS, limits, device, ip);
       return json({ ...result, remaining, limit: limits.device, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens } }, 200, h);
     } catch (err) {
-      if (err instanceof Anthropic.AuthenticationError) return json({ error: 'chave da Anthropic inválida no servidor' }, 500, h);
-      if (err instanceof Anthropic.RateLimitError) return json({ error: 'Muitos pedidos. Tente daqui a um minuto.' }, 429, h);
-      if (err instanceof Anthropic.BadRequestError) return json({ error: 'A imagem não pôde ser lida.' }, 400, h);
-      if (err instanceof Anthropic.APIError) return json({ error: `serviço indisponível (${err.status})` }, 502, h);
-      if (err instanceof SyntaxError) return json({ error: 'resposta inválida' }, 502, h);
-      return json({ error: 'erro inesperado' }, 500, h);
+      return apiError(err, h);
     }
   },
 };

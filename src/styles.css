@@ -257,3 +257,9 @@ header{padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
 .plan-up .btn svg{width:18px;height:18px}
 .plan-img{width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-top:10px;display:block;cursor:pointer}
 .target.pro{border-color:#5a3d8a;background:#1c1530}
+/* premium e plano lido */
+.premium-tag{display:inline-block;vertical-align:middle;font:700 10.5px/1 Manrope,sans-serif;letter-spacing:.02em;padding:4px 8px;border-radius:999px;background:linear-gradient(135deg,#e6cf8f,var(--gold));color:#1a1406;white-space:nowrap}
+.planmeals{display:grid;gap:8px}
+.planmeal{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.planopt{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.planopt ul{margin:0 0 10px;padding-left:18px}

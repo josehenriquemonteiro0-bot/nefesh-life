@@ -5,6 +5,7 @@ import { PHOTO_API, type PhotoError, analyzePhoto, compressImage, mealForHour, p
 import { useStore } from '../state/store';
 import { DecimalInput } from './DecimalInput';
 import { Icon } from './Icon';
+import { PremiumTag } from './PremiumTag';
 
 const CONF: Record<string, string> = { alta: 'pos-up', media: 'pos-ok', baixa: 'pos-low' };
 
@@ -167,7 +168,7 @@ export function PhotoMealCard() {
       <button className="card photo-cta" onClick={() => setOpen(true)}>
         <Icon name="recipes" />
         <span>
-          <b>Fotografar o prato</b>
+          <b>Fotografar o prato <PremiumTag f="fotoPrato" /></b>
           <span className="small mute">Calorias e macros estimadas a partir de uma foto · até 15 por dia</span>
         </span>
       </button>
