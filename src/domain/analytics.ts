@@ -11,6 +11,7 @@ import { PHOTO_API, deviceId } from './photo';
 import { adherence, took } from './stats';
 import type { AppState } from './types';
 import { isPremium, type Feature } from './features';
+import { rdSummary } from './consents';
 
 const SENT_KEY = 'nefesh-life-ping';
 const USES_KEY = 'nefesh-life-usos-premium';
@@ -63,6 +64,8 @@ export interface Ping {
   prior?: 'nunca' | 'as-vezes' | 'regular' | 'sem resposta';
   /** aderência à Spirulina nos últimos 14 dias (%) */
   adh14?: number;
+  /** médias para investigação: só com o consentimento de I&D */
+  rd?: ReturnType<typeof rdSummary>;
 }
 
 export function buildPing(S: AppState, device: string, now = new Date(), env: { installed: boolean; platform: Ping['platform'] } = { installed: false, platform: 'outro' }): Ping {
@@ -89,6 +92,7 @@ export function buildPing(S: AppState, device: string, now = new Date(), env: { 
     premium: isPremium(S),
     prior: (['nunca', 'as-vezes', 'regular'] as const).find((x) => x === S.ans?.prior) ?? 'sem resposta',
     adh14: S.ans ? adherence(S, 14, now) : 0,
+    rd: rdSummary(S, now),
   };
 }
 
@@ -104,7 +108,7 @@ export async function sendDailyPing(S: AppState) {
   try {
     if (S.stats === false || S.sample) return;
     // uma vez por dia, e de novo no dia em que a pessoa conclui a primeira avaliação
-    const mark = `${todayKey()}:${S.ans ? 1 : 0}`;
+    const mark = `${todayKey()}:${S.ans ? 1 : 0}:${S.consents?.rd?.on ? 1 : 0}`;
     if (localStorage.getItem(SENT_KEY) === mark) return;
     localStorage.setItem(SENT_KEY, mark);
     await fetch(`${PHOTO_API}/evento`, {

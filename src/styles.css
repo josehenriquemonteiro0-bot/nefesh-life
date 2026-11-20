@@ -540,3 +540,11 @@ ul.plain li.row{gap:8px}
 .coupons{display:grid;gap:10px}
 .coupon-code{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font:700 20px/1.2 Sora,monospace;letter-spacing:.06em;color:var(--gold);padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.25)}
 .coupon-code span{font:600 11px system-ui;letter-spacing:0;color:var(--mute)}
+/* consentimentos */
+.consent-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.consent-row input{margin-top:3px;flex:none;width:18px;height:18px;accent-color:var(--neon)}
+.consent-row.disabled{opacity:.6}
+.consent-state{flex:none;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:12px;background:var(--neon);color:#00140d;margin-top:2px}
+.mydata{width:100%;border-collapse:collapse}
+.mydata td{padding:6px 4px;border-top:1px solid var(--line);vertical-align:top}
+.mydata td:first-child{color:var(--mute);width:42%}

@@ -77,7 +77,25 @@ export function adminForm(key: string) {
 <h2 style="margin-top:0">Prémios NEFESH15</h2>
 <p class="m">Vencedores do ranking semanal, os códigos de cupão e o e-mail para os enviar.</p>
 <button>Ver prémios</button>
+</form>
+<form method="post" action="/admin/marketing" class="card">
+<input type="hidden" name="key" value="${esc(key)}">
+<h2 style="margin-top:0">Contactos de marketing</h2>
+<p class="m">Só as pessoas que aceitaram receber comunicações da NEFESH, com a data da autorização.</p>
+<button>Ver contactos</button>
 </form>`);
+}
+
+/** Contactos que aceitaram marketing (RGPD/LGPD: só estes podem receber comunicações). */
+export function marketingPage(key: string, rows: { email: string; at: string }[]) {
+  const csv = ['email,autorizado_em', ...rows.map((r) => `${r.email},${r.at.slice(0, 10)}`)].join('\n');
+  return page(`<h1>Contactos de marketing</h1>
+<div class="card"><p style="margin:0"><b>${rows.length}</b> ${rows.length === 1 ? 'pessoa aceitou' : 'pessoas aceitaram'} receber comunicações da NEFESH.</p>
+<p class="m" style="margin:8px 0 0">Use só para comunicações de marketing. Quem retirar a autorização na app sai desta lista na hora. Inclua sempre a forma de deixar de receber.</p></div>
+<div class="card"><textarea id="csv" readonly>${esc(csv)}</textarea>
+<button class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('csv').value).then(()=>this.textContent='Copiado ✓')">Copiar</button>
+<a class="btn" download="nefesh-marketing.csv" href="data:text/csv;charset=utf-8,${encodeURIComponent(csv)}">Descarregar CSV</a></div>
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }
 
 export interface CouponRow { code: string; week: string; rank: number; points: number; status: string; expires: string; sent_at: string | null; used_at: string | null; nick: string | null; email: string | null }

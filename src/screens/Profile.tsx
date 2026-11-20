@@ -18,6 +18,7 @@ import { AvatarEdit } from '../components/Avatar';
 import { BottleCodeForm } from '../components/BottleCode';
 import { syncedLabel } from '../domain/account';
 import { Benefits } from '../components/Prize';
+import { PrivacyCard } from '../components/PrivacyCard';
 
 /** Ativar ou desligar as notificações (lembrete da toma, amigos e liga). */
 function PushToggle() {
@@ -237,18 +238,9 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         <PushToggle />
       </section>
 
-      <section className="card">
-        <h2>Estatísticas anónimas</h2>
-        <label className="check">
-          <input type="checkbox" checked={S.stats !== false} onChange={(e) => update((d) => { d.stats = e.target.checked; })} />
-          <span className="small">Ajudar a melhorar a NEFESH Life com contagens anónimas de utilização.</span>
-        </label>
-        <p className="small mute" style={{ margin: '8px 0 0' }}>
-          Sem cookies, sem nome, sem e-mail e sem dados de saúde: só contamos, uma vez por dia, que partes da app foram usadas.
-        </p>
-      </section>
+      <PrivacyCard />
 
-      <DataCard />
+      <DataCard startQuiz={startQuiz} />
 
       <p style={{ textAlign: 'center' }}>
         <button className="skip" onClick={openTour}>Ver o tutorial da app</button>

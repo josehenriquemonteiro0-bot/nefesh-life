@@ -84,3 +84,26 @@ describe('app Saúde pelo atalho do iPhone', async () => {
     expect(s.data.size).toBe(0);
   });
 });
+
+describe('consentimentos', async () => {
+  const { setConsents } = await import('./account');
+  it('guarda cada escolha com a data; o e-mail só com marketing e só o da própria conta', async () => {
+    const s = memory();
+    const r = await register(s, 'ana@exemplo.pt', 'segredo123');
+    await register(s, 'rui@exemplo.pt', 'segredo123');
+    const t = r.body.token as string;
+    const a = await setConsents(s, t, { rd: true, marketing: false }, new Date('2026-11-20T10:00:00Z'));
+    expect(a.status).toBe(200);
+    const key = [...s.data.keys()].find((k) => k.startsWith('cs:'))!;
+    expect(JSON.parse(s.data.get(key)!)).toEqual({ rd: { on: true, at: '2026-11-20T10:00:00.000Z' }, marketing: { on: false, at: '2026-11-20T10:00:00.000Z' } });
+    expect((await setConsents(s, t, { rd: true, marketing: true, email: 'rui@exemplo.pt' })).status).toBe(400); // e-mail de outra conta
+    await setConsents(s, t, { rd: true, marketing: true, email: 'ana@exemplo.pt' }, new Date('2026-11-21T10:00:00Z'));
+    const c = JSON.parse(s.data.get(key)!);
+    expect(c.email).toBe('ana@exemplo.pt');
+    expect(c.rd.at).toBe('2026-11-20T10:00:00.000Z'); // não mudou: mantém a data
+    expect(c.marketing.at).toBe('2026-11-21T10:00:00.000Z');
+    await setConsents(s, t, { rd: false, marketing: false });
+    expect(JSON.parse(s.data.get(key)!).email).toBeUndefined();
+    expect((await setConsents(s, 'x'.repeat(64), { rd: true })).status).toBe(401);
+  });
+});

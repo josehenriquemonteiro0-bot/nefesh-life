@@ -174,9 +174,42 @@ export async function deleteAccount(store: AccountStore, token: unknown, emailRa
     store.delete(`s:${String(token)}`),
     store.delete(`hd:${u.id}`),
     store.delete(`hk:${u.id}`),
+    store.delete(`cs:${u.id}`),
     ...(hk ? [store.delete(`h:${hk}`)] : []),
   ]);
   return { status: 200, body: { ok: true } };
+}
+
+/* ---------- consentimentos (RGPD / LGPD) ---------- */
+
+export interface ConsentRecord {
+  /** e-mail da conta: só guardado com o consentimento de marketing */
+  email?: string;
+  rd: { on: boolean; at: string };
+  marketing: { on: boolean; at: string };
+}
+
+/**
+ * Guarda as escolhas de consentimento da conta (com a data de cada uma, para prova).
+ * O e-mail só fica guardado aqui se a pessoa aceitar comunicações de marketing.
+ */
+export async function setConsents(store: AccountStore, token: unknown, b: Record<string, unknown>, now = new Date()): Promise<Result> {
+  const id = await sessionUser(store, token);
+  if (!id) return err(401, 'A sessão terminou. Entre outra vez.');
+  const prev = JSON.parse((await store.get(`cs:${id}`)) ?? 'null') as ConsentRecord | null;
+  const at = now.toISOString();
+  const pick = (k: 'rd' | 'marketing') => {
+    const on = b[k] === true;
+    return prev && prev[k].on === on ? prev[k] : { on, at };
+  };
+  const rec: ConsentRecord = { rd: pick('rd'), marketing: pick('marketing') };
+  if (rec.marketing.on) {
+    const email = cleanEmail(b.email);
+    if (!validEmail(email) || (await userIdForEmail(store, email)) !== id) return err(400, 'E-mail da conta inválido.');
+    rec.email = email;
+  }
+  await store.put(`cs:${id}`, JSON.stringify(rec));
+  return { status: 200, body: { ok: true, rd: rec.rd, marketing: rec.marketing } };
 }
 
 /* ---------- app Saúde (Apple Watch e relógios que escrevem no app Saúde) ---------- */

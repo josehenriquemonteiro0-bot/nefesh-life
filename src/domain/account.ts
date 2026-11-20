@@ -160,6 +160,13 @@ export async function healthDays(): Promise<Record<string, import('./healthSync'
   return (await call<{ days: Record<string, import('./healthSync').HealthDay> }>('saude-dados', { token: a.token })).days;
 }
 
+/** Envia as escolhas de consentimento para a conta (com o e-mail só se aceitar marketing). */
+export async function saveConsents(c: { rd: boolean; marketing: boolean }) {
+  const a = getAuth();
+  if (!a) return;
+  await call('consentimentos', { token: a.token, email: a.email, rd: c.rd, marketing: c.marketing });
+}
+
 /** Hora curta para "sincronizado às". */
 export const syncedLabel = (iso?: string) =>
   iso ? new Date(iso).toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'ainda não';

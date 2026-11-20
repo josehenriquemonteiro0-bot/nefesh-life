@@ -29,7 +29,7 @@ import { PrintReport } from './components/PrintReport';
 import { bodySnapshot } from './domain/progress';
 import { sendDailyPing } from './domain/analytics';
 import { AccountScreen, ConflictSheet } from './components/Account';
-import { getAuth, logout } from './domain/account';
+import { getAuth, logout, saveConsents } from './domain/account';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { saveInviteFromUrl } from './domain/social';
@@ -151,6 +151,25 @@ export function App() {
   useEffect(() => {
     if (S.notifications && S.ans && pushSupported()) updatePush(S.reminder);
   }, [authToken, S.notifications]);
+  // consentimentos: as escolhas vão para a conta (marketing com o e-mail; I&D para prova)
+  const consentMark = `${authToken ?? ''}|${S.consents?.rd?.on ? 1 : 0}|${S.consents?.marketing?.on ? 1 : 0}`;
+  useEffect(() => {
+    if (!authToken || !S.consents) return;
+    try {
+      if (localStorage.getItem('nefesh-life-consentimentos') === consentMark) return;
+    } catch {
+      /* sem armazenamento */
+    }
+    saveConsents({ rd: !!S.consents.rd?.on, marketing: !!S.consents.marketing?.on })
+      .then(() => {
+        try {
+          localStorage.setItem('nefesh-life-consentimentos', consentMark);
+        } catch {
+          /* sem armazenamento */
+        }
+      })
+      .catch(() => undefined);
+  }, [consentMark]);
   // reposição: o servidor avisa 7 dias antes da data prevista para acabar a Spirulina
   const stockEnds = S.ans && S.stockCaps > 0 ? stock(S).ends : null;
   useEffect(() => {

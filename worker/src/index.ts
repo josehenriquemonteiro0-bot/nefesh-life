@@ -32,7 +32,7 @@ import * as admin from './admin';
 import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
-import { deleteAccount, getData, sessionUser, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
+import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 import { originAllowed } from './origin';
 export { originAllowed };
 
@@ -167,6 +167,24 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
     // página da equipa: códigos únicos de frasco (só com o segredo STATS_KEY configurado)
+    if (url.pathname === '/admin/marketing' && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const f = await req.formData();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      const rows: { email: string; at: string }[] = [];
+      let cursor: string | undefined;
+      for (let i = 0; i < 20; i++) {
+        const r = await env.LIMITS.list({ prefix: 'cs:', cursor, limit: 1000 });
+        for (const k of r.keys) {
+          const c = JSON.parse((await env.LIMITS.get(k.name)) ?? 'null') as { email?: string; marketing?: { on: boolean; at: string } } | null;
+          if (c?.marketing?.on && c.email) rows.push({ email: c.email, at: c.marketing.at });
+        }
+        if (r.list_complete) break;
+        cursor = r.cursor;
+      }
+      return html(admin.marketingPage(key, rows.sort((a, b) => b.at.localeCompare(a.at))));
+    }
     if ((url.pathname === '/admin/premios' || url.pathname === '/admin/premio') && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
       const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
@@ -441,6 +459,7 @@ export default {
       if (action === 'guardar') return send(await saveData(store, b.token, b.data, b.updatedAt));
       if (action === 'saude-chave') return send(await healthKey(store, b.token, b.nova === true));
       if (action === 'saude-dados') return send(await healthPull(store, b.token));
+      if (action === 'consentimentos') return send(await setConsents(store, b.token, b));
       if (action === 'apagar') {
         const uid = await sessionUser(store, b.token);
         const r = await deleteAccount(store, b.token, b.email, b.password);

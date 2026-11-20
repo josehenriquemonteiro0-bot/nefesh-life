@@ -39,6 +39,8 @@ export function cleanPing(b: Record<string, unknown>) {
     // aderência à Spirulina: antes da app (resposta do quiz) e nos últimos 14 dias
     prior: pick(b.prior, ['nunca', 'as-vezes', 'regular', 'sem resposta'] as const, 'sem resposta'),
     adh14: int(b.adh14, 100),
+    // dados para investigação e desenvolvimento: só chegam de quem autorizou na app
+    rd: cleanRd(b.rd),
     // usos de funcionalidades Premium (só chaves conhecidas)
     premiumUses: Object.fromEntries(
       Object.entries((b.premiumUses && typeof b.premiumUses === 'object' ? b.premiumUses : {}) as Record<string, unknown>)
@@ -48,6 +50,23 @@ export function cleanPing(b: Record<string, unknown>) {
   };
 }
 export type CleanPing = ReturnType<typeof cleanPing>;
+
+const GOALS = ['energia', 'desporto', 'imunidade', 'foco', 'nutricao', 'peso'] as const;
+/** Médias e objetivo para I&D (sem texto livre; só números arredondados). */
+export function cleanRd(v: unknown) {
+  if (!v || typeof v !== 'object') return null;
+  const r = v as Record<string, unknown>;
+  const num = (x: unknown, min: number, max: number) => (x === null || x === undefined || Number.isNaN(Number(x)) ? null : Math.max(min, Math.min(max, Math.round(Number(x) * 10) / 10)));
+  return {
+    goal: (GOALS as readonly string[]).includes(String(r.goal)) ? (r.goal as (typeof GOALS)[number]) : null,
+    eStart: num(r.eStart, 1, 5),
+    eNow: num(r.eNow, 1, 5),
+    sStart: num(r.sStart, 0, 14),
+    sNow: num(r.sNow, 0, 14),
+    idxStart: num(r.idxStart, 0, 100),
+    idxNow: num(r.idxNow, 0, 100),
+  };
+}
 
 export async function hashDevice(device: string) {
   const data = new TextEncoder().encode(`${SALT}:${device}`);
@@ -90,7 +109,8 @@ export interface DayStats {
 export async function summarize(store: StatsStore, days = 30, now = new Date()) {
   const dayList = Array.from({ length: days }, (_, i) => dayKey(new Date(now.getTime() - i * 86400000)));
   const since = dayList[dayList.length - 1];
-  const keys = (await listAll(store, 'a:')).filter((k) => k.slice(2, 12) >= since);
+  const allKeys = await listAll(store, 'a:');
+  const keys = allKeys.filter((k) => k.slice(2, 12) >= since);
   const values = await Promise.all(keys.map(async (k) => ({ k, v: JSON.parse((await store.get(k)) ?? 'null') as (CleanPing & { first: string }) | null })));
   const perDay: DayStats[] = await Promise.all(
     dayList.map(async (day) => {
@@ -119,10 +139,45 @@ export async function summarize(store: StatsStore, days = 30, now = new Date()) 
     g.avg = (g.avg * g.n + (p.adh14 ?? 0)) / (g.n + 1);
     g.n++;
   }
+  // retenção D7 e D30 (todos os telemóveis, pelos dias em que a app foi aberta; até 120 dias)
+  const seen = new Map<string, string[]>();
+  for (const k of allKeys) {
+    const day = k.slice(2, 12);
+    const id = k.slice(13);
+    seen.set(id, [...(seen.get(id) ?? []), day]);
+  }
+  const addD = (d: string, n: number) => dayKey(new Date(Date.parse(`${d}T12:00:00Z`) + n * 86400000));
+  const today = dayList[0];
+  const retention = (n: number) => {
+    const cohort = [...seen.values()].map((ds) => ds.sort()).filter((ds) => addD(ds[0], n) <= today);
+    const kept = cohort.filter((ds) => ds.some((d) => d >= addD(ds[0], n)));
+    return { cohort: cohort.length, pct: cohort.length ? Math.round((kept.length / cohort.length) * 100) : null };
+  };
+  // painel de I&D: só de quem autorizou (o resumo mais recente de cada telemóvel)
+  const rdDevs = devs.filter((d) => d.rd);
+  type G = { n: number; adh: number; dE: number[]; dS: number[]; dI: number[] };
+  const group = (key: (d: CleanPing) => string | null) => {
+    const out: Record<string, G> = {};
+    for (const d of rdDevs) {
+      const k = key(d);
+      if (!k) continue;
+      const g = (out[k] ??= { n: 0, adh: 0, dE: [], dS: [], dI: [] });
+      g.adh = (g.adh * g.n + d.adh14) / (g.n + 1);
+      g.n++;
+      if (d.rd!.eStart !== null && d.rd!.eNow !== null) g.dE.push(d.rd!.eNow - d.rd!.eStart);
+      if (d.rd!.sStart !== null && d.rd!.sNow !== null) g.dS.push(d.rd!.sNow - d.rd!.sStart);
+      if (d.rd!.idxStart !== null && d.rd!.idxNow !== null) g.dI.push(d.rd!.idxNow - d.rd!.idxStart);
+    }
+    const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+    return Object.fromEntries(Object.entries(out).map(([k, g]) => [k, { n: g.n, adh: Math.round(g.adh), energy: avg(g.dE), sleep: avg(g.dS), index: avg(g.dI) }]));
+  };
+  const rd = { devices: rdDevs.length, byGoal: group((d) => d.rd!.goal), byProduct: group((d) => d.format) };
   return {
     perDay,
     accounts,
     adherenceByPrior,
+    retention: { d7: retention(7), d30: retention(30) },
+    rd,
     premiumUses,
     devices30: devs.length,
     devices7: ids7.size,
@@ -149,6 +204,17 @@ export async function summarize(store: StatsStore, days = 30, now = new Date()) 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 type Community = { members: number; invites: number; inviters: number; resets: number; resetPeople: number; resetDone: number; challenges: number; circles: number } | null;
+
+const GOAL_NAME: Record<string, string> = { energia: 'Energia', desporto: 'Treino', imunidade: 'Defesas', foco: 'Foco', nutricao: 'Alimentação vegetal', peso: 'Saciedade e peso' };
+const sign = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : ''}${String(v).replace('.', ',')}`);
+function rdTable(title: string, g: Record<string, { n: number; adh: number; energy: number | null; sleep: number | null; index: number | null }>, names: Record<string, string>) {
+  const rows = Object.entries(g).sort((a, b) => b[1].n - a[1].n);
+  if (!rows.length) return `<h3>${title}</h3><p class="m">Ainda sem dados.</p>`;
+  return `<h3>${title}</h3><table><tr><th></th><th>Pessoas</th><th>Aderência</th><th>Energia</th><th>Sono</th><th>Índice</th></tr>${rows
+    // grupos com menos de 3 pessoas: só a contagem (não se mostram médias que identifiquem alguém)
+    .map(([k, v]) => (v.n < 3 ? `<tr><td>${esc(names[k] ?? k)}</td><td>${v.n}</td><td colspan="4" class="m">poucas pessoas para mostrar médias</td></tr>` : `<tr><td>${esc(names[k] ?? k)}</td><td>${v.n}</td><td>${v.adh}%</td><td>${sign(v.energy)}</td><td>${sign(v.sleep)}</td><td>${sign(v.index)}</td></tr>`))
+    .join('')}</table><p class="m">Grupos com menos de 5 pessoas não devem ser usados para conclusões.</p>`;
+}
 
 export function statsPage(s: Awaited<ReturnType<typeof summarize>>, community: Community = null) {
   const max = Math.max(1, ...s.perDay.map((d) => d.active));
@@ -190,6 +256,13 @@ ${community ? `<h2>Comunidade</h2><table>
 <tr><td>Outros desafios criados</td><td>${community.challenges}</td></tr>
 <tr><td>Circles</td><td>${community.circles}</td></tr>
 </table>` : ''}
+<h2>Retenção</h2><table><tr><th></th><th>Pessoas</th><th>Voltaram</th></tr>
+<tr><td>D7 (abriram a app 7+ dias depois do 1.º dia)</td><td>${s.retention.d7.cohort}</td><td>${s.retention.d7.pct ?? '—'}${s.retention.d7.pct !== null ? '%' : ''}</td></tr>
+<tr><td>D30 (30+ dias depois)</td><td>${s.retention.d30.cohort}</td><td>${s.retention.d30.pct ?? '—'}${s.retention.d30.pct !== null ? '%' : ''}</td></tr></table>
+<h2>Investigação e desenvolvimento (só de quem autorizou)</h2>
+<p class="m">${s.rd.devices} ${s.rd.devices === 1 ? 'pessoa autorizou' : 'pessoas autorizaram'} o uso dos dados agregados para desenvolver novas fórmulas. Variação = valor atual menos o do início (energia e sono no check-in, 1–5; Índice NEFESH 0–100). Aderência: % de dias com a toma nos últimos 14.</p>
+${rdTable('Por objetivo', s.rd.byGoal, GOAL_NAME)}
+${rdTable('Por produto', s.rd.byProduct, { caps: 'Cápsulas', po: 'Pó', nibs: 'Palhinha (Nibs)' })}
 <h2>Fase do ritual</h2><table>${kv(s.stage)}</table>
 <h2>Sistema</h2><table>${kv(s.platform)}</table>
 <h2>Formato da Spirulina</h2><table>${kv(s.format)}</table>

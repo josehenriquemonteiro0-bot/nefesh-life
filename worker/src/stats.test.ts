@@ -60,3 +60,31 @@ describe('estatísticas anónimas', () => {
     expect(statsPage(r)).toContain('Aderência à Spirulina: antes e com a app');
   });
 });
+
+describe('I&D e retenção', () => {
+  it('só usa dados de investigação de quem autorizou e esconde grupos pequenos', async () => {
+    const s = memory();
+    for (const [i, rd] of [{ goal: 'energia', eStart: 2.5, eNow: 3.5, sStart: 6, sNow: 7, idxStart: 55, idxNow: 65 }, { goal: 'energia', eStart: 3, eNow: 4 }, { goal: 'energia', eStart: 3, eNow: 3 }, { goal: 'foco', eStart: 2, eNow: 4 }].entries()) {
+      await savePing(s, `tel-rd${i}aaaaa`, { plan: true, adh14: 80, format: 'po', rd }, NOW);
+    }
+    await savePing(s, 'tel-semrd000', { plan: true, adh14: 10, rd: 'texto livre' }, NOW);
+    const r = await summarize(s, 30, NOW);
+    expect(r.rd.devices).toBe(4);
+    expect(r.rd.byGoal.energia).toMatchObject({ n: 3, adh: 80, energy: 0.7, sleep: 1, index: 10 });
+    expect(r.rd.byProduct.po.n).toBe(4);
+    const html = statsPage(r);
+    expect(html).toMatch(/Investigação e desenvolvimento \(só de quem autorizou\)/);
+    expect(html).toMatch(/Foco<\/td><td>1<\/td><td colspan="4" class="m">poucas pessoas/);
+  });
+
+  it('retenção D7: quem voltou 7 ou mais dias depois do primeiro dia', async () => {
+    const s = memory();
+    const d = (n: number) => new Date(NOW.getTime() - n * 86400000);
+    await savePing(s, 'tel-volta001', { plan: true }, d(20));
+    await savePing(s, 'tel-volta001', { plan: true }, d(5));
+    await savePing(s, 'tel-saiu0001', { plan: true }, d(20));
+    await savePing(s, 'tel-novo0001', { plan: true }, d(2));
+    const r = await summarize(s, 30, NOW);
+    expect(r.retention.d7).toEqual({ cohort: 2, pct: 50 });
+  });
+});

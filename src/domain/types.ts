@@ -150,6 +150,11 @@ export interface AppState {
   updatedAt?: string;
   /** false quando a pessoa desliga as estatísticas anónimas */
   stats?: boolean;
+  /**
+   * Consentimentos opcionais (RGPD/LGPD), com a data de cada escolha. O consentimento para
+   * personalizar a app (necessário) é o `consent`.
+   */
+  consents?: { rd?: { on: boolean; at: string }; marketing?: { on: boolean; at: string } };
   /** a pessoa prefere não ver calorias */
   hideCalories?: boolean;
   /** planos carregados pela pessoa (o ficheiro fica no IndexedDB) */
