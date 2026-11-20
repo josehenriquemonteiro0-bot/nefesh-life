@@ -27,12 +27,14 @@ import { sendDailyPing } from './domain/analytics';
 import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout } from './domain/account';
 import { useCloudSync } from './state/cloud';
+import { useSocialSync } from './state/socialSync';
+import { Community } from './screens/Community';
 import { AvatarImg } from './components/Avatar';
 import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social';
 export type Nav = (t: Tab) => void;
 
 const TABS: [Tab, string, IconName][] = [
@@ -41,7 +43,7 @@ const TABS: [Tab, string, IconName][] = [
   ['nutri', 'Nutrição', 'recipes'],
   ['treino', 'Treino', 'flame'],
   ['evo', 'Evolução', 'evo'],
-  ['pros', 'Saúde', 'pros'],
+  ['social', 'Comunidade', 'pros'],
 ];
 /** separadores sem botão próprio na barra: Check-in pertence ao Início, Receitas à Nutrição */
 const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'nutri' };
@@ -64,6 +66,7 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [S.ans]);
   const cloud = useCloudSync();
+  useSocialSync();
   /** para onde ir depois do ecrã de conta */
   const [afterAccount, setAfterAccount] = useState<'quiz' | 'perfil'>('perfil');
   const [accountMode, setAccountMode] = useState<'criar' | 'entrar'>('criar');
@@ -148,7 +151,7 @@ export function App() {
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta') {
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social') {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
@@ -159,6 +162,7 @@ export function App() {
       nutri: <Nutrition />,
       treino: <Training />,
       pros: <Pros openReport={() => setReportOpen(true)} />,
+      social: <Community openAccount={() => openAccount('perfil')} />,
       conta: (
         <AccountScreen
           key={accountMode}
@@ -171,7 +175,7 @@ export function App() {
           }}
         />
       ),
-      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} />,
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} openPros={() => go('pros')} />,
     }[tab];
   }
 

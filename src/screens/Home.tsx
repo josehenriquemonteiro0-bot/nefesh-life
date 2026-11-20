@@ -9,7 +9,9 @@ import { doseText, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
 import { RecipeArt } from '../components/RecipeArt';
 import { DataCard } from '../components/DataCard';
-import { syncedLabel } from '../domain/account';
+import { syncedLabel, useAuth } from '../domain/account';
+import { dayScore } from '../domain/points';
+import { LEAGUES, unreadCount, useSocial } from '../domain/social';
 import { mealForSlot, nextReassessment, spirulinaEntry, weeklySummary } from '../domain/progress';
 import type { Nav } from '../App';
 
@@ -66,6 +68,35 @@ function ActivityCard({ openHealth }: { openHealth: () => void }) {
         </>
       )}
     </section>
+  );
+}
+
+/** Pontos de hoje e posição na liga (ou convite para a comunidade). */
+function CommunityCard({ go }: { go: Nav }) {
+  const { S } = useStore();
+  const auth = useAuth();
+  const joined = !!auth && !!S.community;
+  const { state: st } = useSocial(joined ? 120_000 : Infinity);
+  const pts = dayScore(S, todayKey()).points;
+  if (!joined)
+    return (
+      <button className="card community-cta" onClick={() => go('social')}>
+        <b>🏆 Comunidade NEFESH</b>
+        <span className="small mute">Ganhe pontos com os seus hábitos, suba de liga e incentive os seus amigos.</span>
+      </button>
+    );
+  const me = st?.league?.find((m) => m.me);
+  const unread = unreadCount(st);
+  return (
+    <button className="card community-cta" onClick={() => go('social')}>
+      <div className="row">
+        <b>🏆 Hoje: {pts} pontos</b>
+        {unread > 0 && <span className="badge-new">{unread} {unread === 1 ? 'mensagem' : 'mensagens'}</span>}
+      </div>
+      <span className="small mute">
+        {me ? `Liga ${LEAGUES[st?.me?.league ?? 0]} · ${me.rank}.º lugar com ${me.points} pontos esta semana` : 'Ver a liga e os amigos →'}
+      </span>
+    </button>
   );
 }
 
@@ -281,6 +312,8 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>
         <p style={{ margin: 0 }}>{tip}</p>
       </section>
+
+      <CommunityCard go={go} />
 
       <WeekCard go={go} />
 

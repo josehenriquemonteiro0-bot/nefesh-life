@@ -19,7 +19,8 @@ import { LIMIT_MESSAGES, check, cleanDeviceId, count, dayKey, type Limits } from
 import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
 import { savePing, statsPage, summarize } from './stats';
-import { deleteAccount, getData, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
+import * as social from './social';
+import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
 const LOGIN_LIMITS = { device: 20, ip: 40, global: 5000 };
@@ -35,6 +36,8 @@ export interface Env {
   MODEL?: string;
   /** segredo opcional que protege a página /stats */
   STATS_KEY?: string;
+  /** base de dados da comunidade (D1); opcional até estar criada */
+  DB?: social.DB;
 }
 
 const num = (v: string | undefined, def: number) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : def);
@@ -143,6 +146,41 @@ export default {
       return json(r.body, r.status, h);
     }
 
+    if (url.pathname.startsWith('/social/')) {
+      if (!env.DB) return json({ error: 'A comunidade ainda está a ser preparada. Tente mais tarde.' }, 503, h);
+      let b: Record<string, unknown>;
+      try {
+        b = await req.json();
+      } catch {
+        return json({ error: 'pedido inválido' }, 400, h);
+      }
+      const db = env.DB;
+      const action = url.pathname.slice('/social/'.length);
+      if (action === 'evolucao') {
+        const r = await social.evolution(db);
+        return json(r.body, r.status, h);
+      }
+      const uid = await sessionUser(env.LIMITS as never, b.token);
+      if (!uid) return json({ error: 'A sessão terminou. Entre outra vez na sua conta.' }, 401, h);
+      const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
+        estado: () => social.state(db, uid),
+        perfil: () => social.upsertProfile(db, uid, b),
+        sincronizar: () => social.sync(db, uid, b as social.SyncBody),
+        amigo: () => social.addFriend(db, uid, b.code),
+        'remover-amigo': () => social.removeFriend(db, uid, b.id),
+        mensagem: () => social.sendMessage(db, uid, b.to, b.kind),
+        lidas: () => social.markSeen(db, uid),
+        'resultado-visto': () => social.clearResult(db, uid),
+        desafio: () => social.createChallenge(db, uid, b.kind, b.friends),
+        'sair-desafio': () => social.leaveChallenge(db, uid, b.id),
+        sair: () => social.leave(db, uid),
+      };
+      const fn = routes[action];
+      if (!fn) return json({ error: 'rota desconhecida' }, 404, h);
+      const r = await fn();
+      return json(r.body, r.status, h);
+    }
+
     if (url.pathname.startsWith('/conta/')) {
       let b: Record<string, unknown>;
       try {
@@ -174,7 +212,13 @@ export default {
       if (action === 'guardar') return send(await saveData(store, b.token, b.data, b.updatedAt));
       if (action === 'saude-chave') return send(await healthKey(store, b.token, b.nova === true));
       if (action === 'saude-dados') return send(await healthPull(store, b.token));
-      if (action === 'apagar') return send(await deleteAccount(store, b.token, b.email, b.password));
+      if (action === 'apagar') {
+        const uid = await sessionUser(store, b.token);
+        const r = await deleteAccount(store, b.token, b.email, b.password);
+        // apagar a conta também apaga a participação na comunidade
+        if (r.status === 200 && uid && env.DB) await social.leave(env.DB, uid);
+        return send(r);
+      }
       return json({ error: 'rota desconhecida' }, 404, h);
     }
 

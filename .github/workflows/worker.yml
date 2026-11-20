@@ -72,6 +72,24 @@ jobs:
           if [ -z "$ID" ]; then echo "::error::Não foi possível criar ou encontrar o KV nefesh-foto-limites"; exit 1; fi
           sed -i "s/KV_ID_PLACEHOLDER/$ID/" wrangler.toml
           grep -n "^id = " wrangler.toml
+      # comunidade (pontos, ligas, amigos): base de dados D1. Se o token não tiver permissão para D1,
+      # o Worker é publicado na mesma, sem a comunidade, e aparece um aviso aqui.
+      - name: Preparar a base de dados da comunidade (D1)
+        if: steps.check.outputs.ready == 'true'
+        continue-on-error: true
+        run: |
+          find_d1() { npx wrangler d1 list --json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const n=a.find(x=>x.name==='nefesh-social');process.stdout.write(n?(n.uuid||n.id||''):'')}catch(e){}})"; }
+          ID="$(find_d1)"
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create nefesh-social || true
+            ID="$(find_d1)"
+          fi
+          if [ -z "$ID" ]; then
+            echo "::warning::Não foi possível criar a base de dados D1 nefesh-social. Dê ao token da Cloudflare a permissão 'D1: Edit'. A comunidade fica desligada até lá."
+            exit 1
+          fi
+          printf '\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "nefesh-social"\ndatabase_id = "%s"\n' "$ID" >> wrangler.toml
+          npx wrangler d1 execute nefesh-social --remote --file=schema.sql
       - name: Publicar o Worker
         if: steps.check.outputs.ready == 'true'
         run: npx wrangler deploy

@@ -1,0 +1,23 @@
+-- gerado a partir de src/social.ts (SCHEMA); aplicado na publicação
+CREATE TABLE IF NOT EXISTS profiles (
+  id TEXT PRIMARY KEY, nick TEXT NOT NULL, avatar TEXT, code TEXT UNIQUE NOT NULL,
+  league INTEGER NOT NULL DEFAULT 0, evo INTEGER NOT NULL DEFAULT 1,
+  idx_first INTEGER, idx_now INTEGER, level INTEGER NOT NULL DEFAULT 0, streak INTEGER NOT NULL DEFAULT 0,
+  result TEXT, created TEXT NOT NULL, updated TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS weeks (
+  id TEXT NOT NULL, week TEXT NOT NULL, league INTEGER NOT NULL, grp INTEGER NOT NULL,
+  points INTEGER NOT NULL DEFAULT 0, evo INTEGER NOT NULL DEFAULT 0, days TEXT NOT NULL DEFAULT '{}',
+  updated TEXT NOT NULL, PRIMARY KEY (id, week)
+);
+CREATE INDEX IF NOT EXISTS weeks_group ON weeks (week, league, grp);
+CREATE TABLE IF NOT EXISTS friends (a TEXT NOT NULL, b TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY (a, b));
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, to_id TEXT NOT NULL, from_id TEXT NOT NULL, kind TEXT NOT NULL,
+  created TEXT NOT NULL, seen INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS messages_to ON messages (to_id, created);
+CREATE TABLE IF NOT EXISTS challenges (
+  id TEXT PRIMARY KEY, owner TEXT NOT NULL, kind TEXT NOT NULL, start TEXT NOT NULL, created TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS challenge_members (cid TEXT NOT NULL, uid TEXT NOT NULL, PRIMARY KEY (cid, uid));

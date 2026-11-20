@@ -15,7 +15,8 @@ import { AccountCard } from '../components/Account';
 import { AvatarEdit } from '../components/Avatar';
 import { syncedLabel } from '../domain/account';
 
-export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth }: {
+export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth, openPros }: {
+  openPros: () => void;
   openHealth: () => void;
   openAccount: () => void;
   syncNow: () => Promise<void>;
@@ -105,6 +106,16 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
       </section>
 
       <Comparison />
+
+      <section className="card">
+        <div className="row">
+          <div style={{ flex: '1 1 200px' }}>
+            <h2 style={{ margin: 0 }}>Profissionais de saúde</h2>
+            <p className="small mute" style={{ margin: '4px 0 0' }}>Nutricionistas, médicos e personal trainers parceiros da NEFESH.</p>
+          </div>
+          <button className="btn ghost sm" onClick={openPros}>Ver</button>
+        </div>
+      </section>
 
       <section className="card">
         <h2>Relatório</h2>
