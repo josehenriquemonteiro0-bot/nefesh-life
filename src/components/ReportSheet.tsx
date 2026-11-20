@@ -4,7 +4,7 @@ import { whatsappLink } from '../domain/content';
 import { PremiumTag } from './PremiumTag';
 import { useStore } from '../state/store';
 
-export function ReportSheet({ onClose }: { onClose: () => void }) {
+export function ReportSheet({ onClose, onPrint }: { onClose: () => void; onPrint?: () => void }) {
   const { S, toast } = useStore();
   const text = report(S);
 
@@ -41,6 +41,7 @@ export function ReportSheet({ onClose }: { onClose: () => void }) {
             <a className="btn" href={whatsappLink(`Olá NEFESH! Envio o meu relatório:\n\n${text}`)} target="_blank" rel="noopener">Enviar à NEFESH</a>
             {'share' in navigator && <button className="btn ghost" onClick={share}>Partilhar</button>}
             <button className="btn ghost" onClick={copy}>Copiar</button>
+            {onPrint && <button className="btn ghost" onClick={onPrint}>PDF</button>}
           </div>
           <button className="btn ghost" onClick={onClose}>Fechar</button>
         </div>

@@ -20,10 +20,14 @@ import { Evolution } from './screens/Evolution';
 import { Home } from './screens/Home';
 import { Plan } from './screens/Plan';
 import { Pros } from './screens/Pros';
+import { Profile } from './screens/Profile';
+import { PrintReport } from './components/PrintReport';
+import { bodySnapshot } from './domain/progress';
+import { sendDailyPing } from './domain/analytics';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros' | 'perfil';
 export type Nav = (t: Tab) => void;
 
 const TABS: [Tab, string, IconName][] = [
@@ -55,6 +59,18 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [S.ans]);
   const [reportOpen, setReportOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const printReport = () => setPrinting(true);
+  useEffect(() => {
+    if (!printing) return;
+    const done = () => setPrinting(false);
+    window.addEventListener('afterprint', done);
+    // espera o relatório ser desenhado antes de abrir o diálogo de impressão (Guardar como PDF)
+    const t = setTimeout(() => window.print(), 300);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
+  }, [printing]);
+  // estatísticas anónimas: no máximo uma contagem por dia
+  useEffect(() => { sendDailyPing(S); }, [S.ans, S.stats]);
   const [scienceOpen, setScienceOpen] = useState(false);
   const openScience = () => setScienceOpen(true);
   const [bottleOpen, setBottleOpen] = useState(false);
@@ -91,7 +107,7 @@ export function App() {
   const adopt = () => {
     if (!quiz) return;
     const ans = quiz.draft;
-    const ev = { date: todayKey(), sc: scores(ans) };
+    const ev = { date: todayKey(), sc: scores(ans), body: bodySnapshot(ans) };
     if (S.sample || !S.ans) {
       const fresh = blankState();
       replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications, consent: S.consent });
@@ -114,17 +130,18 @@ export function App() {
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino') {
-    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />;
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil') {
+    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />,
+      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
       nutri: <Nutrition />,
       treino: <Training />,
       pros: <Pros openReport={() => setReportOpen(true)} />,
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} />,
     }[tab];
   }
 
@@ -144,7 +161,12 @@ export function App() {
             <img src={`${import.meta.env.BASE_URL}brand/logo-header.png`} alt="nefesh" width={130} height={30} />
             <small>LIFE</small>
           </div>
-          <button className="btn ghost sm" onClick={() => startQuiz()}>{S.ans ? 'Reavaliar' : 'Avaliar'}</button>
+          <div className="row" style={{ gap: 8 }}>
+            {!S.ans && <button className="btn ghost sm" onClick={() => startQuiz()}>Avaliar</button>}
+            <button className={`avatar ${tab === 'perfil' ? 'on' : ''}`} onClick={() => go('perfil')} aria-label="Perfil" aria-current={tab === 'perfil' ? 'page' : undefined}>
+              {S.ans?.name ? S.ans.name.trim()[0].toUpperCase() : <Icon name="user" />}
+            </button>
+          </div>
         </header>
         <main key={tab + (quiz ? quiz.qi : '')} className="view">{screen}</main>
       </div>
@@ -175,7 +197,8 @@ export function App() {
           }}
         />
       )}
-      {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} />}
+      {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} onPrint={() => { setReportOpen(false); printReport(); }} />}
+      {printing && <PrintReport />}
       {scienceOpen && <ScienceSheet onClose={() => setScienceOpen(false)} />}
       {bottleOpen && <BottleSheet onClose={() => setBottleOpen(false)} doseGrams={S.ans ? planFor(S).g : undefined} />}
       <div className={`toast ${toastMsg ? 'show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>

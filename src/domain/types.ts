@@ -70,6 +70,8 @@ export interface Bottle {
 export interface Evaluation {
   date: string;
   sc: Scores;
+  /** medidas no dia da avaliação, para comparar antes e depois */
+  body?: { peso: number; bmi?: number; fat?: number; cintura?: number };
 }
 
 export interface AppState {
@@ -104,6 +106,8 @@ export interface AppState {
   trainPlan?: (import('./planRead').ParsedWorkoutPlan & { at: string; name: string }) | null;
   /** plano do nutricionista lido pela IA */
   nutriPlan?: (import('./planRead').ParsedPlan & { at: string; name: string }) | null;
+  /** false quando a pessoa desliga as estatísticas anónimas */
+  stats?: boolean;
   /** a pessoa prefere não ver calorias */
   hideCalories?: boolean;
   /** planos carregados pela pessoa (o ficheiro fica no IndexedDB) */

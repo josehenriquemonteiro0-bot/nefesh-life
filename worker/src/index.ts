@@ -12,11 +12,13 @@
  *   GLOBAL_LIMIT       fotos no total por dia (200)
  *   ALLOWED_ORIGIN     opcional - origem da app (ex.: https://josehenriquemonteiro0-bot.github.io)
  *   MODEL              opcional - modelo (por omissão claude-opus-5-5; claude-haiku-5-5 é mais barato)
+ *   STATS_KEY          segredo opcional - chave da página de estatísticas (/stats?key=...)
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { LIMIT_MESSAGES, check, cleanDeviceId, count, type Limits } from './limits';
 import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
+import { savePing, statsPage, summarize } from './stats';
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -26,6 +28,8 @@ export interface Env {
   GLOBAL_LIMIT?: string;
   ALLOWED_ORIGIN?: string;
   MODEL?: string;
+  /** segredo opcional que protege a página /stats */
+  STATS_KEY?: string;
 }
 
 const num = (v: string | undefined, def: number) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : def);
@@ -106,6 +110,13 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const h = cors(env, req.headers.get('Origin'));
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
+    const url = new URL(req.url);
+    if (req.method === 'GET' && url.pathname === '/stats') {
+      const key = env.STATS_KEY?.trim();
+      if (key && url.searchParams.get('key') !== key) return new Response('Acesso reservado.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      const html = statsPage(await summarize(env.LIMITS as never));
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+    }
     if (req.method === 'GET') return json({ ok: true, service: 'nefesh-foto' }, 200, h);
     if (req.method !== 'POST') return json({ error: 'method' }, 405, h);
 
@@ -118,8 +129,12 @@ export default {
     const device = cleanDeviceId(body.device);
     const ip = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
 
+    const path = url.pathname;
+    if (path === '/evento') {
+      await savePing(env.LIMITS as never, device, body as Record<string, unknown>);
+      return new Response(null, { status: 204, headers: h });
+    }
     // leitura do plano alimentar do nutricionista
-    const path = new URL(req.url).pathname;
     if (path === '/dica') {
       try {
         const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });

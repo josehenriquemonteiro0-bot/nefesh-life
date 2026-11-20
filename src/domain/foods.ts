@@ -171,6 +171,8 @@ export interface FoodEntry {
   id: string;
   /** refeição do plano do nutricionista que originou esta entrada (para desfazer) */
   planRef?: string;
+  /** entrada automática (ex.: toma de Spirulina), para a retirar ao desmarcar */
+  auto?: string;
   foodId?: string;
   name: string;
   grams: number;

@@ -25,6 +25,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # aceita também o nome com erro de digitação usado na configuração inicial
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
+      # opcional: protege a página de estatísticas (/stats?key=...)
+      STATS_KEY: ${{ secrets.STATS_KEY }}
     steps:
       - name: Verificar segredos
         id: check
@@ -76,3 +78,6 @@ jobs:
       - name: Guardar a chave da Anthropic no Worker
         if: steps.check.outputs.ready == 'true'
         run: printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
+      - name: Guardar a chave das estatísticas no Worker
+        if: steps.check.outputs.ready == 'true' && env.STATS_KEY != ''
+        run: printf '%s' "$(printf '%s' "$STATS_KEY" | tr -d '\r\n')" | npx wrangler secret put STATS_KEY

@@ -170,6 +170,8 @@ export function bodyOf(a: Answers): BodyResult | null {
 
 export interface NutritionTargets {
   kcal: number;
+  /** calorias acrescentadas pelo treino do dia (metade do gasto estimado) */
+  exercise?: number;
   protein: number;
   carbs: number;
   fat: number;
@@ -178,8 +180,10 @@ export interface NutritionTargets {
 }
 
 /** Metas do diário: as do nutricionista, se existirem; senão as calculadas pela app. */
-export function targetsFor(S: AppState): NutritionTargets {
+export function targetsFor(S: AppState, exerciseKcal = 0): NutritionTargets {
   const b = S.ans ? bodyOf(S.ans) : null;
+  // a meta já conta com a atividade habitual; num dia de treino somamos metade do gasto estimado (abordagem conservadora)
+  const extra = Math.round((exerciseKcal * 0.5) / 10) * 10;
   const pro = S.nutriPro;
   if (pro && (pro.kcal || pro.protein)) {
     const kcal = pro.kcal ?? b?.target ?? 2000;
@@ -187,6 +191,6 @@ export function targetsFor(S: AppState): NutritionTargets {
     const fat = Math.round((kcal * 0.3) / 9);
     return { kcal, protein, fat, carbs: Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4)), source: 'pro', by: pro.by };
   }
-  if (b) return { kcal: b.target, protein: b.protein, carbs: b.carbs, fat: b.fatG, source: 'app' };
+  if (b) return { kcal: b.target + extra, exercise: extra || undefined, protein: b.protein, carbs: b.carbs + Math.round(extra / 4), fat: b.fatG, source: 'app' };
   return { kcal: 2000, protein: 90, carbs: 250, fat: 65, source: 'padrao' };
 }

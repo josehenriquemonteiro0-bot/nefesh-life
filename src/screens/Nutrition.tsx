@@ -3,9 +3,10 @@ import { Bar, Ring } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
 import { PhotoMealCard } from '../components/PhotoMeal';
 import { targetsFor } from '../domain/body';
+import { workoutKcal } from '../domain/progress';
 import { PlanUpload } from '../components/PlanUpload';
 import { NutriPlanCard } from '../components/NutriPlan';
-import { fmtNum, keyDaysAgo, longToday } from '../domain/dates';
+import { fmtNum, keyDaysAgo, longToday, todayKey } from '../domain/dates';
 import { FOODS, MEALS, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
 import { useStore } from '../state/store';
 import { Recipes } from './Recipes';
@@ -142,7 +143,7 @@ function Diary() {
   const meals = l.meals || {};
   const all = MEALS.flatMap(([k]) => meals[k] || []);
   const t = totals(all);
-  const tg = targetsFor(S);
+  const tg = targetsFor(S, workoutKcal(S, todayKey()));
   const hide = !!S.hideCalories;
   const left = tg.kcal - t.kcal;
   const count = all.length;
@@ -167,6 +168,7 @@ function Diary() {
                 <p className="small" style={{ margin: '2px 0 0', opacity: 0.8 }}>
                   {tg.source === 'pro' ? `meta do nutricionista (${tg.by})` : tg.source === 'app' ? 'referência geral' : 'referência indicativa'}: {tg.kcal.toLocaleString('pt-PT')} kcal
                 </p>
+                {tg.exercise ? <p className="small" style={{ margin: '2px 0 0' }}><span className="neon">+{tg.exercise} kcal</span> pelo treino de hoje</p> : null}
               </div>
             </div>
             <div className="macrobars">

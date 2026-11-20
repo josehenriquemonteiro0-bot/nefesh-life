@@ -2,11 +2,43 @@ import { useState } from 'react';
 import { Bar, Columns, LineChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { STEP_GOAL } from '../domain/content';
-import { daysSince, keyDaysAgo, shortDate } from '../domain/dates';
+import { fmtNum, keyDaysAgo, shortDate } from '../domain/dates';
 import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
 import { weekAdherence, weekChanges } from '../domain/planAdherence';
+import { compareEvals, nextReassessment } from '../domain/progress';
+
+/** Antes e depois: primeira avaliação contra a mais recente. */
+export function Comparison() {
+  const { S } = useStore();
+  const c = compareEvals(S);
+  if (!c) return null;
+  const sign = (v: number) => `${v > 0 ? '+' : ''}${fmtNum(v)}`;
+  const rows: [string, string, string, number | null][] = [
+    ['Índice NEFESH', String(indexOf(c.first.sc)), String(indexOf(c.last.sc)), c.index],
+  ];
+  if (c.first.body && c.last.body) {
+    rows.push(['Peso', `${fmtNum(c.first.body.peso)} kg`, `${fmtNum(c.last.body.peso)} kg`, c.peso]);
+    if (c.bmi !== null) rows.push(['IMC', fmtNum(c.first.body.bmi!), fmtNum(c.last.body.bmi!), c.bmi]);
+    if (c.fat !== null) rows.push(['Gordura corporal', `${fmtNum(c.first.body.fat!)}%`, `${fmtNum(c.last.body.fat!)}%`, c.fat]);
+    if (c.cintura !== null) rows.push(['Cintura', `${fmtNum(c.first.body.cintura!)} cm`, `${fmtNum(c.last.body.cintura!)} cm`, c.cintura]);
+  }
+  return (
+    <section className="card">
+      <div className="row"><h2 style={{ margin: 0 }}>Antes e depois</h2><span className="small mute">{c.days} dias</span></div>
+      <table className="cmp">
+        <thead><tr><th /><th>{shortDate(c.first.date)}</th><th>{shortDate(c.last.date)}</th><th>diferença</th></tr></thead>
+        <tbody>
+          {rows.map(([k, a, b, d]) => (
+            <tr key={k}><td>{k}</td><td>{a}</td><td><b>{b}</b></td><td className={d ? (d > 0 ? 'up' : 'down') : ''}>{d === null ? '—' : d === 0 ? '=' : sign(d)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      {!c.first.body && <p className="small mute" style={{ margin: '8px 0 0' }}>O peso e as medidas passam a ser comparados a partir desta avaliação.</p>}
+    </section>
+  );
+}
 
 export function Evolution({ openReport, go }: { openReport: () => void; go?: (t: 'check') => void }) {
   const { S } = useStore();
@@ -18,7 +50,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
   const bs = badges(S);
   const got = bs.filter((b) => b[2]).length;
   const range = (n: number) => Array.from({ length: n }, (_, i) => S.logs[keyDaysAgo(n - 1 - i)]);
-  const lastEval = S.evals[S.evals.length - 1];
+  const re = nextReassessment(S);
 
   return (
     <>
@@ -110,6 +142,8 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
         </section>
       )}
 
+      <Comparison />
+
       <section className="card">
         <h2>Índice NEFESH</h2>
         <div className="evals">
@@ -122,7 +156,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
           )}
         </div>
         <p className="small mute" style={{ margin: '10px 0 0' }}>
-          {lastEval && daysSince(lastEval.date) >= 30 ? 'Já pode fazer a sua reavaliação mensal.' : 'Próxima reavaliação recomendada a cada 30 dias.'}
+          {re?.due ? `Já pode fazer a reavaliação dos ${re.target} dias.` : re ? `Próxima reavaliação aos ${re.target} dias (daqui a ${re.inDays} ${re.inDays === 1 ? 'dia' : 'dias'}).` : 'Reavaliações aos 7, 15 e 30 dias.'}
         </p>
       </section>
 
@@ -138,7 +172,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
         </div>
       </section>
 
-      <button className="btn ghost full" onClick={openReport}>Partilhar relatório com um profissional</button>
+      <button className="btn ghost full" onClick={openReport}>Relatório para um profissional</button>
     </>
   );
 }
