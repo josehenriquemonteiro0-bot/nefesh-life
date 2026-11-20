@@ -72,6 +72,57 @@ Regras:
 - Escreve em português de Portugal.
 - Se o ficheiro não for um plano alimentar, responde com is_plan false e meals vazio.`;
 
+export const WORKOUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    is_workout: { type: 'boolean', description: 'true se o ficheiro é um plano de treino' },
+    workouts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'nome do treino como está no plano (ex.: "Treino A")' },
+          focus: { type: 'string', description: 'grupos musculares ou foco (ex.: "Peito e tríceps"); vazio se não houver' },
+          day: { type: 'string', description: 'dia da semana indicado, ou vazio' },
+          exercises: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'nome do exercício, como está no plano' },
+                sets: { type: 'number', description: 'número de séries (0 se não indicado)' },
+                reps: { type: 'string', description: 'repetições ou tempo por série (ex.: "10-12", "30 s"); vazio se não indicado' },
+                load: { type: 'string', description: 'carga indicada (ex.: "20 kg"); vazio se não indicada' },
+                rest: { type: 'string', description: 'descanso entre séries (ex.: "60 s"); vazio se não indicado' },
+                notes: { type: 'string', description: 'observações do exercício (técnica, cadência, bi-set); vazio se não houver' },
+              },
+              required: ['name', 'sets', 'reps', 'load', 'rest', 'notes'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['name', 'focus', 'day', 'exercises'],
+        additionalProperties: false,
+      },
+    },
+    per_week: { type: 'number', description: 'treinos por semana indicados no plano; 0 se não indicado' },
+    professional: { type: 'string', description: 'nome do profissional, se aparecer; senão vazio' },
+    notes: { type: 'string', description: 'orientações gerais do plano (aquecimento, cardio, cuidados), em 1 a 3 frases' },
+  },
+  required: ['is_workout', 'workouts', 'per_week', 'professional', 'notes'],
+  additionalProperties: false,
+} as const;
+
+const WORKOUT_SYSTEM = `És o assistente da app NEFESH Life. Recebes o plano de treino que um personal trainer fez para a pessoa (muitas vezes exportado de apps como MyFit) e transcreve-lo para treinos estruturados, sem mudar nada do que o profissional escreveu.
+
+Regras:
+- Respeita fielmente treinos (A, B, C...), exercícios, séries, repetições, cargas, descansos e observações. Não acrescentes, não removas e não "melhores" nada.
+- Mantém os nomes dos exercícios como estão no plano.
+- Se um campo não estiver indicado, deixa-o vazio (ou 0 nas séries).
+- Bi-sets, tri-sets e drop-sets: regista cada exercício e explica a ligação nas observações.
+- Escreve em português de Portugal.
+- Se o ficheiro não for um plano de treino, responde com is_workout false e workouts vazio.`;
+
 export interface PlanBody {
   device?: string;
   /** PDF ou imagem em base64 */
@@ -84,7 +135,7 @@ export interface PlanBody {
 
 type Json = (body: unknown, status: number) => Response;
 
-export async function handlePlan(body: PlanBody, store: CounterStore, client: Anthropic, model: string, device: string, ip: string, json: Json): Promise<Response> {
+export async function handlePlan(body: PlanBody, store: CounterStore, client: Anthropic, model: string, device: string, ip: string, json: Json, kind: 'nutri' | 'treino' = 'nutri'): Promise<Response> {
   const allowed = await check(store, PLAN_LIMITS, device, ip, new Date(), 'p');
   if (!allowed.ok) return json({ error: 'Já leu planos suficientes hoje. Tente amanhã.', remaining: 0 }, 429);
 
@@ -106,15 +157,15 @@ export async function handlePlan(body: PlanBody, store: CounterStore, client: An
   } else {
     return json({ error: 'Falta o ficheiro do plano.' }, 400);
   }
-  content.push({ type: 'text', text: 'Transcreve este plano alimentar.' });
+  content.push({ type: 'text', text: kind === 'treino' ? 'Transcreve este plano de treino.' : 'Transcreve este plano alimentar.' });
 
   const response = await client.beta.messages.create({
     model,
     max_tokens: 12000,
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
-    system: SYSTEM,
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: PLAN_SCHEMA } },
+    system: kind === 'treino' ? WORKOUT_SYSTEM : SYSTEM,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: kind === 'treino' ? WORKOUT_SCHEMA : PLAN_SCHEMA } },
     messages: [{ role: 'user', content }],
   });
   if (response.stop_reason === 'refusal') return json({ error: 'Não foi possível ler este ficheiro.' }, 422);

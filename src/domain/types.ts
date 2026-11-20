@@ -46,6 +46,8 @@ export interface DayLog {
   t?: number;
   /** plano do nutricionista vs execução, por índice da refeição do plano */
   planLog?: Record<string, import('./planAdherence').PlanMealLog>;
+  /** plano de treino do personal vs execução, por índice do treino */
+  trainLog?: Record<string, import('./trainAdherence').TrainSessionLog>;
   /** treinos feitos no dia */
   workouts?: import('./training').WorkoutLog[];
   /** diário alimentar do dia, por refeição */
@@ -96,6 +98,8 @@ export interface AppState {
   nutriPro?: { kcal?: number; protein?: number; by: string; at: string } | null;
   /** assinatura Premium (para o lançamento; na fase de testes está tudo aberto) */
   premium?: boolean;
+  /** plano de treino do personal lido pela IA */
+  trainPlan?: (import('./planRead').ParsedWorkoutPlan & { at: string; name: string }) | null;
   /** plano do nutricionista lido pela IA */
   nutriPlan?: (import('./planRead').ParsedPlan & { at: string; name: string }) | null;
   /** a pessoa prefere não ver calorias */

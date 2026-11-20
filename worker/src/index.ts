@@ -118,10 +118,11 @@ export default {
     const ip = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
 
     // leitura do plano alimentar do nutricionista
-    if (new URL(req.url).pathname === '/plano') {
+    const path = new URL(req.url).pathname;
+    if (path === '/plano' || path === '/treino') {
       try {
         const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-        return await handlePlan(body, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+        return await handlePlan(body, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h), path === '/treino' ? 'treino' : 'nutri');
       } catch (err) {
         return apiError(err, h);
       }

@@ -6,6 +6,7 @@ import { BODY_GOAL_LABEL, bodyOf, targetsFor } from './body';
 import { totals } from './foods';
 import { weekProgress } from './training';
 import { weekAdherence, weekChanges } from './planAdherence';
+import { trainChanges, weekTrainAdherence } from './trainAdherence';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
 import type { AppState, DayLog } from './types';
@@ -158,6 +159,13 @@ export function report(S: AppState, now = new Date()) {
       if (w.pct === null) return null;
       const changes = weekChanges(S, 7, now);
       return `Adesão ao plano alimentar (7 dias): ${w.pct}% em ${w.loggedDays} ${w.loggedDays === 1 ? 'dia registado' : 'dias registados'}${changes.length ? `\nAlterações ao plano:\n${changes.map((c) => `  - ${c}`).join('\n')}` : ''}`;
+    })(),
+    (() => {
+      if (!S.trainPlan) return null;
+      const w = weekTrainAdherence(S, now);
+      const list = trainChanges(S, 7, now);
+      if (!w.done && !list.length) return null;
+      return `Treinos do plano do personal esta semana: ${w.done} de ${w.planned}${list.length ? `\nRegisto dos treinos (7 dias):\n${list.map((c) => `  - ${c}`).join('\n')}` : ''}`;
     })(),
     S.plans?.treino ? `Plano de treino carregado: ${S.plans.treino.name}${S.plans.treino.by ? ` (${S.plans.treino.by})` : ''}` : null,
     `Dose atual: ${fmtNum(c.g)} g/dia (${doseText(c.caps, c.format)} · ${fmtNum(c.gPerKg.toFixed(3))} g/kg)${S.proDose ? ` · indicada por ${S.proDose.by}` : ' · dentro do rótulo'}`,

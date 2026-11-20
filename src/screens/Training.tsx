@@ -6,6 +6,7 @@ import { GOAL_LABEL } from '../domain/content';
 import { BODY_GOAL_LABEL } from '../domain/body';
 import { PlanUpload } from '../components/PlanUpload';
 import { PremiumTag } from '../components/PremiumTag';
+import { TrainPlanCard } from '../components/TrainPlan';
 import { DAYS, EXERCISES, LEVEL_LABEL, exerciseById, levelOf, weekPlan, weekProgress, weekdayIndex, type Exercise, type Level, type Session, type WorkoutLog } from '../domain/training';
 import { useStore } from '../state/store';
 
@@ -137,10 +138,13 @@ export function Training() {
   const { S, todayLog } = useStore();
   const [open, setOpen] = useState<Session | null>(null);
   const [lib, setLib] = useState(false);
+  const [showNefesh, setShowNefesh] = useState(false);
   const level = levelOf(S.ans);
   const plan = weekPlan(S.ans);
   const today = weekdayIndex();
   const p = weekProgress(S);
+
+  const hasPro = !!(S.trainPlan && S.plans?.treino?.name === S.trainPlan.name);
 
   if (open) return <SessionView s={open} level={level} onBack={() => { setOpen(null); window.scrollTo(0, 0); }} />;
 
@@ -153,6 +157,8 @@ export function Training() {
       <p className="mute small" style={{ marginTop: 0 }}>
         Plano {LEVEL_LABEL[level].toLowerCase()} · {S.ans?.corpo ? BODY_GOAL_LABEL[S.ans.corpo] : S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'} · exercícios em casa, sem material
       </p>
+
+      {hasPro && <TrainPlanCard />}
 
       <section className="card">
         <h2>Esta semana</h2>
@@ -171,6 +177,11 @@ export function Training() {
         <p className="small mute" style={{ margin: '6px 0 0' }}>Recomendação da OMS para adultos: 150 minutos por semana e força 2 vezes por semana.</p>
       </section>
 
+      {hasPro && !showNefesh && (
+        <button className="btn ghost full" style={{ marginBottom: 14 }} onClick={() => setShowNefesh(true)}>Ver também o plano NEFESH em casa</button>
+      )}
+      {(!hasPro || showNefesh) && (
+        <>
       <button className="card today-session" onClick={() => setOpen(s)}>
         <span className="small" style={{ opacity: 0.8 }}>Hoje · {DAYS[today]}{doneToday ? ' · registado ✓' : ''}</span>
         <span className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
@@ -183,10 +194,15 @@ export function Training() {
         <span className="btn sm" style={{ alignSelf: 'flex-start' }}>Começar</span>
       </button>
 
+        </>
+      )}
       <OtherActivity />
       <p />
       <PlanUpload kind="treino" />
+      {!hasPro && <TrainPlanCard />}
 
+      {(!hasPro || showNefesh) && (
+        <>
       <section className="card">
         <h2>O plano da semana</h2>
         <ul className="weeklist">
@@ -202,6 +218,9 @@ export function Training() {
           ))}
         </ul>
       </section>
+
+        </>
+      )}
 
       <section className="card">
         <div className="row">

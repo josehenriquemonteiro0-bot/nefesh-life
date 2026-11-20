@@ -3,6 +3,10 @@ import type { FoodEntry, MealKey } from './foods';
 
 export interface PlanItem { name: string; quantity: string; grams: number; kcal: number; protein_g: number; carbs_g: number; fat_g: number }
 export interface PlanMeal { meal: 'pa' | 'almoco' | 'lanche' | 'jantar' | 'ceia' | 'outro'; label: string; time: string; options: { name: string; items: PlanItem[] }[] }
+export interface WorkoutExercise { name: string; sets: number; reps: string; load: string; rest: string; notes: string }
+export interface PlanWorkout { name: string; focus: string; day: string; exercises: WorkoutExercise[] }
+export interface ParsedWorkoutPlan { is_workout: boolean; workouts: PlanWorkout[]; per_week: number; professional: string; notes: string }
+
 export interface ParsedPlan { is_plan: boolean; meals: PlanMeal[]; daily_kcal: number; daily_protein_g: number; professional: string; notes: string }
 
 /** Formatos que o Claude lê diretamente. */
@@ -39,10 +43,18 @@ export async function preparePlan(file: Blob, name: string): Promise<{ file?: st
 }
 
 export async function readPlan(file: Blob, name: string): Promise<ParsedPlan & { remaining?: number }> {
+  return readFile(file, name, '/plano');
+}
+
+export async function readWorkoutPlan(file: Blob, name: string): Promise<ParsedWorkoutPlan & { remaining?: number }> {
+  return readFile(file, name, '/treino');
+}
+
+async function readFile<T>(file: Blob, name: string, path: '/plano' | '/treino'): Promise<T> {
   const payload = await preparePlan(file, name);
   let res: Response;
   try {
-    res = await fetch(`${PHOTO_API.replace(/\/$/, '')}/plano`, {
+    res = await fetch(`${PHOTO_API.replace(/\/$/, '')}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, name, device: deviceId() }),
