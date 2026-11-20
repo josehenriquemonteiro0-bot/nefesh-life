@@ -27,6 +27,7 @@ import { Sleep } from './screens/Sleep';
 import { Women } from './screens/Women';
 import { Care } from './screens/Care';
 import { Mind } from './screens/Mind';
+import { Body } from './screens/Body';
 import { showWomen } from './domain/women';
 import { Coach } from './screens/Coach';
 import { Profile } from './screens/Profile';
@@ -64,6 +65,7 @@ const HEALTH_TABS: [Tab, string, IconName][] = [
   ['treino', 'Treino', 'flame'],
   ['sono', 'Sono', 'moon'],
   ['mente', 'Mente', 'mind'],
+  ['corpo', 'Corpo', 'body'],
   ['cuidados', 'Cuidados', 'care'],
   ['ciclo', 'Ciclo', 'cycle'],
 ];
@@ -265,7 +267,7 @@ export function App() {
       sono: <Sleep />,
       ciclo: <Women />,
       mente: <Mind go={go} />,
-      corpo: null,
+      corpo: <Body />,
       cuidados: <Care />,
       coach: <Coach go={go} />,
       saude: null,

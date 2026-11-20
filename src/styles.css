@@ -575,3 +575,9 @@ ul.plain li.row{gap:8px}
 .breath-circle.shrink{transform:scale(.62)}
 .breath-circle span{font:600 22px Sora,sans-serif}
 .breath-circle b{font:700 34px Sora,sans-serif;color:var(--neon)}
+/* corpo */
+.body-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.month-chart{width:100%;height:auto;margin-top:8px;color:var(--ink)}
+.photo-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.photo-compare figure{margin:0;display:grid;gap:4px;justify-items:center}
+.photo-compare img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;background:var(--panel2)}

@@ -165,6 +165,10 @@ export interface AppState {
     visits?: import('./care').Visit[];
     meds?: import('./meds').Med[];
   };
+  /** peso e medidas ao longo do tempo (cm, kg) */
+  bodyLog?: { date: string; peso?: number; cintura?: number; anca?: number; pescoco?: number }[];
+  /** fotos de progresso (só neste telemóvel, na base de ficheiros local) */
+  progressPhotos?: { id: string; date: string; pose: 'frente' | 'lado' | 'costas' }[];
   /** saúde da mulher: modo, ciclo e menstruação habituais, data prevista do parto */
   women?: { mode: 'ciclo' | 'gravidez' | 'menopausa' | 'nao'; cycleLen?: number; periodLen?: number; lastStart?: string; due?: string; show?: boolean };
   /**
