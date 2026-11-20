@@ -22,6 +22,8 @@ import { Evolution } from './screens/Evolution';
 import { Home } from './screens/Home';
 import { Plan } from './screens/Plan';
 import { Pros } from './screens/Pros';
+import { Sleep } from './screens/Sleep';
+import { Coach } from './screens/Coach';
 import { Profile } from './screens/Profile';
 import { PrintReport } from './components/PrintReport';
 import { bodySnapshot } from './domain/progress';
@@ -38,19 +40,26 @@ import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'sono' | 'saude' | 'coach' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social';
 export type Nav = (t: Tab) => void;
 
+/** 5 separadores (especificação v2, secção 3): o Coach fica ao centro, em destaque. */
 const TABS: [Tab, string, IconName][] = [
   ['home', 'Início', 'home'],
-  ['quiz', 'Plano', 'quiz'],
-  ['nutri', 'Nutrição', 'recipes'],
-  ['treino', 'Treino', 'flame'],
+  ['saude', 'Saúde', 'heart'],
+  ['coach', 'Coach', 'mic'],
   ['evo', 'Evolução', 'evo'],
   ['social', 'Comunidade', 'pros'],
 ];
+/** sub-separadores da Saúde, com os ícones que tinham na barra */
+const HEALTH_TABS: [Tab, string, IconName][] = [
+  ['quiz', 'Plano', 'quiz'],
+  ['nutri', 'Nutrição', 'recipes'],
+  ['treino', 'Treino', 'flame'],
+  ['sono', 'Sono', 'moon'],
+];
 /** separadores sem botão próprio na barra: Check-in pertence ao Início, Receitas à Nutrição */
-const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'nutri' };
+const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'saude', quiz: 'saude', nutri: 'saude', treino: 'saude', sono: 'saude', pros: 'home' };
 
 export function App() {
   const { S, update, replace, toast, toastMsg } = useStore();
@@ -145,9 +154,13 @@ export function App() {
     return scheduleReminder(S.reminder, () => took(S, S.logs[todayKey()]));
   }, [S]);
 
+  // a Saúde abre no último sub-separador usado (Plano na primeira vez)
+  const [healthSub, setHealthSub] = useState<Tab>('quiz');
   const go: Nav = (t) => {
-    if (t !== 'quiz') setQuiz(null);
-    setTab(t);
+    const to = t === 'saude' ? healthSub : t;
+    if (to !== 'quiz') setQuiz(null);
+    if (NAV_OF[to] === 'saude' && to !== 'recipes') setHealthSub(to);
+    setTab(to);
     window.scrollTo(0, 0);
   };
   /** Abre a avaliação; numa reavaliação, as respostas anteriores vêm preenchidas. */
@@ -199,7 +212,7 @@ export function App() {
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social') {
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social' && tab !== 'coach' && tab !== 'sono') {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
@@ -209,6 +222,9 @@ export function App() {
       recipes: <Nutrition initial="receitas" />,
       nutri: <Nutrition />,
       treino: <Training />,
+      sono: <Sleep />,
+      coach: <Coach />,
+      saude: null,
       pros: <Pros openReport={() => setReportOpen(true)} />,
       social: <Community openAccount={() => openAccount('perfil')} />,
       conta: (
@@ -253,6 +269,19 @@ export function App() {
           </div>
         </header>
         <main key={tab + (quiz ? quiz.qi : '')} className="view">
+          {NAV_OF[tab] === 'saude' && !(tab === 'quiz' && quiz) && (
+            <div className="subtabs" role="tablist" aria-label="Saúde" data-tour="saude-tabs">
+              {HEALTH_TABS.map(([k, t, icon]) => {
+                const on = tab === k || (k === 'nutri' && tab === 'recipes');
+                return (
+                  <button key={k} role="tab" aria-selected={on} className={on ? 'on' : ''} onClick={() => go(k)}>
+                    <Icon name={icon} />
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {S.ans && !tour && TAB_TIPS[tab] && !S.tipsSeen?.[tab] && (
             <div className="tab-tip" role="note">
               <span className="small">💡 {TAB_TIPS[tab]}</span>
@@ -264,8 +293,8 @@ export function App() {
       </div>
       <nav aria-label="Navegação principal">
         {TABS.map(([k, t, icon]) => (
-          <button key={k} data-tour={`nav-${k}`} className={(NAV_OF[tab] ?? tab) === k ? 'on' : ''} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => go(k)}>
-            <Icon name={icon} />
+          <button key={k} data-tour={`nav-${k}`} className={`${(NAV_OF[tab] ?? tab) === k ? 'on' : ''} ${k === 'coach' ? 'nav-coach' : ''}`} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => go(k)}>
+            {k === 'coach' ? <span className="coach-btn"><Icon name={icon} width={2.2} /></span> : <Icon name={icon} />}
             {t}
           </button>
         ))}

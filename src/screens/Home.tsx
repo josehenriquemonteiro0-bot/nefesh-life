@@ -4,7 +4,8 @@ import { Icon } from '../components/Icon';
 import { GLASS_ML, HABITS, PROS, SHOP_URL, STEP_GOAL, TIPS, whatsappLink } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
 import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
-import { habitOn, reorderText, stock, streak, took } from '../domain/stats';
+import { adherence, habitOn, reorderText, stock, streak, took } from '../domain/stats';
+import { nextAction } from '../domain/nextAction';
 import { useStore } from '../state/store';
 import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
@@ -225,6 +226,32 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       <h1>{greeting()}{S.ans.name ? `, ${S.ans.name}` : ''}</h1>
       <StatusStrip go={go} />
 
+      {(() => {
+        const na = nextAction(S, l);
+        const run = () => {
+          if (na.kind === 'dose' && na.slot !== undefined) toggleDose(na.slot);
+          else if (na.kind === 'agua') setWater(w + 1);
+          else if (na.kind === 'refeicao') go('nutri');
+          else if (na.kind === 'checkin') go('check');
+        };
+        const label = { dose: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Check-in', treino: 'Treinar', feito: '' }[na.kind];
+        return (
+          <section className="card next-action" data-tour="proxima">
+            <div className="na-text">
+              <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>A seguir</p>
+              <h2 style={{ margin: '2px 0 2px' }}>{na.title}</h2>
+              <p className="small mute" style={{ margin: 0 }}>{na.detail}</p>
+            </div>
+            <div className="na-actions">
+              {label && <button className="btn sm" onClick={run}>{label}</button>}
+              <button className="btn ghost sm talk" onClick={() => go('coach')} aria-label="Toca para falar com o Coach">
+                <Icon name="mic" /> Falar
+              </button>
+            </div>
+          </section>
+        );
+      })()}
+
       {re?.due && !S.sample && (
         <section className="card due">
           <div className="row">
@@ -263,7 +290,10 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
             </div>
           ))}
         </div>
-        {inAdaptation(S) && <p className="small" style={{ margin: '12px 0 0', opacity: 0.85 }}>Semana de adaptação: está a tomar metade da dose.</p>}
+        <p className="small" style={{ margin: '12px 0 0', opacity: 0.85 }}>
+          Aderência à Spirulina: <b>{adherence(S, 14)}%</b> dos últimos 14 dias
+          {inAdaptation(S) ? ' · semana de adaptação: está a tomar metade da dose.' : ''}
+        </p>
       </section>
 
       <SpirulinaCheck />

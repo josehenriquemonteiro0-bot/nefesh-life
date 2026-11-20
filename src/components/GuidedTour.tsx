@@ -13,13 +13,16 @@ interface Step {
 }
 
 export const TOUR: Step[] = [
+  { tab: 'home', target: 'proxima', title: 'A seguir', text: 'A app diz-lhe a coisa mais útil a fazer agora: a toma, a água, a refeição ou o check-in. Um toque e está feito.' },
   { tab: 'home', target: 'tomas', title: 'A sua toma de Spirulina', text: 'Toque no círculo quando tomar. É o centro do seu ritual: entra sozinha no diário e conta para a sua sequência.' },
   { tab: 'home', target: 'strip', title: 'Sequência, pontos e liga', text: '🔥 dias seguidos de ritual, ⭐ pontos de hoje e 🏆 o seu lugar na liga. Toque para abrir a Comunidade.' },
   { tab: 'home', target: 'agua', title: 'Água', text: 'Um toque em "+ 1 copo" sempre que beber. A meta é calculada para o seu peso.' },
   { tab: 'home', target: 'checkin', title: 'Check-in de 30 segundos', text: 'Diga como se sente: energia, sono e disposição. Com isto, a app mostra-lhe o efeito do ritual em si.' },
   { tab: 'home', target: 'passos', title: 'Passos e relógio', text: 'Escreva os passos ou envie uma captura do app Saúde. Também pode ligar o iPhone e o Apple Watch.' },
+  { tab: 'quiz', target: 'saude-tabs', title: 'Saúde', text: 'O seu Plano, a Nutrição, o Treino e o Sono, num só separador. Toque nos ícones de cima para mudar.' },
   { tab: 'nutri', target: 'foto-prato', title: 'Fotografe o prato', text: 'A IA estima os alimentos e as calorias. Aqui também carrega o plano do seu nutricionista e encontra as receitas.' },
   { tab: 'treino', target: 'treino-onde', title: 'Treine onde quiser', text: 'Com o plano do seu personal, no ginásio ou em casa, com exercícios animados. Escolha o nível: iniciante ou intermediário.' },
+  { tab: 'home', target: 'nav-coach', title: 'Coach NEFESH', text: 'O botão do centro: fale ou escreva e o Coach regista e responde. Está a chegar nas próximas atualizações.' },
   { tab: 'evo', target: 'spirulina-voce', title: 'A sua evolução', text: 'Aqui vê como se sente nos dias com e sem ritual, o antes e depois das reavaliações e o relatório em PDF.' },
   { tab: 'social', target: 'comunidade', title: 'Comunidade', text: 'Pontos, ligas semanais, equipa de melhores amigos, parceiro de ritual e momentos com foto. Juntos é mais fácil.' },
   { tab: 'home', target: 'perfil', title: 'O seu perfil', text: 'Conta, notificações, lembrete da toma, frascos, reavaliação e o tutorial outra vez, se precisar. Bom ritual! 🌿' },
@@ -120,6 +123,8 @@ export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
 
 /** Dica curta na primeira visita a cada separador (fecha-se com um toque e não volta). */
 export const TAB_TIPS: Partial<Record<Tab, string>> = {
+  sono: 'Registe as horas de cada noite: veja a média, a regularidade e como o sono mexe com a sua energia.',
+  coach: 'O Coach NEFESH vai registar por si o que disser ou escrever e responder com uma sugestão para o dia.',
   quiz: 'O seu plano: a dose de Spirulina explicada passo a passo, o Índice NEFESH e as metas para o seu corpo. Em "Saber mais" está a ciência.',
   nutri: 'Diário de hoje, foto do prato com IA e o plano do seu nutricionista. Em "Receitas" há ideias com Spirulina para todos os dias.',
   treino: 'Escolha onde treina: com personal, no ginásio ou em casa. Toque num treino para ver os exercícios e registá-lo no fim.',
