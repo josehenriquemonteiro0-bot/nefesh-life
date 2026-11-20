@@ -138,27 +138,135 @@ export function takeListenRequest() {
   }
 }
 
-/**
- * No iPhone, com a app no ecrã principal, a Apple bloqueia muitas vezes o reconhecimento de
- * voz das páginas (mesmo com o microfone autorizado). Depois da primeira recusa, o botão do
- * microfone passa a abrir o teclado, onde o ditado 🎤 funciona sempre.
- */
-const DICTATION_KEY = 'nefesh-voz-teclado';
+/** Último recurso, sem microfone na app: o ditado do teclado. */
 export const KEYBOARD_DICTATION_HINT = 'Toque no 🎤 do teclado e fale: o texto aparece aqui e o Coach regista da mesma forma.';
-export const preferKeyboardDictation = () => {
+
+// ——— gravação (iPhone e navegadores sem reconhecimento de voz) ———
+
+export const recorderSupported = () =>
+  typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
+
+/** O iPhone usa sempre a gravação: o reconhecimento do Safari é bloqueado nas apps instaladas. */
+export const shouldRecord = (ios: boolean) => recorderSupported() && (ios || !speechSupported());
+
+/** Nível de som acima do qual consideramos que a pessoa está a falar (RMS 0–1). */
+const SPEAKING = 0.035;
+/** Silêncio depois de falar que termina a gravação. */
+const SILENCE_MS = 1600;
+
+/**
+ * Grava a frase da pessoa e para sozinha quando ela se cala (ou ao fim de 60 s).
+ * onDone recebe o áudio e se houve fala.
+ */
+export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string) => void; onLevel?: (rms: number) => void }): Listening {
+  let rec: MediaRecorder | null = null;
+  let stream: MediaStream | null = null;
+  let ctx: AudioContext | null = null;
+  let raf = 0;
+  let timer = 0;
+  let aborted = false;
+  let stopped = false;
+  let spoke = false;
+  // o contexto de áudio tem de nascer no toque (regra do iPhone)
   try {
-    return localStorage.getItem(DICTATION_KEY) === '1';
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    ctx = AC ? new AC() : null;
   } catch {
-    return false;
+    ctx = null;
   }
-};
-export function setPreferKeyboardDictation(on: boolean) {
-  try {
-    if (on) localStorage.setItem(DICTATION_KEY, '1');
-    else localStorage.removeItem(DICTATION_KEY);
-  } catch {
-    /* sem armazenamento */
-  }
+  const cleanup = () => {
+    cancelAnimationFrame(raf);
+    window.clearTimeout(timer);
+    stream?.getTracks().forEach((t) => t.stop());
+    ctx?.close().catch(() => {});
+  };
+  const finish = () => {
+    stopped = true;
+    if (rec && rec.state !== 'inactive') rec.stop();
+    else cleanup();
+  };
+  (async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    } catch (e) {
+      cleanup();
+      h.onError((e as DOMException)?.name === 'NotAllowedError' ? 'O microfone não foi autorizado. Toque outra vez e escolha Permitir (ou autorize nas definições do telemóvel).' : 'Não foi possível usar o microfone.');
+      return;
+    }
+    if (stopped) return cleanup();
+    const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find((m) => MediaRecorder.isTypeSupported?.(m));
+    const chunks: Blob[] = [];
+    rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+    rec.ondataavailable = (e) => {
+      if (e.data.size) chunks.push(e.data);
+    };
+    rec.onstop = () => {
+      cleanup();
+      if (!aborted) h.onDone(new Blob(chunks, { type: rec?.mimeType || mime || 'audio/mp4' }), spoke || !ctx);
+    };
+    rec.start(250);
+    timer = window.setTimeout(finish, 60000);
+    if (!ctx) return;
+    try {
+      await ctx.resume();
+      const an = ctx.createAnalyser();
+      an.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(an);
+      const buf = new Uint8Array(an.fftSize);
+      const t0 = performance.now();
+      let quietSince = 0;
+      const tick = () => {
+        an.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / buf.length);
+        const now = performance.now();
+        h.onLevel?.(rms);
+        if (rms > SPEAKING) {
+          spoke = true;
+          quietSince = 0;
+        } else if (spoke) {
+          quietSince ||= now;
+          if (now - quietSince > SILENCE_MS) return finish();
+        }
+        // 8 s sem falar: desiste
+        if (!spoke && now - t0 > 8000) return finish();
+        raf = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch {
+      /* sem medição de som: para ao tocar outra vez ou ao fim de 60 s */
+    }
+  })();
+  return {
+    stop: finish,
+    abort: () => {
+      aborted = true;
+      finish();
+    },
+  };
 }
-/** Recusa que, num iPhone, quer dizer "use o ditado do teclado". */
-export const isBlockedByPlatform = (code: string, ios: boolean) => ios && (code === 'not-allowed' || code === 'service-not-allowed');
+
+const toBase64 = (b: Blob) =>
+  new Promise<string>((ok, fail) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).slice(String(r.result).indexOf(',') + 1));
+    r.onerror = () => fail(r.error);
+    r.readAsDataURL(b);
+  });
+
+/** Envia a gravação para o servidor (Whisper) e devolve o texto. */
+export async function transcribe(audio: Blob, api: string, device: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${api}/voz`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio: await toBase64(audio), mime: audio.type, device }) });
+  } catch {
+    throw new Error('Sem ligação à internet. Tente outra vez.');
+  }
+  const body = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+  if (!res.ok) throw new Error(body.error || 'Não foi possível perceber a gravação. Tente outra vez ou escreva.');
+  return String(body.text ?? '').trim();
+}

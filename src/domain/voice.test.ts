@@ -63,11 +63,14 @@ describe('voz', () => {
 });
 
 describe('voz no iPhone', () => {
-  it('recusa do iPhone passa para o ditado do teclado; noutros telemóveis mostra o erro', async () => {
-    const { isBlockedByPlatform } = await import('./voice');
-    expect(isBlockedByPlatform('not-allowed', true)).toBe(true);
-    expect(isBlockedByPlatform('service-not-allowed', true)).toBe(true);
-    expect(isBlockedByPlatform('not-allowed', false)).toBe(false);
-    expect(isBlockedByPlatform('no-speech', true)).toBe(false);
+  it('o iPhone grava (o Safari bloqueia o reconhecimento nas apps instaladas)', async () => {
+    const { shouldRecord } = await import('./voice');
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: () => {} } });
+    vi.stubGlobal('MediaRecorder', class {});
+    vi.stubGlobal('window', { webkitSpeechRecognition: FakeRec });
+    expect(shouldRecord(true)).toBe(true);
+    expect(shouldRecord(false)).toBe(false); // Android com Chrome: reconhecimento direto
+    vi.stubGlobal('window', {});
+    expect(shouldRecord(false)).toBe(true); // sem reconhecimento: grava
   });
 });

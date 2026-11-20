@@ -9,7 +9,8 @@ import { ritualJustDone } from '../state/doses';
 import { useStore } from '../state/store';
 import type { DayLog } from '../domain/types';
 import { notePremiumUse } from '../domain/analytics';
-import { isBlockedByPlatform, KEYBOARD_DICTATION_HINT, listen, preferKeyboardDictation, setPreferKeyboardDictation, speak, speechSupported, stopSpeaking, takeListenRequest, ttsSupported, voiceLang, type Listening } from '../domain/voice';
+import { KEYBOARD_DICTATION_HINT, listen, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
+import { deviceId, PHOTO_API } from '../domain/photo';
 import { isIOS } from '../domain/push';
 
 const STARTERS = [
@@ -34,6 +35,7 @@ export function Coach({ go }: { go: Nav }) {
   const lang = voiceLang(S);
   const [listening, setListening] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [level, setLevel] = useState(0);
   const rec = useRef<Listening | null>(null);
 
   useEffect(() => {
@@ -95,7 +97,45 @@ export function Coach({ go }: { go: Nav }) {
       return;
     }
     setErr(null);
-    if (!speechSupported() || preferKeyboardDictation()) {
+    setNote(null);
+    const done = () => {
+      setListening(false);
+      setLevel(0);
+      rec.current = null;
+    };
+    // iPhone (e navegadores sem reconhecimento de voz): grava e o servidor passa a texto
+    if (shouldRecord(isIOS())) {
+      notePremiumUse('voz');
+      rec.current = record({
+        onLevel: (v) => setLevel(v),
+        onDone: async (audio, spoke) => {
+          done();
+          if (!spoke) {
+            setErr('Não ouvi nada. Toque no microfone e fale perto do telemóvel.');
+            return;
+          }
+          setBusy(true);
+          setText('');
+          try {
+            const t = await transcribe(audio, PHOTO_API, deviceId());
+            setBusy(false);
+            if (t) send(t, true);
+            else setErr('Não percebi. Tente outra vez, mais perto do telemóvel.');
+          } catch (e) {
+            setBusy(false);
+            setErr((e as Error).message);
+          }
+        },
+        onError: (msg) => {
+          done();
+          setErr(msg);
+        },
+      });
+      setText('');
+      setListening(true);
+      return;
+    }
+    if (!speechSupported()) {
       setNote(KEYBOARD_DICTATION_HINT);
       inputRef.current?.focus();
       return;
@@ -104,25 +144,16 @@ export function Coach({ go }: { go: Nav }) {
     const r = listen(lang, {
       onText: (t) => setText(t),
       onDone: (t) => {
-        setListening(false);
-        rec.current = null;
+        done();
         if (t) send(t, true);
       },
-      onError: (msg, code) => {
-        setListening(false);
-        rec.current = null;
-        if (isBlockedByPlatform(code, isIOS())) {
-          // iPhone: daqui em diante o microfone abre o teclado (ditado)
-          setPreferKeyboardDictation(true);
-          setNote(`No iPhone, a Apple não deixa as apps instaladas usar a voz diretamente. ${KEYBOARD_DICTATION_HINT}`);
-          inputRef.current?.focus();
-          return;
-        }
+      onError: (msg) => {
+        done();
         setErr(msg);
       },
     });
     if (!r) {
-      setErr('Não foi possível ligar o microfone. Use o microfone do teclado 🎤 para ditar.');
+      setErr('Não foi possível ligar o microfone. Pode escrever, ou usar o 🎤 do teclado.');
       return;
     }
     rec.current = r;
@@ -138,6 +169,9 @@ export function Coach({ go }: { go: Nav }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // o microfone cresce com a voz enquanto grava
+  const micScale = listening && level ? { transform: `scale(${1 + Math.min(0.22, level * 2.5)})` } : undefined;
 
   const undo = (idx: number) => {
     const m = hist[idx];
@@ -162,8 +196,8 @@ export function Coach({ go }: { go: Nav }) {
 
       {hist.length === 0 && (
         <section className="card hero coach-hero">
-          <button className={`coach-mic ${listening ? 'on' : ''}`} onClick={startVoice} aria-label={listening ? 'Parar de ouvir' : 'Toca para falar'}><Icon name="mic" width={2} /></button>
-          <h2 style={{ margin: '12px 0 6px' }}>{listening ? 'A ouvir… fale à vontade' : 'Toca para falar'}</h2>
+          <button className={`coach-mic ${listening ? 'on' : ''}`} style={micScale} onClick={startVoice} aria-label={listening ? 'Parar de ouvir' : 'Toca para falar'}><Icon name="mic" width={2} /></button>
+          <h2 style={{ margin: '12px 0 6px' }}>{listening ? 'A ouvir… fale à vontade' : busy ? 'Um momento…' : 'Toca para falar'}</h2>
           <p className="small" style={{ margin: 0, opacity: 0.9 }}>
             Fale ou escreva como falaria com um amigo: "Dormi mal, comi dois ovos e pão, vou treinar à tarde e estou cansado." O Coach regista o sono, a refeição e a energia, e devolve uma sugestão para o seu dia.
           </p>
@@ -210,7 +244,7 @@ export function Coach({ go }: { go: Nav }) {
           send(text);
         }}
       >
-        <button type="button" className={`coach-mic sm ${listening ? 'on' : ''}`} onClick={startVoice} disabled={busy} aria-label={listening ? 'Parar de ouvir' : 'Falar'}>
+        <button type="button" className={`coach-mic sm ${listening ? 'on' : ''}`} style={micScale} onClick={startVoice} disabled={busy} aria-label={listening ? 'Parar de ouvir' : 'Falar'}>
           <Icon name="mic" width={2} />
         </button>
         <textarea
@@ -218,7 +252,7 @@ export function Coach({ go }: { go: Nav }) {
           rows={2}
           value={text}
           maxLength={1200}
-          placeholder={listening ? 'A ouvir…' : 'Fale ou escreva… ex.: almocei frango com arroz'}
+          placeholder={listening ? 'A ouvir… quando parar de falar, eu envio' : busy ? 'A pensar…' : 'Fale ou escreva… ex.: almocei frango com arroz'}
           aria-label="Mensagem para o Coach"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -248,7 +282,7 @@ export function Coach({ go }: { go: Nav }) {
         <PremiumTag f="voz" />
       </div>
       <p className="small mute" style={{ margin: '8px 0 0' }}>
-        A voz usa o reconhecimento do próprio telemóvel: o áudio não é guardado pela NEFESH.{' '}
+        A voz é passada a texto pelo telemóvel ou pelo servidor da NEFESH, e o áudio não é guardado.{' '}
         {TEST_MODE
           ? 'Fase de teste: aberto a todos (no plano grátis serão 5 mensagens por dia).'
           : Number.isFinite(free)

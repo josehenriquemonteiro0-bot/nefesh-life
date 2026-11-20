@@ -19,6 +19,7 @@ import { LIMIT_MESSAGES, check, cleanDeviceId, count, dayKey, type Limits } from
 import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
 import { coachLimits, handleCoach } from './coach';
+import { handleVoice, type AiBinding } from './voice';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
 import * as push from './push';
@@ -53,6 +54,8 @@ export interface Env {
   APP_URL?: string;
   /** base de dados da comunidade (D1); opcional até estar criada */
   DB?: social.DB;
+  /** Workers AI (voz → texto) */
+  AI?: AiBinding;
 }
 
 const num = (v: string | undefined, def: number) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : def);
@@ -415,6 +418,14 @@ export default {
     if (path === '/evento') {
       await savePing(env.LIMITS as never, device, body as Record<string, unknown>);
       return new Response(null, { status: 204, headers: h });
+    }
+    // voz → texto (Coach no iPhone)
+    if (path === '/voz') {
+      try {
+        return await handleVoice(body as Record<string, unknown>, env.AI, env.LIMITS, device, ip, (b, st) => json(b, st, h));
+      } catch {
+        return json({ error: 'Não foi possível perceber a gravação. Tente outra vez ou escreva.' }, 502, h);
+      }
     }
     // AI Coach por texto
     if (path === '/coach') {

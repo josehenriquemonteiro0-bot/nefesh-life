@@ -24,3 +24,7 @@ crons = ["*/15 * * * *"]
 [[kv_namespaces]]
 binding = "LIMITS"
 id = "KV_ID_PLACEHOLDER"
+
+# voz → texto (Whisper no Workers AI da Cloudflare), para o Coach no iPhone
+[ai]
+binding = "AI"
