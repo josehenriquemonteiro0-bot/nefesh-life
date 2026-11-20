@@ -29,6 +29,8 @@ import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
 import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
+import { originAllowed } from './origin';
+export { originAllowed };
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
 const LOGIN_LIMITS = { device: 20, ip: 40, global: 5000 };
@@ -103,13 +105,6 @@ Se a imagem não mostrar comida nem bebida, responde com is_food false e items v
 A nota final é uma frase curta e útil para a pessoa (ex.: o que pesou mais na estimativa, ou o que conferir). Não faças juízos sobre a alimentação nem conselhos médicos.`;
 
 /** ALLOWED_ORIGIN aceita uma lista separada por vírgulas e * como curinga (ex.: https://*nefesh-life-v2*.pages.dev). */
-export function originAllowed(allowed: string | undefined, origin: string | null) {
-  const list = (allowed ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-  if (!list.length) return true;
-  if (!origin) return false;
-  return list.some((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[a-z0-9.-]*')}$`, 'i').test(origin));
-}
-
 function cors(env: Env, origin: string | null): Record<string, string> {
   const ok = originAllowed(env.ALLOWED_ORIGIN, origin);
   const first = (env.ALLOWED_ORIGIN ?? '').split(',')[0]?.trim();

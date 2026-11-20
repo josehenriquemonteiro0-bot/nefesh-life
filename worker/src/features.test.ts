@@ -20,7 +20,7 @@ describe('feature flags no servidor', () => {
 });
 
 describe('origens permitidas (CORS)', async () => {
-  const { originAllowed } = await import('./index');
+  const { originAllowed } = await import('./origin');
   it('aceita a origem exata, listas e curingas', () => {
     expect(originAllowed('https://josehenriquemonteiro0-bot.github.io', 'https://josehenriquemonteiro0-bot.github.io')).toBe(true);
     expect(originAllowed('https://josehenriquemonteiro0-bot.github.io', 'https://outro.site')).toBe(false);
