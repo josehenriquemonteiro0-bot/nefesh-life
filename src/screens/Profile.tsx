@@ -19,6 +19,7 @@ import { BottleCodeForm } from '../components/BottleCode';
 import { syncedLabel } from '../domain/account';
 import { Benefits } from '../components/Prize';
 import { PrivacyCard } from '../components/PrivacyCard';
+import { showWomen } from '../domain/women';
 
 /** Ativar ou desligar as notificações (lembrete da toma, amigos e liga). */
 function PushToggle() {
@@ -239,6 +240,14 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
       </section>
 
       <PrivacyCard />
+
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>Separadores da Saúde</h2>
+        <label className="check">
+          <input type="checkbox" checked={showWomen(S)} onChange={(e) => update((d) => { d.women = { ...(d.women ?? {}), mode: e.target.checked ? (d.women?.mode && d.women.mode !== 'nao' ? d.women.mode : 'ciclo') : 'nao', show: e.target.checked }; })} />
+          <span className="small">Mostrar "Ciclo" (saúde da mulher: ciclo menstrual, gravidez e menopausa).</span>
+        </label>
+      </section>
 
       <DataCard startQuiz={startQuiz} />
 

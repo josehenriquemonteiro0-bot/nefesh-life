@@ -16,6 +16,7 @@ import { setSource } from './sources';
 import { mealForHour, PHOTO_API, deviceId } from './photo';
 import { applyDose } from './doses';
 import { coachPlanMeal, coachPlanWorkout } from './planMeal';
+import { womenContext } from './women';
 import { notePremiumUse } from './analytics';
 import type { AppState, DayLog } from './types';
 
@@ -84,6 +85,8 @@ export function buildContext(S: AppState, now = new Date()): string {
       const opts: Record<string, string> = Object.fromEntries(q && 'o' in q ? q.o : []);
       lines.push(`Cuidados declarados: ${flags.map((f) => opts[f] ?? f).join(', ')} (não dês conselhos que dependam disto; sugere o profissional).`);
     }
+    const wc = womenContext(S, now);
+    if (wc) lines.push(wc);
     const tg = targetsFor(S);
     lines.push(`Metas diárias (${tg.source === 'pro' ? `do profissional ${tg.by ?? ''}`.trim() : 'referência da app'}): ${tg.kcal} kcal, ${tg.protein} g de proteína; água ${c.water} copos.`);
   }

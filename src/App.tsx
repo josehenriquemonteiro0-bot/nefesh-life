@@ -23,6 +23,8 @@ import { Home } from './screens/Home';
 import { Plan } from './screens/Plan';
 import { Pros } from './screens/Pros';
 import { Sleep } from './screens/Sleep';
+import { Women } from './screens/Women';
+import { showWomen } from './domain/women';
 import { Coach } from './screens/Coach';
 import { Profile } from './screens/Profile';
 import { PrintReport } from './components/PrintReport';
@@ -41,7 +43,7 @@ import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'sono' | 'saude' | 'coach' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'sono' | 'mente' | 'corpo' | 'cuidados' | 'ciclo' | 'saude' | 'coach' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social';
 export type Nav = (t: Tab) => void;
 
 /** 5 separadores (especificação v2, secção 3): o Coach fica ao centro, em destaque. */
@@ -58,9 +60,10 @@ const HEALTH_TABS: [Tab, string, IconName][] = [
   ['nutri', 'Nutrição', 'recipes'],
   ['treino', 'Treino', 'flame'],
   ['sono', 'Sono', 'moon'],
+  ['ciclo', 'Ciclo', 'cycle'],
 ];
 /** separadores sem botão próprio na barra: Check-in pertence ao Início, Receitas à Nutrição */
-const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'saude', quiz: 'saude', nutri: 'saude', treino: 'saude', sono: 'saude', pros: 'home' };
+const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'saude', quiz: 'saude', nutri: 'saude', treino: 'saude', sono: 'saude', mente: 'saude', corpo: 'saude', cuidados: 'saude', ciclo: 'saude', pros: 'home' };
 
 export function App() {
   const { S, update, replace, toast, toastMsg } = useStore();
@@ -250,6 +253,10 @@ export function App() {
       nutri: <Nutrition />,
       treino: <Training />,
       sono: <Sleep />,
+      ciclo: <Women />,
+      mente: null,
+      corpo: null,
+      cuidados: null,
       coach: <Coach go={go} />,
       saude: null,
       pros: <Pros openReport={() => setReportOpen(true)} />,
@@ -298,7 +305,7 @@ export function App() {
         <main key={tab + (quiz ? quiz.qi : '')} className="view">
           {NAV_OF[tab] === 'saude' && !(tab === 'quiz' && quiz) && (
             <div className="subtabs" role="tablist" aria-label="Saúde" data-tour="saude-tabs">
-              {HEALTH_TABS.map(([k, t, icon]) => {
+              {HEALTH_TABS.filter(([k]) => k !== 'ciclo' || showWomen(S)).map(([k, t, icon]) => {
                 const on = tab === k || (k === 'nutri' && tab === 'recipes');
                 return (
                   <button key={k} role="tab" aria-selected={on} className={on ? 'on' : ''} onClick={() => go(k)}>

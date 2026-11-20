@@ -67,6 +67,8 @@ export interface DayLog {
   sleepH?: number;
   /** tomas feitas através de uma receita (índices), que não gastam cápsulas */
   viaRecipe?: Record<number, string>;
+  /** ciclo menstrual / menopausa / gravidez: menstruação, fluxo (1–3) e sintomas */
+  cycle?: { p?: boolean; flow?: 1 | 2 | 3; sy?: string[] };
   /** origem de cada valor medível (sem entrada = escrito pela pessoa) */
   src?: Partial<Record<SourcedField, DataSource>>;
 }
@@ -150,6 +152,8 @@ export interface AppState {
   updatedAt?: string;
   /** false quando a pessoa desliga as estatísticas anónimas */
   stats?: boolean;
+  /** saúde da mulher: modo, ciclo e menstruação habituais, data prevista do parto */
+  women?: { mode: 'ciclo' | 'gravidez' | 'menopausa' | 'nao'; cycleLen?: number; periodLen?: number; lastStart?: string; due?: string; show?: boolean };
   /**
    * Consentimentos opcionais (RGPD/LGPD), com a data de cada escolha. O consentimento para
    * personalizar a app (necessário) é o `consent`.

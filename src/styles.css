@@ -548,3 +548,6 @@ ul.plain li.row{gap:8px}
 .mydata{width:100%;border-collapse:collapse}
 .mydata td{padding:6px 4px;border-top:1px solid var(--line);vertical-align:top}
 .mydata td:first-child{color:var(--mute);width:42%}
+/* saúde da mulher */
+.warn-card{border:1px solid rgba(255,179,107,.45);background:rgba(255,179,107,.06)}
+.mydata tr.now td{color:var(--neon);font-weight:700}
