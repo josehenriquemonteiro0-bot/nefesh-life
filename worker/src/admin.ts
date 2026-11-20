@@ -71,7 +71,41 @@ export function adminForm(key: string) {
 <label>Telemóvel com indicativo (opcional, para o WhatsApp)<input name="telefone" inputmode="tel" placeholder="351912345678"></label>
 <label>E-mail (opcional)<input name="email" type="email"></label>
 <button>Gerar códigos</button>
+</form>
+<form method="post" action="/admin/premios" class="card">
+<input type="hidden" name="key" value="${esc(key)}">
+<h2 style="margin-top:0">Prémios NEFESH15</h2>
+<p class="m">Vencedores do ranking semanal, os códigos de cupão e o e-mail para os enviar.</p>
+<button>Ver prémios</button>
 </form>`);
+}
+
+export interface CouponRow { code: string; week: string; rank: number; points: number; status: string; expires: string; sent_at: string | null; used_at: string | null; nick: string | null; email: string | null }
+
+/** Lista dos cupões NEFESH15: registar na loja, enviar por e-mail e marcar como enviado ou usado. */
+export function prizesPage(key: string, rows: CouponRow[], mail: (r: CouponRow) => { subject: string; body: string }) {
+  const fmt = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+  const label: Record<string, string> = { atribuido: 'por enviar', enviado: 'enviado', usado: 'usado' };
+  const btn = (code: string, status: string, text: string, ghost = true) =>
+    `<form method="post" action="/admin/premio" style="display:inline"><input type="hidden" name="key" value="${esc(key)}"><input type="hidden" name="code" value="${esc(code)}"><input type="hidden" name="status" value="${status}"><button class="${ghost ? 'ghost' : ''}">${text}</button></form>`;
+  const items = rows
+    .map((r) => {
+      const m = mail(r);
+      const href = r.email ? `mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(m.subject)}&body=${encodeURIComponent(m.body)}` : '';
+      return `<div class="card">
+<p style="margin:0"><b>${r.rank}.º lugar</b> · semana de ${fmt(r.week)} · ${r.points} pontos · <span class="m">${label[r.status] ?? r.status}</span></p>
+<p style="margin:6px 0"><code>${esc(r.code)}</code></p>
+<p class="m" style="margin:0">${esc(r.nick ?? '—')} · ${r.email ? esc(r.email) : 'sem e-mail (a pessoa ainda não abriu a app desde a atualização)'} · válido até ${fmt(r.expires)}</p>
+${r.status === 'atribuido' ? `${href ? `<a class="btn" href="${esc(href)}">Enviar por e-mail</a>` : ''}${btn(r.code, 'enviado', 'Marcar como enviado')}` : ''}
+${r.status === 'enviado' ? `${btn(r.code, 'usado', 'Marcar como usado')}${btn(r.code, 'atribuido', 'Voltar a por enviar')}` : ''}
+</div>`;
+    })
+    .join('');
+  return page(`<h1>Prémios NEFESH15</h1>
+<div class="card"><p style="margin:0">Todas as segundas-feiras às 9h, a app fecha o ranking da semana e gera um código para cada um dos 3 primeiros.</p>
+<p class="m" style="margin:8px 0 0">Antes de enviar: registe o código na loja online como cupão de 15%, <b>uso único</b>, válido até à data indicada e não acumulável. Depois toque em "Enviar por e-mail" (a mensagem já vai escrita) e em "Marcar como enviado".</p></div>
+${items || '<p class="m">Ainda não há vencedores. O primeiro ranking fecha na próxima segunda-feira.</p>'}
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }
 
 export function adminResult(key: string, product: string, codes: string[], name: string, phone: string, email: string, appUrl = APP_URL) {

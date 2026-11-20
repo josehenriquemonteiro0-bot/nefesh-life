@@ -14,6 +14,7 @@ import { HealthShotButton } from '../components/HealthShot';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
 import { drawShareCard, shareImage } from '../domain/shareCard';
+import { PrizeRanking, PrizeWin } from '../components/Prize';
 
 type View = 'mural' | 'liga' | 'equipa' | 'amigos' | 'desafios';
 
@@ -806,6 +807,8 @@ export function Community({ openAccount }: { openAccount: () => void }) {
         </section>
       )}
 
+      {st.prize && <PrizeWin p={st.prize} />}
+
       <section className="card hero">
         <div className="row">
           <div>
@@ -831,7 +834,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       </div>
 
       {view === 'mural' && <><Moments st={st} /><FeedView st={st} /></>}
-      {view === 'liga' && <><LeagueView st={st} /><EvolutionView /></>}
+      {view === 'liga' && <>{st.prize && <PrizeRanking p={st.prize} />}<LeagueView st={st} /><EvolutionView /></>}
       {view === 'equipa' && <TeamView st={st} />}
       {view === 'amigos' && <FriendsView st={st} />}
       {view === 'desafios' && <ChallengesView st={st} />}

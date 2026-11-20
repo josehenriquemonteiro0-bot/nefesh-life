@@ -83,6 +83,13 @@ CREATE TABLE IF NOT EXISTS stock_alerts (endpoint TEXT PRIMARY KEY, ends TEXT NO
 CREATE TABLE IF NOT EXISTS invites (uid TEXT PRIMARY KEY, by_uid TEXT NOT NULL, created TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS invites_by ON invites (by_uid);
 CREATE TABLE IF NOT EXISTS team_kinds (tid TEXT PRIMARY KEY, kind TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS coupons (
+  code TEXT PRIMARY KEY, uid TEXT NOT NULL, week TEXT NOT NULL, rank INTEGER NOT NULL, points INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'atribuido', created TEXT NOT NULL, expires TEXT NOT NULL, sent_at TEXT, used_at TEXT, seen INTEGER
+);
+CREATE INDEX IF NOT EXISTS coupons_uid ON coupons (uid, week);
+CREATE TABLE IF NOT EXISTS prize_weeks (week TEXT PRIMARY KEY, winners INTEGER NOT NULL, closed TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS contacts (uid TEXT PRIMARY KEY, email TEXT NOT NULL, updated TEXT NOT NULL);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */
@@ -242,6 +249,7 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM messages WHERE to_id = ? OR from_id = ?').bind(id, id),
     db.prepare('DELETE FROM challenge_members WHERE uid = ?').bind(id),
     db.prepare('DELETE FROM invites WHERE uid = ? OR by_uid = ?').bind(id, id),
+    db.prepare('DELETE FROM contacts WHERE uid = ?').bind(id),
     db.prepare('DELETE FROM challenges WHERE owner = ?').bind(id),
     db.prepare('DELETE FROM cheers WHERE uid = ? OR fid IN (SELECT id FROM feed WHERE uid = ?)').bind(id, id),
     db.prepare('DELETE FROM feed WHERE uid = ?').bind(id),

@@ -17,6 +17,7 @@ import { AccountCard } from '../components/Account';
 import { AvatarEdit } from '../components/Avatar';
 import { BottleCodeForm } from '../components/BottleCode';
 import { syncedLabel } from '../domain/account';
+import { Benefits } from '../components/Prize';
 
 /** Ativar ou desligar as notificações (lembrete da toma, amigos e liga). */
 function PushToggle() {
@@ -207,6 +208,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         </div>
         <BottleCodeForm />
       </section>
+
+      <Benefits />
 
       <section className="card">
         <div className="row">

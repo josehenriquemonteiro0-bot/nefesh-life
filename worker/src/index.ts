@@ -21,6 +21,7 @@ import { handleTip } from './tips';
 import { coachLimits, handleCoach } from './coach';
 import { handleVoice, type AiBinding } from './voice';
 import { handleReport } from './report';
+import * as prize from './prize';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
 import * as push from './push';
@@ -31,7 +32,7 @@ import * as admin from './admin';
 import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
-import { deleteAccount, getData, sessionUser, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
+import { deleteAccount, getData, sessionUser, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 import { originAllowed } from './origin';
 export { originAllowed };
 
@@ -57,6 +58,24 @@ export interface Env {
   DB?: social.DB;
   /** Workers AI (voz → texto) */
   AI?: AiBinding;
+}
+
+/**
+ * Segunda-feira a partir das 9h (Lisboa): fecha o ranking da semana anterior, gera os cupões
+ * NEFESH15 e avisa os vencedores (notificação). Corre no agendamento de 15 em 15 minutos.
+ */
+export async function closePrizeWeek(db: social.DB, store: KVNamespace, now = new Date()) {
+  const today = social.lisbonDay(now);
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hourCycle: 'h23' }).format(now));
+  if (social.weekOf(today) !== today || hour < 9) return null;
+  const prev = social.weekOf(new Date(Date.parse(`${today}T12:00:00Z`) - 7 * 86400000).toISOString().slice(0, 10));
+  const winners = await prize.closeWeek(db, prev, now);
+  for (const w of winners ?? []) {
+    await push
+      .notifyUser(db, store as never, w.uid, { title: `🏆 Ficou em ${w.rank}.º lugar no ranking!`, body: `Ganhou um cupão de ${prize.PRIZE.percent}% na loja NEFESH. Veja-o na app (Perfil → Os meus benefícios).`, tag: 'nefesh-premio' }, fetch, now)
+      .catch(() => 0);
+  }
+  return winners;
 }
 
 const num = (v: string | undefined, def: number) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : def);
@@ -138,7 +157,9 @@ function apiError(err: unknown, h: Record<string, string>) {
 export default {
   /** a cada 15 minutos: lembretes da toma e aviso de fim da liga */
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    if (env.DB) ctx.waitUntil(push.runSchedule(env.DB, env.LIMITS));
+    if (!env.DB) return;
+    ctx.waitUntil(push.runSchedule(env.DB, env.LIMITS));
+    ctx.waitUntil(closePrizeWeek(env.DB, env.LIMITS));
   },
 
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -146,6 +167,18 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
     // página da equipa: códigos únicos de frasco (só com o segredo STATS_KEY configurado)
+    if ((url.pathname === '/admin/premios' || url.pathname === '/admin/premio') && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html('Página indisponível.', 403);
+      const f = await req.formData();
+      if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      if (url.pathname === '/admin/premio') {
+        const st = String(f.get('status') ?? '');
+        if (st === 'enviado' || st === 'usado' || st === 'atribuido') await prize.setCouponStatus(env.DB, String(f.get('code') ?? ''), st);
+      }
+      return html(admin.prizesPage(key, await prize.couponList(env.DB), (r) => prize.prizeEmail(r.nick ?? '', r.rank, r.code, r.expires)));
+    }
     if (url.pathname === '/admin' || url.pathname === '/admin/gerar') {
       const key = env.STATS_KEY?.trim();
       const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
@@ -240,7 +273,15 @@ export default {
       const uid = await sessionUser(env.LIMITS as never, b.token);
       if (!uid) return json({ error: 'A sessão terminou. Entre outra vez na sua conta.' }, 401, h);
       const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
-        estado: () => social.state(db, uid),
+        estado: async () => {
+          const r = await social.state(db, uid);
+          if (r.status === 200) {
+            const today = social.lisbonDay();
+            Object.assign(r.body, await prize.prizeState(db, uid, social.weekOf(today), today).catch(() => ({})));
+          }
+          return r;
+        },
+        'cupao-visto': () => prize.couponSeen(db, uid),
         perfil: () => social.upsertProfile(db, uid, b),
         'perfil-foto': () => social.updateAvatar(db, uid, b.avatar),
         'notificacoes-comunidade': () => notify.setCommunityPush(db, uid, b.on),
@@ -249,6 +290,8 @@ export default {
           const raw = await env.LIMITS.get(`hd:${uid}`);
           const notes: notify.Note[] = [];
           const r = await social.sync(db, uid, b as social.SyncBody, new Date(), raw ? JSON.parse(raw) : {}, notes);
+          // e-mail da conta, para a equipa entregar o cupão (só se for mesmo desta conta)
+          if (b.email && (await userIdForEmail(env.LIMITS as never, b.email)) === uid) await prize.saveContact(db, uid, String(b.email).trim().toLowerCase());
           if (notes.length) ctx.waitUntil(notify.sendNotes(db, env.LIMITS, notes));
           return r;
         },

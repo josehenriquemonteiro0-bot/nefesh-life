@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '../domain/account';
+import { getAuth, useAuth } from '../domain/account';
 import { weekPayload } from '../domain/points';
 import { refresh, syncWeek, updateAvatar } from '../domain/social';
 import type { AppState } from '../domain/types';
@@ -15,7 +15,8 @@ export async function pushPoints(S: AppState, force = false) {
   const key = JSON.stringify(payload);
   if (!force && key === lastSent) return;
   try {
-    await syncWeek(payload);
+    // o e-mail da conta vai junto (o servidor confirma-o) para a equipa poder entregar um prémio
+    await syncWeek({ ...payload, email: getAuth()?.email });
     lastSent = key;
     refresh();
   } catch {

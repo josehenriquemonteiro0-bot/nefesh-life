@@ -118,6 +118,19 @@ export async function recover(store: AccountStore, emailRaw: unknown, code: unkn
   return { status: 200, body: { token: await newSession(store, u.id), email, recovery: next, updatedAt: await dataMeta(store, u.id) } };
 }
 
+/** Id da conta de um e-mail (para confirmar que o e-mail enviado pela app é mesmo da pessoa). */
+export async function userIdForEmail(store: AccountStore, emailRaw: unknown) {
+  const email = cleanEmail(emailRaw);
+  if (!validEmail(email)) return null;
+  const raw = await store.get(await emailKey(email));
+  if (!raw) return null;
+  try {
+    return (JSON.parse(raw) as { id: string }).id;
+  } catch {
+    return null;
+  }
+}
+
 export async function sessionUser(store: AccountStore, token: unknown) {
   const t = String(token ?? '');
   if (!/^[0-9a-f]{64}$/.test(t)) return null;

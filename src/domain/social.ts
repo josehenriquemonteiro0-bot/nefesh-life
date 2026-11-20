@@ -64,8 +64,28 @@ export interface SocialState {
   team?: TeamInfo | null;
   teams?: { rank: number; name: string; members: number; avg: number; mine: boolean }[];
   partner?: { status: 'ativo' | 'enviado' | 'recebido'; nick: string; avatar: string | null; streak: number; todayMe: boolean; todayThem: boolean } | null;
+  /** ranking semanal global e cupão NEFESH15 */
+  prize?: PrizeState;
   /** pontos de hoje calculados pelo servidor, com as provas */
   verify?: { points: number; verified: number; declared: number; v: string; checkDay: boolean; spirulinaPhoto: boolean; meals: number; review: boolean };
+}
+
+export interface PrizeCoupon {
+  code: string;
+  week: string;
+  rank: number;
+  status: string;
+  expires: string;
+  seen: boolean;
+  expired: boolean;
+}
+export interface PrizeState {
+  percent: number;
+  winners: number;
+  top: { rank: number; nick: string; avatar: string | null; points: number; me: boolean; eligible: boolean }[];
+  me: { rank: number | null; prizeRank: number | null; points: number; eligible: boolean; daysIn: number; checkins: number; reasons: string[] };
+  rules: { minDays: number; minCheckins: number; validDays: number; cooldownWeeks: number };
+  coupons: PrizeCoupon[];
 }
 
 export interface FeedItem {
@@ -254,6 +274,7 @@ export const proveHealth = (image: string, media_type: string) =>
   call<{ ok: boolean; note: string; steps?: number; exMin?: number; sleepH?: number }>('prova-saude', { image, media_type });
 export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });
 export const resultSeen = () => call('resultado-visto');
+export const couponSeen = () => call('cupao-visto');
 export const createChallenge = (kind: string, friends: string[]) => call<{ id: string }>('desafio', { kind, friends });
 export const acceptInvite = (code: string, cid?: string) => call<{ nick?: string; joined?: boolean; self?: boolean }>('convite', { code, cid });
 

@@ -530,3 +530,13 @@ ul.plain li.row{gap:8px}
 .report-areas .bar{margin:4px 0 0}
 .report-ai{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .report-priority{margin-top:12px;padding:12px;border-radius:12px;background:rgba(201,168,92,.1);border:1px solid rgba(201,168,92,.35)}
+/* ranking semanal e cupão NEFESH15 */
+.prize-card{border:1px solid rgba(201,168,92,.4)}
+.prize-me{margin:10px 0 6px;padding:10px 12px;border-radius:12px;background:var(--panel2)}
+.prize-check{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px;color:var(--mute)}
+.prize-check li.ok{color:var(--neon)}
+.coupon{border:1px dashed var(--gold);border-radius:14px;padding:12px;background:rgba(201,168,92,.07)}
+.coupon.off{opacity:.55}
+.coupons{display:grid;gap:10px}
+.coupon-code{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font:700 20px/1.2 Sora,monospace;letter-spacing:.06em;color:var(--gold);padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.25)}
+.coupon-code span{font:600 11px system-ui;letter-spacing:0;color:var(--mute)}
