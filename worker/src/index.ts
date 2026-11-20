@@ -171,7 +171,8 @@ export default {
           headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
         });
       }
-      const html = statsPage(await summarize(env.LIMITS as never));
+      const community = env.DB ? await social.communityStats(env.DB).catch(() => null) : null;
+      const html = statsPage(await summarize(env.LIMITS as never), community);
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
     }
     // fotos dos momentos (públicas para a comunidade durante 24 horas)
@@ -274,7 +275,8 @@ export default {
         },
         'denunciar-foto': () => photos.report(db, uid, b.id),
         'apagar-foto': () => photos.deletePhoto(db, uid, b.id),
-        'equipa-criar': () => together.createTeam(db, uid, b.name),
+        'equipa-criar': () => together.createTeam(db, uid, b.name, new Date(), b.kind),
+        convite: () => social.acceptInvite(db, uid, b.code, b.cid),
         'equipa-entrar': () => together.joinTeam(db, uid, b.code),
         'equipa-sair': () => together.leaveTeam(db, uid),
         momento: () => together.moment(db, uid, b.kind, b.value),

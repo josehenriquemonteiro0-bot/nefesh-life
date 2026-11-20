@@ -80,6 +80,9 @@ CREATE TABLE IF NOT EXISTS push_prefs (uid TEXT PRIMARY KEY, community INTEGER N
 CREATE TABLE IF NOT EXISTS notif_once (key TEXT PRIMARY KEY, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS push_daily (uid TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uid, day));
 CREATE TABLE IF NOT EXISTS stock_alerts (endpoint TEXT PRIMARY KEY, ends TEXT NOT NULL, notified TEXT);
+CREATE TABLE IF NOT EXISTS invites (uid TEXT PRIMARY KEY, by_uid TEXT NOT NULL, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS invites_by ON invites (by_uid);
+CREATE TABLE IF NOT EXISTS team_kinds (tid TEXT PRIMARY KEY, kind TEXT NOT NULL);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */
@@ -109,6 +112,28 @@ export const CHALLENGE_KINDS: Record<string, { flag: string; days: number; targe
   ritual_checkin: { flag: 'sc', days: 7, target: 6 },
   ritual_refeicoes: { flag: 'sm', days: 7, target: 5 },
 };
+/** Durações possíveis dos desafios (dias). */
+export const DURATIONS = [7, 21, 30, 90] as const;
+/** Desafio principal de lançamento: 21 dias de Spirulina e água. */
+export const RESET = { flag: 'sa', days: 21, target: { firme: 18, leve: 15 } } as const;
+export const TEAM_SIZE_RESET = 8;
+
+/**
+ * Desafio guardado como "tipo:dias:nível" (os antigos são só "tipo", 7 dias, firme).
+ * Nível "leve": 75% dos dias; "firme": a proporção do desafio de 7 dias.
+ */
+export function challengeDef(kind: string) {
+  const [base, d, lv] = String(kind).split(':');
+  const level: 'leve' | 'firme' = lv === 'leve' ? 'leve' : 'firme';
+  if (base === 'reset21') return { kind: `reset21:21:${level}`, base, flag: RESET.flag, days: 21, target: RESET.target[level], level };
+  const k = CHALLENGE_KINDS[base];
+  if (!k) return null;
+  const days = (DURATIONS as readonly number[]).includes(Number(d)) ? Number(d) : 7;
+  const firm = Math.max(1, Math.round((k.target / 7) * days));
+  const target = level === 'leve' ? Math.max(1, Math.round(firm * 0.75)) : firm;
+  return { kind: `${base}:${days}:${level}`, base, flag: k.flag, days, target, level };
+}
+
 /** Desafio NEFESH da semana: sempre com a Spirulina (roda todas as semanas). */
 const OFFICIAL = ['ritual', 'ritual_agua', 'ritual_treino', 'ritual_checkin', 'ritual_refeicoes'] as const;
 
@@ -216,6 +241,7 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM friends WHERE a = ? OR b = ?').bind(id, id),
     db.prepare('DELETE FROM messages WHERE to_id = ? OR from_id = ?').bind(id, id),
     db.prepare('DELETE FROM challenge_members WHERE uid = ?').bind(id),
+    db.prepare('DELETE FROM invites WHERE uid = ? OR by_uid = ?').bind(id, id),
     db.prepare('DELETE FROM challenges WHERE owner = ?').bind(id),
     db.prepare('DELETE FROM cheers WHERE uid = ? OR fid IN (SELECT id FROM feed WHERE uid = ?)').bind(id, id),
     db.prepare('DELETE FROM feed WHERE uid = ?').bind(id),
@@ -419,6 +445,50 @@ export async function addFriend(db: DB, id: string, codeRaw: unknown, now = new 
   return ok({ nick: other.nick });
 }
 
+/**
+ * Entrar por um link de convite: fica amigo de quem convidou, regista quem convidou
+ * (para medir convites) e, se o link for de um 21 Day Reset, entra nesse Reset.
+ */
+export async function acceptInvite(db: DB, id: string, codeRaw: unknown, cidRaw: unknown, now = new Date()): Promise<Ok> {
+  const code = String(codeRaw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const inviter = await db.prepare('SELECT id, nick FROM profiles WHERE code = ?').bind(code).first<{ id: string; nick: string }>();
+  if (!inviter) return fail(404, 'Este convite já não é válido.');
+  if (inviter.id === id) return ok({ self: true });
+  const f = await addFriend(db, id, code, now);
+  if (f.status !== 200) return f;
+  await db.prepare('INSERT OR IGNORE INTO invites (uid, by_uid, created) VALUES (?, ?, ?)').bind(id, inviter.id, now.toISOString()).run();
+  let joined = false;
+  const cid = String(cidRaw ?? '').replace(/[^a-f0-9]/g, '').slice(0, 32);
+  if (cid) {
+    const c = await db.prepare('SELECT id, kind, start, owner FROM challenges WHERE id = ?').bind(cid).first<{ id: string; kind: string; start: string; owner: string }>();
+    const def = c ? challengeDef(c.kind) : null;
+    const isMember = c ? await db.prepare('SELECT 1 FROM challenge_members WHERE cid = ? AND uid = ?').bind(c.id, inviter.id).first() : null;
+    if (c && def && def.base === 'reset21' && isMember && addDays(c.start, def.days - 1) >= lisbonDay(now)) {
+      const n = await db.prepare('SELECT COUNT(*) AS n FROM challenge_members WHERE cid = ?').bind(c.id).first<{ n: number }>();
+      if ((n?.n ?? 0) < TEAM_SIZE_RESET) {
+        await db.prepare('INSERT OR IGNORE INTO challenge_members (cid, uid) VALUES (?, ?)').bind(c.id, id).run();
+        joined = true;
+      }
+    }
+  }
+  return ok({ nick: inviter.nick, joined });
+}
+
+/** Números da comunidade para a página de estatísticas (só contagens). */
+export async function communityStats(db: DB) {
+  const n = async (q: string) => Number((await db.prepare(q).first<{ n: number }>())?.n ?? 0);
+  return {
+    members: await n('SELECT COUNT(*) AS n FROM profiles'),
+    invites: await n('SELECT COUNT(*) AS n FROM invites'),
+    inviters: await n('SELECT COUNT(DISTINCT by_uid) AS n FROM invites'),
+    resets: await n("SELECT COUNT(*) AS n FROM challenges WHERE kind LIKE 'reset21%'"),
+    resetPeople: await n("SELECT COUNT(*) AS n FROM challenge_members m JOIN challenges c ON c.id = m.cid WHERE c.kind LIKE 'reset21%'"),
+    resetDone: await n("SELECT COUNT(*) AS n FROM feed WHERE kind = 'reset'"),
+    challenges: await n("SELECT COUNT(*) AS n FROM challenges WHERE kind NOT LIKE 'reset21%'"),
+    circles: await n('SELECT COUNT(*) AS n FROM teams'),
+  };
+}
+
 export async function removeFriend(db: DB, id: string, other: unknown): Promise<Ok> {
   const o = String(other ?? '');
   await db.batch([
@@ -460,12 +530,21 @@ export async function markSeen(db: DB, id: string): Promise<Ok> {
 /* ---------- desafios entre amigos ---------- */
 
 export async function createChallenge(db: DB, id: string, kind: unknown, friends: unknown, now = new Date()): Promise<Ok> {
-  const k = String(kind ?? '');
-  if (!CHALLENGE_KINDS[k]) return fail(400, 'Desafio desconhecido.');
+  const def = challengeDef(String(kind ?? ''));
+  if (!def) return fail(400, 'Desafio desconhecido.');
+  const k = def.kind;
   const ids = Array.isArray(friends) ? [...new Set(friends.map(String))].slice(0, 20) : [];
   const valid: string[] = [];
   for (const f of ids) if (await areFriends(db, id, f)) valid.push(f);
-  if (!valid.length) return fail(400, 'Escolha pelo menos um amigo.');
+  // o 21 Day Reset pode começar a solo (e convidar amigos depois); os outros pedem amigos
+  if (!valid.length && def.base !== 'reset21') return fail(400, 'Escolha pelo menos um amigo.');
+  if (def.base === 'reset21') {
+    const active = await db
+      .prepare("SELECT c.id FROM challenges c JOIN challenge_members m ON m.cid = c.id WHERE m.uid = ? AND c.kind LIKE 'reset21%' AND c.start >= ?")
+      .bind(id, addDays(lisbonDay(now), -20))
+      .first();
+    if (active) return fail(409, 'Já está num 21 Day Reset.');
+  }
   const cid = [...crypto.getRandomValues(new Uint8Array(8))].map((x) => x.toString(16).padStart(2, '0')).join('');
   const start = lisbonDay(now);
   await db.batch([
@@ -543,25 +622,43 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
 
   // desafios (ativos ou terminados há menos de 7 dias)
   const { results: ch } = await db
-    .prepare(`SELECT c.id, c.kind, c.start, c.owner FROM challenges c JOIN challenge_members m ON m.cid = c.id WHERE m.uid = ? AND c.start >= ? ORDER BY c.start DESC LIMIT 10`)
-    .bind(id, addDays(today, -14))
+    .prepare(`SELECT c.id, c.kind, c.start, c.owner FROM challenges c JOIN challenge_members m ON m.cid = c.id WHERE m.uid = ? AND c.start >= ? ORDER BY c.start DESC LIMIT 12`)
+    .bind(id, addDays(today, -97))
     .all<{ id: string; kind: string; start: string; owner: string }>();
   const challenges = [];
   for (const c of ch) {
-    const def = CHALLENGE_KINDS[c.kind];
+    const def = challengeDef(c.kind);
+    if (!def) continue;
     const end = addDays(c.start, def.days - 1);
+    // terminados há mais de 7 dias já não aparecem
+    if (end < addDays(today, -7)) continue;
     const { results: mem } = await db
       .prepare('SELECT p.id, p.nick, p.avatar FROM challenge_members m JOIN profiles p ON p.id = m.uid WHERE m.cid = ?')
       .bind(c.id)
       .all<{ id: string; nick: string; avatar: string | null }>();
-    const ds = await daysOf(db, mem.map((m) => m.id), [...new Set([weekOf(c.start), weekOf(end)])]);
+    const weeks: string[] = [];
+    for (let w = weekOf(c.start); w <= weekOf(end < today ? end : today); w = addDays(w, 7)) weeks.push(w);
+    const ds = await daysOf(db, mem.map((m) => m.id), weeks);
+    const myDone = countFlag(ds.get(id) ?? {}, def.flag, c.start, end);
+    // Reset cumprido: aparece no mural (uma vez)
+    if (def.base === 'reset21' && myDone >= def.target) {
+      const key = `reset:${c.id}:${id}`;
+      if (!(await db.prepare('SELECT 1 FROM notif_once WHERE key = ?').bind(key).first())) {
+        await db.batch([
+          db.prepare('INSERT INTO notif_once (key, created) VALUES (?, ?)').bind(key, new Date().toISOString()),
+          db.prepare("INSERT INTO feed (uid, kind, value, created) VALUES (?, 'reset', 21, ?)").bind(id, new Date().toISOString()),
+        ]);
+      }
+    }
     challenges.push({
       id: c.id,
-      kind: c.kind,
+      kind: def.base,
+      level: def.level,
       start: c.start,
       end,
       target: def.target,
       days: def.days,
+      day: Math.max(1, Math.min(def.days, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${c.start}T12:00:00Z`)) / 86400000) + 1)),
       mine: c.owner === id,
       members: mem
         .map((m) => ({ id: m.id, me: m.id === id, nick: m.nick, avatar: m.avatar, done: countFlag(ds.get(m.id) ?? {}, def.flag, c.start, end) }))

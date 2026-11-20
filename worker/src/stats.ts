@@ -148,7 +148,9 @@ export async function summarize(store: StatsStore, days = 30, now = new Date()) 
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-export function statsPage(s: Awaited<ReturnType<typeof summarize>>) {
+type Community = { members: number; invites: number; inviters: number; resets: number; resetPeople: number; resetDone: number; challenges: number; circles: number } | null;
+
+export function statsPage(s: Awaited<ReturnType<typeof summarize>>, community: Community = null) {
   const max = Math.max(1, ...s.perDay.map((d) => d.active));
   const days = [...s.perDay].reverse();
   const bars = days
@@ -177,6 +179,17 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 <h2>O que as pessoas usam</h2><p class="m">Percentagem dos telemóveis ativos em 30 dias, pelo resumo mais recente de cada um.</p><table>${feat}</table>
 <h2>Interesse em funcionalidades Premium (usos em 30 dias)</h2><table>${Object.keys(s.premiumUses).length ? kv(s.premiumUses) : '<tr><td class="m">Ainda sem usos registados.</td></tr>'}</table>
 <h2>Aderência à Spirulina: antes e com a app</h2><p class="m">Aderência média nos últimos 14 dias (% de dias com a toma feita), agrupada pela resposta do quiz "Já tomou Spirulina antes?".</p><table><tr><th>Antes da app</th><th>Pessoas</th><th>Aderência com a app</th></tr>${Object.entries(s.adherenceByPrior).map(([k, g]) => `<tr><td>${esc(k)}</td><td>${g.n}</td><td>${Math.round(g.avg)}%</td></tr>`).join('') || '<tr><td class="m" colspan="3">Ainda sem dados.</td></tr>'}</table>
+${community ? `<h2>Comunidade</h2><table>
+<tr><td>Pessoas na comunidade</td><td>${community.members}</td></tr>
+<tr><td>Entraram por convite</td><td>${community.invites}</td></tr>
+<tr><td>Pessoas que convidaram alguém</td><td>${community.inviters}</td></tr>
+<tr><td>Convites por quem convida (média)</td><td>${community.inviters ? (community.invites / community.inviters).toFixed(1).replace('.', ',') : '—'}</td></tr>
+<tr><td>21 Day Reset: começados</td><td>${community.resets}</td></tr>
+<tr><td>21 Day Reset: participantes</td><td>${community.resetPeople}</td></tr>
+<tr><td>21 Day Reset: concluídos</td><td>${community.resetDone}</td></tr>
+<tr><td>Outros desafios criados</td><td>${community.challenges}</td></tr>
+<tr><td>Circles</td><td>${community.circles}</td></tr>
+</table>` : ''}
 <h2>Fase do ritual</h2><table>${kv(s.stage)}</table>
 <h2>Sistema</h2><table>${kv(s.platform)}</table>
 <h2>Formato da Spirulina</h2><table>${kv(s.format)}</table>

@@ -4,8 +4,8 @@ import { useAuth } from '../domain/account';
 import { todayKey } from '../domain/dates';
 import { HABIT_POINTS, activityStreak, dayScore, levelOf, totalPoints, weekPayload, weekTotal, type Flag } from '../domain/points';
 import {
-  CHALLENGES, REACTIONS, REPLIES, acceptPartner, createTeam, endPartner, feedText, invitePartner, joinTeam, leaveTeam, react, replyTo, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
-  leaveCommunity, markSeen, refresh, removeFriend, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type Member, type SocialState,
+  CHALLENGES, CIRCLE_KINDS, DURATIONS, LEVELS, REACTIONS, REPLIES, acceptInvite, acceptPartner, circleOf, clearInvite, inviteUrl, pendingInvite, resetInviteText, createTeam, endPartner, feedText, invitePartner, joinTeam, leaveTeam, react, replyTo, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
+  leaveCommunity, markSeen, refresh, removeFriend, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type CircleKind, type Member, type SocialState,
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
@@ -13,6 +13,7 @@ import { Moments } from '../components/Moments';
 import { HealthShotButton } from '../components/HealthShot';
 import { useStore } from '../state/store';
 import { whatsappShare } from '../domain/content';
+import { drawShareCard, shareImage } from '../domain/shareCard';
 
 type View = 'mural' | 'liga' | 'equipa' | 'amigos' | 'desafios';
 
@@ -36,6 +37,11 @@ function Join({ onJoined }: { onJoined: () => void }) {
     <>
       <h1>Comunidade NEFESH</h1>
       <p className="mute">Ganhe pontos com os seus hábitos, suba de liga todas as semanas e incentive os seus amigos.</p>
+      {pendingInvite() && (
+        <section className="card due">
+          <p className="small" style={{ margin: 0 }}>💌 Recebeu um convite{pendingInvite()?.cid ? ' para o NEFESH 21 Day Reset' : ''}. Entre na comunidade e fica logo ligado a quem o convidou.</p>
+        </section>
+      )}
       <section className="card" data-tour="comunidade">
         <div className="row" style={{ justifyContent: 'flex-start', gap: 12 }}>
           <Face nick={nick || '?'} avatar={S.avatar} size={52} />
@@ -192,7 +198,9 @@ function TeamView({ st }: { st: SocialState }) {
   const { toast } = useStore();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [ckind, setCkind] = useState<CircleKind>('amigos');
   const t = st.team;
+  const ck = circleOf(t?.kind);
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try {
       await fn();
@@ -206,7 +214,7 @@ function TeamView({ st }: { st: SocialState }) {
     <>
       {t ? (
         <section className="card hero">
-          <p className="small" style={{ margin: 0, opacity: 0.8 }}>A minha equipa</p>
+          <p className="small" style={{ margin: 0, opacity: 0.8 }}>O meu Circle · {ck[2]} {ck[1]}</p>
           <h2 style={{ margin: '4px 0 6px' }}>{t.name}</h2>
           <p className="small" style={{ margin: '0 0 8px' }}>Meta da semana: <b>{t.goal} dias de ritual</b> somados por todos ({t.members.length} × 5)</p>
           <Bar pct={(t.done / Math.max(1, t.goal)) * 100} />
@@ -223,27 +231,32 @@ function TeamView({ st }: { st: SocialState }) {
           </ol>
           <p className="small" style={{ margin: '10px 0 0' }}>Código da equipa: <code className="key" style={{ display: 'inline-block' }}>{t.code}</code></p>
           <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 8 }}>
-            <a className="btn sm" href={whatsappShare(`Entra na minha equipa "${t.name}" na NEFESH Life 🌿\nComunidade → Equipa → Entrar com o código ${t.code}`)} target="_blank" rel="noopener">Convidar para a equipa</a>
-            <button className="btn ghost sm" onClick={() => confirm('Sair da equipa?') && run(leaveTeam, 'Saiu da equipa.')}>Sair</button>
+            <a className="btn sm" href={whatsappShare(`Entra no meu Circle "${t.name}" na NEFESH Life 🌿\nComunidade → Circle → Entrar com o código ${t.code}${st.me?.code ? `\n${inviteUrl(st.me.code)}` : ''}`)} target="_blank" rel="noopener">Convidar para o Circle</a>
+            <button className="btn ghost sm" onClick={() => confirm('Sair do Circle?') && run(leaveTeam, 'Saiu do Circle.')}>Sair</button>
           </div>
         </section>
       ) : (
         <section className="card">
-          <h2 style={{ marginTop: 0 }}>Equipa de melhores amigos</h2>
-          <p className="small mute" style={{ marginTop: 0 }}>Juntem-se até 8 pessoas com uma meta em comum: 5 dias de ritual por pessoa, todas as semanas. A equipa entra no ranking pela média de pontos de cada um.</p>
-          <form className="row" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); run(() => createTeam(name), 'Equipa criada. Convide os seus amigos!'); }}>
-            <input className="field sm" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da equipa" maxLength={30} aria-label="Nome da equipa" />
+          <h2 style={{ marginTop: 0 }}>Circles: o seu grupo privado</h2>
+          <p className="small mute" style={{ marginTop: 0 }}>Família, amigos, casal ou equipa: até 8 pessoas com uma meta em comum, 5 dias de ritual por pessoa, todas as semanas. Só quem está no Circle vê os hábitos de cada um. O Circle entra no ranking pela média de pontos.</p>
+          <div className="chips" role="group" aria-label="Tipo de Circle" style={{ marginBottom: 10 }}>
+            {CIRCLE_KINDS.map(([k, t, icon]) => (
+              <button key={k} type="button" className={`chip sm ${ckind === k ? 'on' : ''}`} aria-pressed={ckind === k} onClick={() => setCkind(k)}>{icon} {t}</button>
+            ))}
+          </div>
+          <form className="row" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); run(() => createTeam(name, ckind), 'Circle criado. Convide as suas pessoas!'); }}>
+            <input className="field sm" value={name} onChange={(e) => setName(e.target.value)} placeholder={ckind === 'familia' ? 'ex.: Família Silva' : ckind === 'casal' ? 'ex.: Nós dois' : 'Nome do Circle'} maxLength={30} aria-label="Nome do Circle" />
             <button className="btn sm" disabled={name.trim().length < 2}>Criar</button>
           </form>
-          <form className="row" style={{ gap: 8, marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); run(() => joinTeam(code), 'Entrou na equipa!'); }}>
-            <input className="field sm" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Código da equipa" maxLength={8} aria-label="Código da equipa" />
+          <form className="row" style={{ gap: 8, marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); run(() => joinTeam(code), 'Entrou no Circle!'); }}>
+            <input className="field sm" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Código do Circle" maxLength={8} aria-label="Código do Circle" />
             <button className="btn ghost sm" disabled={code.trim().length < 4}>Entrar</button>
           </form>
         </section>
       )}
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Ranking de equipas</h2>
-        {!(st.teams ?? []).length && <p className="small mute">Ainda não há equipas. Seja o primeiro!</p>}
+        <h2 style={{ marginTop: 0 }}>Ranking de Circles</h2>
+        {!(st.teams ?? []).length && <p className="small mute">Ainda não há Circles. Seja o primeiro!</p>}
         <ol className="rank">
           {(st.teams ?? []).map((x) => (
             <li key={x.rank} className={x.mine ? 'me' : ''}>
@@ -485,18 +498,123 @@ function FriendsView({ st }: { st: SocialState }) {
   );
 }
 
+/** NEFESH 21 Day Reset: o desafio principal (a solo ou em equipa por convite) e o cartão para partilhar. */
+function ResetCard({ st }: { st: SocialState }) {
+  const { S, toast } = useStore();
+  const [level, setLevel] = useState<'leve' | 'firme'>('firme');
+  const [busy, setBusy] = useState(false);
+  const r = (st.challenges ?? []).find((c) => c.kind === 'reset21');
+  const code = st.me?.code ?? '';
+  const nick = st.me?.nick ?? '';
+  const share = async () => {
+    if (!r) return;
+    const me = r.members.find((m) => m.me);
+    setBusy(true);
+    try {
+      const done = me?.done ?? 0;
+      const finished = done >= r.target;
+      const blob = await drawShareCard({
+        title: 'NEFESH 21 Day Reset',
+        subtitle: finished ? 'Concluído! 🎉' : `Dia ${r.day ?? 1} de 21`,
+        progress: { done, total: 21 },
+        stats: [
+          ['dias de Spirulina e água', String(done)],
+          ['dias seguidos de ritual', String(activityStreak(S))],
+          [r.members.length > 1 ? 'pessoas na equipa' : 'objetivo', r.members.length > 1 ? String(r.members.length) : `${r.target}/21`],
+        ],
+        nick,
+        link: inviteUrl(code, r.id),
+      });
+      const out = await shareImage(blob, resetInviteText(code, nick, r.id), 'nefesh-21-day-reset.png');
+      if (out === 'descarregado') toast('Imagem guardada. Partilhe-a no Instagram ou no WhatsApp.');
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!r)
+    return (
+      <section className="card hero reset-card">
+        <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>Desafio principal</p>
+        <h2 style={{ margin: '4px 0 6px' }}>🌿💧 NEFESH 21 Day Reset</h2>
+        <p className="small" style={{ margin: '0 0 10px' }}>
+          21 dias de Spirulina e meta de água no mesmo dia. Comece a solo ou convide 2 amigos para formarem uma equipa de 3. No fim, partilhe o seu cartão de evolução.
+        </p>
+        <div className="chips" role="group" aria-label="Nível">
+          {LEVELS.map(([k, t]) => (
+            <button key={k} className={`chip sm ${level === k ? 'on' : ''}`} aria-pressed={level === k} onClick={() => setLevel(k)}>
+              {t} · {k === 'leve' ? '15' : '18'} de 21 dias
+            </button>
+          ))}
+        </div>
+        <button
+          className="btn full"
+          style={{ marginTop: 12 }}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await createChallenge(`reset21:21:${level}`, []);
+              toast('O seu 21 Day Reset começa hoje! Convide 2 amigos.');
+              refresh();
+            } catch (e) {
+              toast((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Começar o Reset hoje
+        </button>
+      </section>
+    );
+  const me = r.members.find((m) => m.me);
+  const ended = r.end < todayKey();
+  return (
+    <section className="card hero reset-card">
+      <div className="row">
+        <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>🌿💧 NEFESH 21 Day Reset</p>
+        <span className="small" style={{ opacity: 0.8 }}>{ended ? 'terminado' : `dia ${r.day ?? 1} de 21`}</span>
+      </div>
+      <h2 style={{ margin: '4px 0 6px' }}>{(me?.done ?? 0) >= r.target ? 'Reset concluído! 🎉' : `${me?.done ?? 0} de ${r.target} dias`}</h2>
+      <Bar pct={((me?.done ?? 0) / r.target) * 100} />
+      <p className="small" style={{ margin: '6px 0 0', opacity: 0.85 }}>Spirulina e meta de água no mesmo dia · nível {r.level === 'leve' ? 'leve' : 'firme'}</p>
+      <ul className="rank" style={{ marginTop: 10 }}>
+        {r.members.map((m, i) => (
+          <li key={m.id} className={m.me ? 'me' : ''}>
+            <b className="pos">{i + 1}</b>
+            <Face nick={m.nick} avatar={m.avatar} />
+            <span className="who">{m.nick}{m.done >= r.target ? ' 🏅' : ''}</span>
+            <b>{m.done}/{r.target}</b>
+          </li>
+        ))}
+      </ul>
+      {r.members.length < 3 && !ended && <p className="small" style={{ margin: '8px 0 0' }}>Convide {3 - r.members.length === 1 ? 'mais 1 amigo' : '2 amigos'} para formarem uma equipa de 3. Quem entrar pelo link fica logo no seu Reset.</p>}
+      <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 10 }}>
+        {!ended && <a className="btn sm" href={whatsappShare(resetInviteText(code, nick, r.id))} target="_blank" rel="noopener">Convidar amigos</a>}
+        <button className="btn ghost sm" disabled={busy} onClick={share}>{busy ? 'A preparar…' : '📸 Partilhar o meu cartão'}</button>
+      </div>
+      <button className="link small inline" style={{ marginTop: 8 }} onClick={async () => { if (!confirm('Sair do 21 Day Reset?')) return; await leaveChallenge(r.id).catch(() => undefined); refresh(); }}>sair do Reset</button>
+    </section>
+  );
+}
+
 function ChallengesView({ st }: { st: SocialState }) {
   const { toast } = useStore();
   const [kind, setKind] = useState('ritual');
+  const [days, setDays] = useState<number>(7);
+  const [level, setLevel] = useState<'leve' | 'firme'>('firme');
   const [pick, setPick] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const o = st.official;
   const friends = st.friends ?? [];
   return (
     <>
+      <ResetCard st={st} />
       {o && (
-        <section className="card hero">
-          <p className="small" style={{ margin: 0, opacity: 0.85 }}>Desafio NEFESH da semana</p>
+        <section className="card">
+          <p className="small mute" style={{ margin: 0 }}>Desafio NEFESH da semana</p>
           <h2 style={{ margin: '4px 0' }}>{CHALLENGES[o.kind].icon} {CHALLENGES[o.kind].title}</h2>
           <p className="small" style={{ margin: '0 0 8px' }}>{CHALLENGES[o.kind].text}: {o.target} dias até domingo. Prémio: +{o.bonus} pontos.</p>
           <Bar pct={(o.done / o.target) * 100} />
@@ -504,13 +622,13 @@ function ChallengesView({ st }: { st: SocialState }) {
         </section>
       )}
 
-      {(st.challenges ?? []).map((c) => (
+      {(st.challenges ?? []).filter((c) => c.kind !== 'reset21').map((c) => (
         <section className="card" key={c.id}>
           <div className="row">
             <h2 style={{ margin: 0 }}>{CHALLENGES[c.kind]?.icon} {CHALLENGES[c.kind]?.title}</h2>
-            <span className="small mute">{c.end < todayKey() ? 'terminado' : `até ${c.end.split('-').reverse().slice(0, 2).join('/')}`}</span>
+            <span className="small mute">{c.end < todayKey() ? 'terminado' : `dia ${c.day ?? 1} de ${c.days}`}</span>
           </div>
-          <p className="small mute">{CHALLENGES[c.kind]?.text}: {c.target} de {c.days} dias</p>
+          <p className="small mute">{CHALLENGES[c.kind]?.text}: {c.target} de {c.days} dias{c.level === 'leve' ? ' · leve' : ''} · até {c.end.split('-').reverse().slice(0, 2).join('/')}</p>
           <ul className="rank">
             {c.members.map((m, i) => (
               <li key={m.id} className={m.me ? 'me' : ''}>
@@ -530,14 +648,27 @@ function ChallengesView({ st }: { st: SocialState }) {
         {!friends.length ? (
           <p className="small mute">Adicione amigos para criar desafios entre vocês.</p>
         ) : !creating ? (
-          <button className="btn sm" onClick={() => setCreating(true)}>Criar desafio de 7 dias</button>
+          <button className="btn sm" onClick={() => setCreating(true)}>Criar desafio</button>
         ) : (
           <>
             <div className="msg-pick">
-              {Object.entries(CHALLENGES).map(([k, c]) => (
+              {Object.entries(CHALLENGES).filter(([k]) => k !== 'reset21').map(([k, c]) => (
                 <button key={k} className={`chip ${kind === k ? 'on' : ''}`} onClick={() => setKind(k)}>{c.icon} {c.title}</button>
               ))}
             </div>
+            <p className="small mute">Duração</p>
+            <div className="chips" role="group" aria-label="Duração">
+              {DURATIONS.map((d) => (
+                <button key={d} className={`chip sm ${days === d ? 'on' : ''}`} aria-pressed={days === d} onClick={() => setDays(d)}>{d} dias</button>
+              ))}
+            </div>
+            <p className="small mute">Nível</p>
+            <div className="chips" role="group" aria-label="Nível do desafio">
+              {LEVELS.map(([k, t]) => (
+                <button key={k} className={`chip sm ${level === k ? 'on' : ''}`} aria-pressed={level === k} onClick={() => setLevel(k)}>{t}</button>
+              ))}
+            </div>
+            <p className="small mute" style={{ margin: '4px 0 8px' }}>{level === 'leve' ? 'Leve: cerca de 3 em cada 4 dias. Bom para começar.' : 'Firme: a meta completa do desafio.'}</p>
             <p className="small mute">Com quem?</p>
             {friends.map((f) => (
               <label className="check" key={f.id}>
@@ -551,7 +682,7 @@ function ChallengesView({ st }: { st: SocialState }) {
                 disabled={!pick.length}
                 onClick={async () => {
                   try {
-                    await createChallenge(kind, pick);
+                    await createChallenge(`${kind}:${days}:${level}`, pick);
                     toast('Desafio criado. Começa hoje!');
                     setCreating(false);
                     setPick([]);
@@ -611,6 +742,20 @@ export function Community({ openAccount }: { openAccount: () => void }) {
   useEffect(() => {
     if (st?.joined && st.me && !S.community) update((d) => { d.community = { nick: st.me!.nick, since: todayKey() }; });
   }, [st?.joined]);
+  // convite por link: depois de entrar na comunidade, fica amigo de quem convidou (e no Reset dele)
+  useEffect(() => {
+    const inv = pendingInvite();
+    if (!st?.joined || !inv) return;
+    clearInvite();
+    acceptInvite(inv.code, inv.cid || undefined)
+      .then((r) => {
+        if (r.self) return;
+        toast(r.joined ? `Entrou no 21 Day Reset de ${r.nick}! 🌿` : `Agora é amigo de ${r.nick} na NEFESH 🌿`);
+        setView(r.joined ? 'desafios' : 'amigos');
+        refresh();
+      })
+      .catch((e) => toast((e as Error).message));
+  }, [st?.joined]);
 
   if (!auth)
     return (
@@ -641,7 +786,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       </>
     );
   if (!st) return <><h1>Comunidade NEFESH</h1><p className="mute">{loading ? 'A carregar…' : ''}</p></>;
-  if (!st.joined) return <Join onJoined={() => setView('mural')} />;
+  if (!st.joined) return <Join onJoined={() => setView(pendingInvite() ? 'desafios' : 'mural')} />;
 
   const res = st.me?.result;
   return (
@@ -680,7 +825,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
       <TodayPoints st={st} />
 
       <div className="seg acc-seg five" data-tour="comunidade" role="group" aria-label="Comunidade">
-        {([['mural', 'Mural'], ['liga', 'Liga'], ['equipa', 'Equipa'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}${st.partner?.status === 'recebido' ? ' •' : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (
+        {([['mural', 'Mural'], ['liga', 'Liga'], ['equipa', 'Circle'], ['amigos', `Amigos${unreadCount(st) ? ` (${unreadCount(st)})` : ''}${st.partner?.status === 'recebido' ? ' •' : ''}`], ['desafios', 'Desafios']] as [View, string][]).map(([k, t]) => (
           <button key={k} className={view === k ? 'on' : ''} aria-pressed={view === k} onClick={() => setView(k)}>{t}</button>
         ))}
       </div>

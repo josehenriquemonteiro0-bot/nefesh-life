@@ -145,3 +145,36 @@ describe('foto do perfil na comunidade', () => {
     expect((await so.updateAvatar(db, 'rui', img, MON)).status).toBe(404);
   });
 });
+
+describe('desafios longos, 21 Day Reset e convites', () => {
+  it('desafios de 7, 21, 30 e 90 dias com nível leve ou firme', () => {
+    expect(so.challengeDef('ritual')).toMatchObject({ kind: 'ritual:7:firme', days: 7, target: 7 });
+    expect(so.challengeDef('ritual:21:firme')).toMatchObject({ days: 21, target: 21 });
+    expect(so.challengeDef('treino:30:leve')).toMatchObject({ days: 30, target: 13 }); // 4/7 de 30 = 17 → 75%
+    expect(so.challengeDef('agua:45')).toMatchObject({ days: 7 }); // duração inválida → 7
+    expect(so.challengeDef('reset21:21:leve')).toMatchObject({ base: 'reset21', flag: 'sa', days: 21, target: 15 });
+    expect(so.challengeDef('inventado')).toBeNull();
+  });
+
+  it('o Reset começa a solo, convida por link e quem entra fica amigo e no mesmo Reset', async () => {
+    const db = memoryDB();
+    const a = await so.upsertProfile(db, 'ana', { nick: 'Ana' }, MON);
+    await so.upsertProfile(db, 'rui', { nick: 'Rui' }, MON);
+    await so.upsertProfile(db, 'eva', { nick: 'Eva' }, MON);
+    const c = await so.createChallenge(db, 'ana', 'reset21:21:firme', [], MON);
+    expect(c.status).toBe(200);
+    expect((await so.createChallenge(db, 'ana', 'reset21', [], WED)).status).toBe(409); // um Reset de cada vez
+    expect((await so.createChallenge(db, 'ana', 'ritual:21', [], MON)).status).toBe(400); // os outros pedem amigos
+    const code = String(a.body.code);
+    const inv = await so.acceptInvite(db, 'rui', code, c.body.id, WED);
+    expect(inv.body).toMatchObject({ nick: 'Ana', joined: true });
+    await so.acceptInvite(db, 'eva', code, c.body.id, WED);
+    expect((await so.acceptInvite(db, 'ana', code, c.body.id, WED)).body).toMatchObject({ self: true });
+    const st = (await so.state(db, 'rui', WED)).body as { challenges: { kind: string; days: number; target: number; day: number; members: { nick: string }[] }[] };
+    expect(st.challenges[0]).toMatchObject({ kind: 'reset21', days: 21, target: 18, day: 3 });
+    expect(st.challenges[0].members.map((m) => m.nick).sort()).toEqual(['Ana', 'Eva', 'Rui']);
+    const s = await so.communityStats(db);
+    expect(s).toMatchObject({ members: 3, invites: 2, inviters: 1, resets: 1, resetPeople: 3 });
+    expect((await so.acceptInvite(db, 'rui', 'NAOEXISTE', '', WED)).status).toBe(404);
+  });
+});

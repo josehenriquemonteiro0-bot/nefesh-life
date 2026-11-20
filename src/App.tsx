@@ -32,6 +32,7 @@ import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout } from './domain/account';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
+import { saveInviteFromUrl } from './domain/social';
 import { Community } from './screens/Community';
 import { AvatarImg } from './components/Avatar';
 import { GuidedTour, TAB_TIPS } from './components/GuidedTour';
@@ -93,6 +94,8 @@ export function App() {
   // código de frasco recebido por link (?frasco=NEF-XXXX-XXXX): regista logo, ou depois de entrar na conta
   const redeemBottle = useRedeemBottle();
   useEffect(() => {
+    // convite para a comunidade ou para o 21 Day Reset (?amigo=…&reset=…)
+    saveInviteFromUrl();
     const p = new URLSearchParams(location.search);
     const code = p.get('frasco');
     if (code) {

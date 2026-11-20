@@ -15,6 +15,8 @@ export const REPLIES: Record<string, string> = {
   continua: 'Continua assim! 🔥',
 };
 export const PAIR_MILESTONES = [7, 14, 30, 60, 90];
+/** Tipos de Circle (grupo privado). */
+export const CIRCLE_KINDS = ['familia', 'amigos', 'casal', 'equipa'] as const;
 
 type Ok = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown>): Ok => ({ status: 200, body });
@@ -31,7 +33,7 @@ const addDays = (key: string, n: number) => {
 
 /* ---------- equipas ---------- */
 
-export async function createTeam(db: DB, uid: string, nameRaw: unknown, now = new Date()): Promise<Ok> {
+export async function createTeam(db: DB, uid: string, nameRaw: unknown, now = new Date(), kindRaw?: unknown): Promise<Ok> {
   const name = String(nameRaw ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 30);
   if (name.length < 2) return fail(400, 'Dê um nome à equipa.');
   if (await db.prepare('SELECT 1 FROM team_members WHERE uid = ?').bind(uid).first()) return fail(409, 'Já está numa equipa. Saia primeiro para criar outra.');
@@ -42,6 +44,7 @@ export async function createTeam(db: DB, uid: string, nameRaw: unknown, now = ne
   await db.batch([
     db.prepare('INSERT INTO teams (id, name, owner, code, created) VALUES (?, ?, ?, ?, ?)').bind(id, name, uid, code, at),
     db.prepare('INSERT INTO team_members (tid, uid, joined) VALUES (?, ?, ?)').bind(id, uid, at),
+    db.prepare('INSERT OR REPLACE INTO team_kinds (tid, kind) VALUES (?, ?)').bind(id, (CIRCLE_KINDS as readonly string[]).includes(String(kindRaw)) ? String(kindRaw) : 'amigos'),
   ]);
   return ok({ id, code });
 }
@@ -62,7 +65,10 @@ export async function leaveTeam(db: DB, uid: string): Promise<Ok> {
   if (!m) return ok({ ok: true });
   await db.prepare('DELETE FROM team_members WHERE uid = ?').bind(uid).run();
   const left = await db.prepare('SELECT uid FROM team_members WHERE tid = ? ORDER BY joined LIMIT 1').bind(m.tid).first<{ uid: string }>();
-  if (!left) await db.prepare('DELETE FROM teams WHERE id = ?').bind(m.tid).run();
+  if (!left) {
+    await db.prepare('DELETE FROM teams WHERE id = ?').bind(m.tid).run();
+    await db.prepare('DELETE FROM team_kinds WHERE tid = ?').bind(m.tid).run();
+  }
   else await db.prepare('UPDATE teams SET owner = ? WHERE id = ? AND owner = ?').bind(left.uid, m.tid, uid).run();
   return ok({ ok: true });
 }
@@ -94,7 +100,8 @@ export async function teamState(db: DB, uid: string, week: string, today: string
     });
     const goal = members.length * 5;
     const done = members.reduce((t, x) => t + x.ritualDays, 0);
-    team = { name: m.name, code: m.code, mine: m.owner === uid, members, goal, done, total: members.reduce((t, x) => t + x.points, 0) };
+    const kind = (await db.prepare('SELECT kind FROM team_kinds WHERE tid = ?').bind(m.id).first<{ kind: string }>())?.kind ?? 'amigos';
+    team = { name: m.name, code: m.code, kind, mine: m.owner === uid, members, goal, done, total: members.reduce((t, x) => t + x.points, 0) };
   }
   // ranking: média de pontos por pessoa (justo para equipas de tamanhos diferentes)
   const { results: rank } = await db

@@ -24,7 +24,7 @@ export const TOUR: Step[] = [
   { tab: 'treino', target: 'treino-onde', title: 'Treine onde quiser', text: 'Com o plano do seu personal, no ginásio ou em casa, com exercícios animados. Escolha o nível: iniciante ou intermediário.' },
   { tab: 'home', target: 'nav-coach', title: 'Coach NEFESH', text: 'O botão do centro: fale ou escreva como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz") e o Coach regista por si e responde com uma sugestão.' },
   { tab: 'evo', target: 'spirulina-voce', title: 'A sua evolução', text: 'Aqui vê como se sente nos dias com e sem ritual, o antes e depois das reavaliações e o relatório em PDF.' },
-  { tab: 'social', target: 'comunidade', title: 'Comunidade', text: 'Pontos, ligas semanais, equipa de melhores amigos, parceiro de ritual e momentos com foto. Juntos é mais fácil.' },
+  { tab: 'social', target: 'comunidade', title: 'Comunidade', text: 'Pontos, ligas semanais, o NEFESH 21 Day Reset, Circles com a família e os amigos, parceiro de ritual e momentos com foto. Juntos é mais fácil.' },
   { tab: 'home', target: 'perfil', title: 'O seu perfil', text: 'Conta, notificações, lembrete da toma, frascos, reavaliação e o tutorial outra vez, se precisar. Bom ritual! 🌿' },
 ];
 
@@ -129,6 +129,6 @@ export const TAB_TIPS: Partial<Record<Tab, string>> = {
   nutri: 'Diário de hoje, foto do prato com IA e o plano do seu nutricionista. Em "Receitas" há ideias com Spirulina para todos os dias.',
   treino: 'Escolha onde treina: com personal, no ginásio ou em casa. Toque num treino para ver os exercícios e registá-lo no fim.',
   evo: 'O relatório da semana (todos os domingos à noite) e a sua evolução: como se sente com e sem ritual, o antes e depois das reavaliações, a água, os passos e o sono.',
-  social: 'Ganhe pontos com os hábitos (a Spirulina vale mais), suba de liga todas as semanas e incentive os amigos. Toque em "como ganho pontos?".',
+  social: 'Ganhe pontos com os hábitos (a Spirulina vale mais), suba de liga todas as semanas e faça o NEFESH 21 Day Reset com 2 amigos (em Desafios). Toque em "como ganho pontos?".',
   perfil: 'Aqui estão a sua conta, as notificações, os frascos e a reposição, a reavaliação e o relatório para o seu médico ou nutricionista.',
 };

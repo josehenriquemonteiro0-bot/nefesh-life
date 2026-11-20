@@ -27,6 +27,7 @@ export const CHALLENGES: Record<string, { title: string; text: string; icon: str
   ritual_treino: { title: 'Spirulina e movimento', text: 'Spirulina e treino ou atividade no mesmo dia', icon: '🌿💪' },
   ritual_checkin: { title: 'Spirulina e check-in', text: 'Spirulina e check-in no mesmo dia', icon: '🌿📝' },
   ritual_refeicoes: { title: 'Spirulina e boa alimentação', text: 'Spirulina e 3 refeições registadas', icon: '🌿🍽️' },
+  reset21: { title: 'NEFESH 21 Day Reset', text: 'Spirulina e meta de água no mesmo dia', icon: '🌿💧' },
   ritual: { title: 'Ritual de 7 dias', text: 'Spirulina todos os dias', icon: '🌿' },
   agua: { title: 'Semana da hidratação', text: 'Meta de água', icon: '💧' },
   treino: { title: 'Corpo em movimento', text: 'Dias com treino ou atividade', icon: '💪' },
@@ -56,7 +57,7 @@ export interface SocialState {
   league?: Member[];
   friends?: (Member & { id: string; today: string })[];
   messages?: { id: number; kind: string; created: string; seen: boolean; nick: string; avatar: string | null; from: string }[];
-  challenges?: { id: string; kind: string; start: string; end: string; target: number; days: number; mine: boolean; members: { id: string; me: boolean; nick: string; avatar: string | null; done: number }[] }[];
+  challenges?: { id: string; kind: string; level?: 'leve' | 'firme'; day?: number; start: string; end: string; target: number; days: number; mine: boolean; members: { id: string; me: boolean; nick: string; avatar: string | null; done: number }[] }[];
   official?: { kind: string; target: number; done: number; bonus: number };
   feed?: FeedItem[];
   photos?: PhotoMoment[];
@@ -108,6 +109,7 @@ export const photoUrl = (id: string) => `${PHOTO_API}/foto/${id}`;
 
 export interface TeamInfo {
   name: string;
+  kind?: CircleKind;
   code: string;
   mine: boolean;
   members: { id: string; me: boolean; nick: string; avatar: string | null; streak: number; points: number; ritualDays: number; today: boolean }[];
@@ -115,6 +117,20 @@ export interface TeamInfo {
   done: number;
   total: number;
 }
+
+/** Circles: grupos privados por tipo. */
+export type CircleKind = 'familia' | 'amigos' | 'casal' | 'equipa';
+export const CIRCLE_KINDS: [CircleKind, string, string][] = [
+  ['familia', 'Família', '🏡'],
+  ['amigos', 'Amigos', '🤝'],
+  ['casal', 'Casal', '💞'],
+  ['equipa', 'Equipa', '🏅'],
+];
+export const circleOf = (k?: string) => CIRCLE_KINDS.find((c) => c[0] === k) ?? CIRCLE_KINDS[1];
+
+/** Durações e níveis dos desafios. */
+export const DURATIONS = [7, 21, 30, 90] as const;
+export const LEVELS: ['leve' | 'firme', string][] = [['leve', 'Leve'], ['firme', 'Firme']];
 
 const LEVEL_NAMES = ['Semente', 'Broto', 'Folha', 'Raiz', 'Árvore', 'Floresta', 'Oceano', 'Nefesh'];
 
@@ -140,6 +156,8 @@ export function feedText(f: FeedItem) {
       return `🏅 ${f.me ? 'Cumpriu' : `${f.nick} cumpriu`} o desafio NEFESH da semana`;
     case 'dupla':
       return `🤝 ${f.me ? 'Você e o seu parceiro' : `${f.nick} e o parceiro de ritual`} chegaram a ${f.value} dias de ritual juntos`;
+    case 'reset':
+      return `🌿 ${f.me ? 'Concluiu' : `${f.nick} concluiu`} o NEFESH 21 Day Reset!`;
     case 'entrou':
       return `👋 ${f.me ? 'Entrou' : `${f.nick} entrou`} na comunidade NEFESH`;
     default:
@@ -216,7 +234,7 @@ export const sendMessage = (to: string, kind: string) => call('mensagem', { to, 
 export const markSeen = () => call('lidas');
 export const cheer = (id: number) => call('aplaudir', { id });
 export const registerBottle = (code: string | null, product: string) => call<{ ok: boolean; verified: boolean; note?: string }>('frasco', { code, product });
-export const createTeam = (name: string) => call<{ code: string }>('equipa-criar', { name });
+export const createTeam = (name: string, kind: CircleKind = 'amigos') => call<{ code: string }>('equipa-criar', { name, kind });
 export const joinTeam = (code: string) => call<{ name: string }>('equipa-entrar', { code });
 export const leaveTeam = () => call('equipa-sair');
 export const react = (id: number, kind: string) => call('reagir', { id, kind });
@@ -236,7 +254,42 @@ export const proveHealth = (image: string, media_type: string) =>
   call<{ ok: boolean; note: string; steps?: number; exMin?: number; sleepH?: number }>('prova-saude', { image, media_type });
 export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });
 export const resultSeen = () => call('resultado-visto');
-export const createChallenge = (kind: string, friends: string[]) => call('desafio', { kind, friends });
+export const createChallenge = (kind: string, friends: string[]) => call<{ id: string }>('desafio', { kind, friends });
+export const acceptInvite = (code: string, cid?: string) => call<{ nick?: string; joined?: boolean; self?: boolean }>('convite', { code, cid });
+
+/* ---------- convites por link (?amigo=CÓDIGO&reset=ID) ---------- */
+const INVITE_KEY = 'nefesh-life-convite';
+/** Guarda o convite do link (até a pessoa entrar na comunidade) e limpa o endereço. */
+export function saveInviteFromUrl() {
+  try {
+    const p = new URLSearchParams(location.search);
+    const code = (p.get('amigo') ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!code) return;
+    localStorage.setItem(INVITE_KEY, JSON.stringify({ code, cid: (p.get('reset') ?? '').replace(/[^a-f0-9]/g, '') }));
+    p.delete('amigo');
+    p.delete('reset');
+    history.replaceState(null, '', `${location.pathname}${p.toString() ? `?${p}` : ''}`);
+  } catch {
+    /* sem armazenamento */
+  }
+}
+export function pendingInvite(): { code: string; cid: string } | null {
+  try {
+    return JSON.parse(localStorage.getItem(INVITE_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+export const clearInvite = () => {
+  try {
+    localStorage.removeItem(INVITE_KEY);
+  } catch {
+    /* sem armazenamento */
+  }
+};
+
+/** Link de convite (com o 21 Day Reset, se houver). */
+export const inviteUrl = (code: string, cid?: string) => `${location.origin}${import.meta.env.BASE_URL}?amigo=${code}${cid ? `&reset=${cid}` : ''}`;
 export const leaveChallenge = (id: string) => call('sair-desafio', { id });
 export const leaveCommunity = () => call('sair');
 export const evolutionRanking = () => call<{ ranking: { rank: number; nick: string; avatar: string | null; from: number; to: number; gain: number }[] }>('evolucao');
@@ -250,6 +303,10 @@ export function suggestFor(today: string, hour = new Date().getHours()): string 
 
 /** Link de convite para a app com o código de amigo. */
 export function inviteText(code: string, nick: string) {
-  const url = `${location.origin}${import.meta.env.BASE_URL}?amigo=${code}`;
-  return `${nick} convidou-te para a comunidade NEFESH Life 🌿\nAbre a app, vai a Comunidade → Amigos e usa o código ${code}\n${url}`;
+  return `${nick} convidou-te para a comunidade NEFESH Life 🌿\nToca no link, cria a tua conta e ficamos ligados:\n${inviteUrl(code)}`;
+}
+
+/** Convite para o NEFESH 21 Day Reset (equipa até 3 é o objetivo; cabem mais). */
+export function resetInviteText(code: string, nick: string, cid: string) {
+  return `${nick} desafiou-te para o NEFESH 21 Day Reset 🌿💧\n21 dias de Spirulina e água, juntos. Toca no link, cria a tua conta e entras logo na equipa:\n${inviteUrl(code, cid)}`;
 }
