@@ -116,3 +116,24 @@ describe('lembretes de medicação', () => {
     expect(await push.runSchedule(db, store, new Date('2026-11-21T07:31:00Z'), fetcher)).toBe(0);
   });
 });
+
+describe('lembretes pontuais', () => {
+  it('envia à hora certa uma vez, e descarta os que já passaram', async () => {
+    const db = memoryDB();
+    const store = kv();
+    const fetcher = (async () => new Response(null, { status: 201 })) as unknown as typeof fetch;
+    await push.subscribe(db, { endpoint: EP, remind: null, tz: 'Europe/Lisbon' }, null);
+    const r = await push.setReminders(db, { endpoint: EP, items: [
+      { id: 'deitar1', date: '2026-11-21', time: '23:00', text: 'Hora de deitar' },
+      { id: 'treino1', date: '2026-11-22', time: '07:00', text: 'Treino' },
+      { id: 'mau', date: 'amanha', time: '07:00', text: 'x' },
+    ] }, new Date('2026-11-21T10:00:00Z'));
+    expect(r.body.n).toBe(2);
+    expect(await push.runSchedule(db, store, new Date('2026-11-21T22:50:00Z'), fetcher)).toBe(0);
+    expect(await push.runSchedule(db, store, new Date('2026-11-21T23:02:00Z'), fetcher)).toBe(1);
+    expect((await push.pendingMessage(db, { endpoint: EP })).body.title).toBe('⏰ 23:00 · Hora de deitar');
+    expect(await push.runSchedule(db, store, new Date('2026-11-21T23:10:00Z'), fetcher)).toBe(0);
+    // o do treino ficou para trás (telemóvel desligado): não é enviado tarde
+    expect(await push.runSchedule(db, store, new Date('2026-11-22T09:00:00Z'), fetcher)).toBe(0);
+  });
+});

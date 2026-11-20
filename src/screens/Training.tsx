@@ -184,7 +184,7 @@ function TrainingHistory() {
   const [all, setAll] = useState(false);
   const hist = workoutHistory(S, 30);
   const weeks = weeklyActivity(S, 8);
-  const loads = loadProgress(S.gymLoadLog);
+  const loads = loadProgress(S.gymLoadLog, S.exNames);
   if (!hist.length && !loads.length) return null;
   const shown = all ? hist : hist.slice(0, 5);
   const avg = Math.round(weeks.slice(0, 7).reduce((t, w) => t + w.mvpa, 0) / 7);

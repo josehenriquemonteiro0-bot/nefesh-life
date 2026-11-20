@@ -106,6 +106,7 @@ export async function unsubscribe(db: DB, b: Record<string, unknown>) {
     await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(b.endpoint).run();
     await db.prepare('DELETE FROM stock_alerts WHERE endpoint = ?').bind(b.endpoint).run();
     await db.prepare('DELETE FROM med_times WHERE endpoint = ?').bind(b.endpoint).run();
+    await db.prepare('DELETE FROM reminders WHERE endpoint = ?').bind(b.endpoint).run();
   }
   return { status: 200, body: { ok: true } };
 }
@@ -143,6 +144,24 @@ export async function setMedTimes(db: DB, b: Record<string, unknown>) {
       .bind(b.endpoint, JSON.stringify(uniq))
       .run();
   return { status: 200, body: { ok: true, times: uniq } };
+}
+
+/** Lembretes pontuais confirmados pela pessoa (ex.: "Hora de deitar" amanhã às 23:00). Substitui os futuros. */
+export async function setReminders(db: DB, b: Record<string, unknown>, now = new Date()) {
+  if (!validEndpoint(b.endpoint)) return { status: 400, body: { error: 'pedido inválido' } };
+  const today = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+  const items = (Array.isArray(b.items) ? b.items : [])
+    .map((x) => x as Record<string, unknown>)
+    .filter((x) => /^[a-z0-9]{4,24}$/.test(String(x.id)) && /^\d{4}-\d{2}-\d{2}$/.test(String(x.date)) && String(x.date) >= today && validTime(x.time))
+    .slice(0, 30);
+  await db.prepare('DELETE FROM reminders WHERE endpoint = ? AND sent = 0').bind(b.endpoint).run();
+  for (const x of items) {
+    await db
+      .prepare('INSERT OR IGNORE INTO reminders (endpoint, id, date, time, text) VALUES (?, ?, ?, ?, ?)')
+      .bind(b.endpoint, String(x.id), String(x.date), String(x.time), String(x.text ?? 'Lembrete').replace(/[\u0000-\u001f]/g, ' ').slice(0, 80))
+      .run();
+  }
+  return { status: 200, body: { ok: true, n: items.length } };
 }
 
 /** Dias entre duas datas AAAA-MM-DD. */
@@ -238,6 +257,23 @@ export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fet
       await sendPush(db, store, r.endpoint, { title: `💊 Lembrete das ${hm}`, body: 'Está na hora da sua medicação ou suplemento. Toque para marcar a toma na app.', tag: 'nefesh-med' }, fetcher);
       sent++;
     }
+  }
+  // lembretes pontuais (até 15 minutos depois da hora)
+  const { results: rems } = await db
+    .prepare('SELECT r.endpoint, r.id, r.date, r.time, r.text, s.tz FROM reminders r JOIN push_subs s ON s.endpoint = r.endpoint WHERE r.sent = 0')
+    .all<{ endpoint: string; id: string; date: string; time: string; text: string; tz: string | null }>();
+  for (const r of rems) {
+    const t = localNow(r.tz || 'Europe/Lisbon', now);
+    const m = minutes(t.time);
+    const late = r.date < t.date || (r.date === t.date && m >= minutes(r.time) + 15);
+    if (late) {
+      await db.prepare('UPDATE reminders SET sent = 2 WHERE endpoint = ? AND id = ?').bind(r.endpoint, r.id).run();
+      continue;
+    }
+    if (r.date !== t.date || m < minutes(r.time)) continue;
+    await db.prepare('UPDATE reminders SET sent = 1 WHERE endpoint = ? AND id = ?').bind(r.endpoint, r.id).run();
+    await sendPush(db, store, r.endpoint, { title: `⏰ ${r.time} · ${r.text}`, body: 'Lembrete que combinou com o NEFESH Voice Assistant.', tag: `nefesh-lembrete-${r.id}` }, fetcher);
+    sent++;
   }
   // domingo às 20h: o relatório semanal está pronto (uma vez por telemóvel e por domingo)
   for (const s of results) {

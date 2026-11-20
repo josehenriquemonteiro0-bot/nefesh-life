@@ -128,7 +128,7 @@ export const TAB_TIPS: Partial<Record<Tab, string>> = {
   cuidados: 'A sua medicação com lembretes, os check-ups e vacinas para a sua idade, as análises com a evolução e as consultas. Tudo vai no relatório para o médico.',
   ciclo: 'Ciclo menstrual, gravidez ou menopausa, ligados à sua energia e ao sono. Fica só no telemóvel e na sua conta.',
   sono: 'Registe as horas de cada noite: veja a média, a regularidade e como o sono mexe com a sua energia.',
-  coach: 'Toque no microfone e fale, ou escreva, o que fez ou como se sente: o assistente regista a água, o sono, as refeições, o treino e a Spirulina, e responde com uma sugestão. Pode desfazer o último registo.',
+  coach: 'Fale ou escreva: o assistente regista refeições, treinos (com cargas), água, sono e Spirulina; planeia o seu dia com lembretes, marca consultas e cria desafios com amigos (sempre com a sua confirmação). Experimente a conversa por voz e veja "O que sei sobre si".',
   quiz: 'O seu plano: a dose de Spirulina explicada passo a passo, o Índice NEFESH e as metas para o seu corpo. Em "Saber mais" está a ciência.',
   nutri: 'Diário de hoje, foto do prato com IA e o plano do seu nutricionista. Em "Receitas" há ideias com Spirulina para todos os dias.',
   treino: 'Escolha onde treina: com personal, no ginásio ou em casa. Toque num treino para ver os exercícios e registá-lo no fim.',

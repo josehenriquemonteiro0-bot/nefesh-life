@@ -101,6 +101,21 @@ export async function pushMedTimes(times: string[]) {
   }
 }
 
+const REM_KEY = 'nefesh-life-lembretes';
+/** Lembretes pontuais confirmados (data, hora e texto), enviados quando mudam. */
+export async function pushReminders(items: { id: string; date: string; time: string; text: string }[]) {
+  try {
+    const sub = await currentSub();
+    if (!sub) return;
+    const mark = `${sub.endpoint}|${JSON.stringify(items)}`;
+    if (localStorage.getItem(REM_KEY) === mark) return;
+    const r = await post('lembretes', { endpoint: sub.endpoint, items });
+    if (r.ok) localStorage.setItem(REM_KEY, mark);
+  } catch {
+    /* sem rede: tenta na próxima abertura */
+  }
+}
+
 /** Avisa que o ritual de hoje está feito (não há lembrete hoje). */
 export async function pushRitualDone() {
   try {

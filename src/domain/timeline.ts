@@ -66,6 +66,7 @@ export function timeline(S: AppState, now = new Date()): TimelineEvent[] {
     n++;
     if (RITUAL_MARKS.includes(n)) ev.push({ date: k, cat: 'marcos', icon: '🏅', title: `${n} dias de ritual da Spirulina` });
   }
+  for (const [k, l] of Object.entries(S.logs)) for (const n of l.notes ?? []) ev.push({ date: k, cat: 'saude', icon: '📝', title: 'Relato', detail: n });
   if (S.women?.mode === 'gravidez' && S.women.due) ev.push({ date: S.women.due, cat: 'saude', icon: '👶', title: 'Data prevista do parto', future: S.women.due > today });
   return ev.sort((a, b) => b.date.localeCompare(a.date));
 }

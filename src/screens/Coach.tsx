@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { PremiumTag } from '../components/PremiumTag';
 import type { Nav } from '../App';
-import { applyCoachActions, askCoach, clearHistory, CoachError, loadHistory, saveHistory, type CoachMsg } from '../domain/coach';
+import { applyCoachActions, askCoach, clearHistory, CoachError, loadHistory, NEEDS_CONFIRM, saveHistory, type CoachMsg } from '../domain/coach';
+import { SCREEN_TAB, daySummary } from '../domain/assistant';
+import { useSocial } from '../domain/social';
+import { MemoryPanel, ProposalCard } from '../components/AssistantParts';
 import { todayKey } from '../domain/dates';
 import { dailyQuota, TEST_MODE } from '../domain/features';
 import { ritualJustDone } from '../state/doses';
@@ -10,7 +13,7 @@ import { useStore } from '../state/store';
 import { requestBreath } from '../domain/mind';
 import type { DayLog } from '../domain/types';
 import { notePremiumUse } from '../domain/analytics';
-import { KEYBOARD_DICTATION_HINT, listen, primeAudio, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
+import { KEYBOARD_DICTATION_HINT, keepScreenOn, listen, primeAudio, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
 import { deviceId, PHOTO_API } from '../domain/photo';
 import { isIOS } from '../domain/push';
 
@@ -38,6 +41,34 @@ export function Coach({ go }: { go: Nav }) {
   const [note, setNote] = useState<string | null>(null);
   const [level, setLevel] = useState(0);
   const rec = useRef<Listening | null>(null);
+  const [showMemory, setShowMemory] = useState(false);
+  const { state: social } = useSocial(120_000);
+  // conversa por voz: depois de responder em voz alta, volta a ouvir
+  const convo = useRef(false);
+  const [convoOn, setConvoOn] = useState(false);
+  const afterSpeech = () => {
+    if (convo.current) window.setTimeout(() => startRef.current(), 350);
+  };
+  const setConvo = (on: boolean) => {
+    convo.current = on;
+    setConvoOn(on);
+    keepScreenOn(on);
+    if (!on) {
+      rec.current?.abort();
+      keepScreenOn(false);
+      rec.current = null;
+      setListening(false);
+    }
+  };
+  /** O que a pessoa disse por voz: na conversa por voz, "obrigado"/"parar" termina. */
+  const heard = (t: string) => {
+    if (convo.current && /^(obrigad[oa]|parar|para|chega|tchau|adeus|até logo|até já|terminar|fim)\b/i.test(t.trim())) {
+      setConvo(false);
+      speak('Até já!', lang);
+      return;
+    }
+    send(t, true);
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: 'end', behavior: 'smooth' });
@@ -51,6 +82,12 @@ export function Coach({ go }: { go: Nav }) {
   const send = async (raw: string, viaVoice = false) => {
     const t = raw.trim();
     if (!t || busy) return;
+    // escreveu com o microfone ligado: desliga-o
+    if (!viaVoice && rec.current) {
+      rec.current.abort();
+      rec.current = null;
+      setListening(false);
+    }
     const now = new Date().toISOString();
     const withUser = [...hist, { role: 'user' as const, text: t, at: now, voice: viaVoice || undefined }];
     save(withUser);
@@ -59,27 +96,44 @@ export function Coach({ go }: { go: Nav }) {
     setNote(null);
     setBusy(true);
     try {
-      const r = await askCoach(S, withUser);
+      const r = await askCoach(S, withUser, { friends: S.community ? (social?.friends ?? []).map((f) => f.nick) : undefined });
       if (r.limit !== undefined && r.remaining !== undefined) setQuota({ remaining: r.remaining, limit: r.limit });
       const key = todayKey();
       const before: DayLog | null = S.logs[key] ? structuredClone(S.logs[key]) : null;
+      const extra = structuredClone({ memory: S.memory, gymLoadLog: S.gymLoadLog, gymLoads: S.gymLoads, exNames: S.exNames });
       let applied: string[] = [];
-      if (r.actions.length) {
-        // aplica num rascunho para saber o que mudou, e grava o dia de uma vez
+      const auto = r.actions.filter((a) => !NEEDS_CONFIRM.includes(a.type));
+      if (auto.length) {
+        // aplica num rascunho para saber o que mudou, e grava de uma vez
         const draft = structuredClone(S);
-        applied = applyCoachActions(draft, r.actions);
+        applied = applyCoachActions(draft, auto);
         const after = draft.logs[key];
         update((d) => {
-          d.logs[key] = after;
+          if (after) d.logs[key] = after;
+          d.memory = draft.memory;
+          d.gymLoadLog = draft.gymLoadLog;
+          d.gymLoads = draft.gymLoads;
+          d.exNames = draft.exNames;
         });
-        const done = ritualJustDone(S, before ?? undefined, after);
+        const done = after ? ritualJustDone(S, before ?? undefined, after) : null;
         if (done) toast(done);
       }
-      save([
+      const proposals = r.actions.filter((a) => NEEDS_CONFIRM.includes(a.type));
+      const open = [...new Set(r.actions.filter((a) => a.type === 'abrir' && a.screen && SCREEN_TAB[a.screen]).map((a) => a.screen!))];
+      const wantsSummary = r.actions.some((a) => a.type === 'resumo');
+      const next: CoachMsg[] = [
         ...withUser,
-        { role: 'assistant', text: r.reply, at: new Date().toISOString(), applied, undo: applied.length ? { day: key, log: before } : undefined, pro: r.suggest_professional, breath: r.actions.find((a) => a.type === 'respiracao')?.value },
-      ]);
-      if (S.voiceReply) speak(r.reply, lang);
+        {
+          role: 'assistant', text: r.reply, at: new Date().toISOString(), applied,
+          undo: applied.length ? { day: key, log: before, extra } : undefined,
+          pro: r.suggest_professional, breath: r.actions.find((a) => a.type === 'respiracao')?.value,
+          proposals: proposals.length ? proposals : undefined, proposalStatus: proposals.length ? 'pendente' : undefined, open: open.length ? open : undefined,
+        },
+      ];
+      const sum = wantsSummary ? daySummary(S) : '';
+      if (sum) next.push({ role: 'assistant', text: `🔊 ${sum}`, at: new Date().toISOString(), summary: true });
+      save(next);
+      if (S.voiceReply || convo.current) speak(sum ? `${r.reply} ${sum}` : r.reply, lang, afterSpeech);
     } catch (e) {
       const ce = e as CoachError;
       setErr(ce.message);
@@ -114,6 +168,7 @@ export function Coach({ go }: { go: Nav }) {
           done();
           if (!spoke) {
             setErr('Não ouvi nada. Toque no microfone e fale perto do telemóvel.');
+            if (convo.current) setConvo(false);
             return;
           }
           setBusy(true);
@@ -121,7 +176,7 @@ export function Coach({ go }: { go: Nav }) {
           try {
             const t = await transcribe(audio, PHOTO_API, deviceId());
             setBusy(false);
-            if (t) send(t, true);
+            if (t) heard(t);
             else setErr('Não percebi. Tente outra vez, mais perto do telemóvel.');
           } catch (e) {
             setBusy(false);
@@ -147,7 +202,7 @@ export function Coach({ go }: { go: Nav }) {
       onText: (t) => setText(t),
       onDone: (t) => {
         done();
-        if (t) send(t, true);
+        if (t) heard(t);
       },
       onError: (msg) => {
         done();
@@ -187,10 +242,11 @@ export function Coach({ go }: { go: Nav }) {
   const undo = (idx: number) => {
     const m = hist[idx];
     if (!m.undo) return;
-    const { day, log } = m.undo;
+    const { day, log, extra } = m.undo;
     update((d) => {
       if (log) d.logs[day] = log;
       else delete d.logs[day];
+      if (extra) Object.assign(d, extra);
     });
     save(hist.map((x, i) => (i === idx ? { ...x, undone: true } : x)));
     toast('Registos desfeitos.');
@@ -204,6 +260,11 @@ export function Coach({ go }: { go: Nav }) {
         <h1 style={{ margin: 0 }}>NEFESH Voice Assistant</h1>
         <PremiumTag f="coach" />
       </div>
+      <div className="row" style={{ gap: 8, justifyContent: 'flex-start', margin: '8px 0 0', flexWrap: 'wrap' }}>
+        <button className={`chip sm ${showMemory ? 'on' : ''}`} aria-pressed={showMemory} onClick={() => setShowMemory(!showMemory)}>🧠 O que sei sobre si</button>
+        <button className="chip sm" onClick={() => { primeAudio(); const t = daySummary(S); save([...hist, { role: 'assistant', text: `🔊 ${t}`, at: new Date().toISOString(), summary: true }]); speak(t, lang); }}>🔊 Resumo do meu dia</button>
+      </div>
+      {showMemory && <MemoryPanel />}
 
       {hist.length === 0 && (
         <section className="card hero coach-hero">
@@ -227,6 +288,12 @@ export function Coach({ go }: { go: Nav }) {
                 ) : i === lastUndoable ? (
                   <button className="link small inline" onClick={() => undo(i)}>Desfazer</button>
                 ) : null}
+              </div>
+            )}
+            {m.proposals && <ProposalCard m={m} onDone={(status) => save(hist.map((x, j) => (j === i ? { ...x, proposalStatus: status } : x)))} />}
+            {m.open && (
+              <div className="row" style={{ gap: 6, justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap' }}>
+                {m.open.map((sc) => <button key={sc} className="btn ghost sm" onClick={() => go(SCREEN_TAB[sc][0])}>Abrir {SCREEN_TAB[sc][1]} ›</button>)}
               </div>
             )}
             {m.breath ? (
@@ -284,6 +351,23 @@ export function Coach({ go }: { go: Nav }) {
         <button className="btn" disabled={busy || !text.trim()} aria-label="Enviar">Enviar</button>
       </form>
 
+      <button
+        className={`btn ${convoOn ? '' : 'ghost'} full convo-btn`}
+        style={{ marginTop: 10 }}
+        onClick={() => {
+          if (convoOn) {
+            setConvo(false);
+            stopSpeaking();
+            return;
+          }
+          primeAudio();
+          setConvo(true);
+          if (!listening) startVoice();
+        }}
+      >
+        {convoOn ? '⏹ Terminar a conversa por voz' : '🗣️ Conversa por voz (mãos-livres)'}
+      </button>
+      {convoOn && <p className="small mute" style={{ margin: '6px 0 0' }}>Fale à vontade: eu respondo em voz alta e volto a ouvir. Para terminar, diga "obrigado" ou toque no botão. Mantenha a app aberta.</p>}
       <div className="coach-voice-opts">
         <div className="chips" role="group" aria-label="Português da voz">
           {(['pt-PT', 'pt-BR'] as const).map((v) => (

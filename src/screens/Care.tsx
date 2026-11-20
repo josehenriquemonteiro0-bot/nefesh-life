@@ -338,11 +338,32 @@ function VisitsCard() {
   );
 }
 
+/** Lembretes combinados com o assistente (por voz ou escrita). */
+function RemindersCard() {
+  const { S, update } = useStore();
+  const list = (S.reminders ?? []).filter((r) => r.date >= todayKey());
+  if (!list.length) return null;
+  return (
+    <section className="card">
+      <h2 style={{ marginTop: 0 }}>⏰ Lembretes</h2>
+      {list.map((r) => (
+        <div key={r.id} className="lab-row">
+          <span style={{ flex: 1 }} className="small"><b>{r.text}</b></span>
+          <span className="small mute">{fmt(r.date)} · {r.time}</span>
+          <button className="x" aria-label="Apagar lembrete" onClick={() => update((d) => { d.reminders = (d.reminders ?? []).filter((x) => x.id !== r.id); })}>×</button>
+        </div>
+      ))}
+      <p className="small mute" style={{ margin: '8px 0 0' }}>Combinados com o NEFESH Voice Assistant. Chegam como notificação à hora marcada.</p>
+    </section>
+  );
+}
+
 /** Cuidados: medicação, prevenção, análises e consultas. */
 export function Care() {
   return (
     <>
       <h1>Cuidados</h1>
+      <RemindersCard />
       <MedsCard />
       <PreventionCard />
       <LabsCard />

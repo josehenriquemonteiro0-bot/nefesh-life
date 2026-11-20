@@ -147,3 +147,52 @@ describe('Coach e a mente', () => {
     expect(done).toEqual(['🌬️ Stress: 4/5', '🙂 Humor: 2/5', '💚 Gratidão: o abraço da minha filha']);
   });
 });
+
+describe('assistente: memória, relatos e treino detalhado', () => {
+  it('lembra factos pedidos (sem repetir) e guarda relatos', () => {
+    const S = person();
+    applyCoachActions(S, [act({ type: 'memoria', note: 'É vegetariana' }), act({ type: 'nota', note: 'Dificuldade em recuperar dos treinos' })], NOW);
+    const d = applyCoachActions(S, [act({ type: 'memoria', note: 'é vegetariana' })], NOW);
+    expect(S.memory!.facts!.map((f) => f.text)).toEqual(['É vegetariana']);
+    expect(d).toEqual([]);
+    expect(S.logs[todayKey(NOW)].notes).toEqual(['Dificuldade em recuperar dos treinos']);
+    expect(buildContext(S, NOW)).toMatch(/- É vegetariana/);
+  });
+  it('"supino 60 kg 4×10" vai para o treino e para o histórico de cargas', () => {
+    const S = person();
+    const done = applyCoachActions(S, [act({ type: 'treino', value: 0, title: 'Peito e tríceps', exercises: [{ gym_id: 'supino_barra', name: 'supino', sets: 4, reps: 10, kg: 60 }, { gym_id: '', name: 'Tríceps na corda', sets: 3, reps: 12, kg: 25 }] })], NOW);
+    const l = S.logs[todayKey(NOW)];
+    expect(l.workouts![0]).toMatchObject({ title: 'Peito e tríceps', minutes: 21, strength: true });
+    expect(S.gymLoadLog!.supino_barra).toEqual([{ d: todayKey(NOW), v: '4×10 · 60 kg' }]);
+    expect(S.gymLoadLog!['livre:tríceps na corda'][0].v).toBe('3×12 · 25 kg');
+    expect(S.exNames!['livre:tríceps na corda']).toBe('Tríceps na corda');
+    expect(done[0]).toMatch(/supino 4×10 60 kg, Tríceps na corda 3×12 25 kg/);
+  });
+  it('lembretes, consultas e desafios não acontecem sem confirmar', () => {
+    const S = person();
+    expect(applyCoachActions(S, [act({ type: 'lembrete', date: '2026-11-21', time: '07:00', note: 'Treino' }), act({ type: 'consulta', date: '2026-12-03', note: 'Cardiologia' }), act({ type: 'desafio', challenge: 'passos', value: 30 })], NOW)).toEqual([]);
+    expect(S.reminders).toBeUndefined();
+  });
+});
+
+describe('assistente: propostas e resumo do dia', async () => {
+  const { applyProposal, daySummary, matchFriends, proposalText } = await import('./assistant');
+  it('confirmar grava o lembrete e a consulta', () => {
+    const S = person();
+    applyProposal(S, act({ type: 'lembrete', date: '2099-01-02', time: '07:00', note: 'Treino' }));
+    applyProposal(S, act({ type: 'consulta', date: '2099-01-03', time: '15:00', note: 'Cardiologia, Dr. Silva' }));
+    expect(S.reminders![0]).toMatchObject({ date: '2099-01-02', time: '07:00', text: 'Treino' });
+    expect(S.care!.visits![0]).toMatchObject({ kind: 'Cardiologia', who: 'Dr. Silva', note: 'às 15:00' });
+    expect(proposalText(act({ type: 'lembrete', date: '2026-11-21', time: '23:00', note: 'Hora de deitar' }), NOW)).toBe('⏰ Hora de deitar · amanhã às 23:00');
+  });
+  it('resumo do dia com o que falta', () => {
+    const S = person();
+    S.logs[todayKey(NOW)] = { water: 2 };
+    const t = daySummary(S, NOW);
+    expect(t).toMatch(/^Belinha, falta a Spirulina/);
+    expect(t).toMatch(/faltam \d+ copos de água/);
+  });
+  it('encontra os amigos pelas alcunhas', () => {
+    expect(matchFriends(['Ana', 'joão'], [{ id: '1', nick: 'Ana' }, { id: '2', nick: 'João P' }, { id: '3', nick: 'Rui' }])).toEqual(['1', '2']);
+  });
+});

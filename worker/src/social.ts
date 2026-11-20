@@ -91,6 +91,7 @@ CREATE INDEX IF NOT EXISTS coupons_uid ON coupons (uid, week);
 CREATE TABLE IF NOT EXISTS prize_weeks (week TEXT PRIMARY KEY, winners INTEGER NOT NULL, closed TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS contacts (uid TEXT PRIMARY KEY, email TEXT NOT NULL, updated TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS med_times (endpoint TEXT PRIMARY KEY, times TEXT NOT NULL, sent TEXT NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS reminders (endpoint TEXT NOT NULL, id TEXT NOT NULL, date TEXT NOT NULL, time TEXT NOT NULL, text TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (endpoint, id));
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */

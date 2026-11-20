@@ -67,6 +67,8 @@ export interface DayLog {
   sleepH?: number;
   /** tomas feitas através de uma receita (índices), que não gastam cápsulas */
   viaRecipe?: Record<number, string>;
+  /** relatos guardados pelo assistente (ex.: "dificuldade em recuperar dos treinos") */
+  notes?: string[];
   /** tomas de medicação e suplementos (id@HH:MM → tomada) */
   meds?: Record<string, boolean>;
   /** stress (1–5), gratidão (até 3 frases) e minutos de respiração guiada (o humor é a disposição, d) */
@@ -132,6 +134,8 @@ export interface AppState {
   trainWhere?: 'personal' | 'ginasio' | 'casa';
   /** últimas cargas usadas no ginásio, por exercício */
   gymLoads?: Record<string, string>;
+  /** nomes dos exercícios livres (fora da lista do ginásio) registados por voz */
+  exNames?: Record<string, string>;
   /** histórico das cargas no ginásio, por exercício (mais antigo primeiro) */
   gymLoadLog?: Record<string, { d: string; v: string }[]>;
   /** false quando a pessoa desliga as notificações da comunidade */
@@ -165,6 +169,9 @@ export interface AppState {
     visits?: import('./care').Visit[];
     meds?: import('./meds').Med[];
   };
+  /** o que o assistente sabe: factos pedidos pela pessoa, padrões escondidos e lembretes confirmados */
+  memory?: { facts?: { id: string; text: string; at: string }[]; hidden?: string[] };
+  reminders?: { id: string; date: string; time: string; text: string }[];
   /** peso e medidas ao longo do tempo (cm, kg) */
   bodyLog?: { date: string; peso?: number; cintura?: number; anca?: number; pescoco?: number }[];
   /** fotos de progresso (só neste telemóvel, na base de ficheiros local) */

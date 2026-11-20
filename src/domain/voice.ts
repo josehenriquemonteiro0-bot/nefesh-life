@@ -106,8 +106,11 @@ export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone
 }
 
 /** Lê um texto em voz alta (respostas do Coach). */
-export function speak(text: string, lang: VoiceLang) {
-  if (!ttsSupported() || !text) return;
+export function speak(text: string, lang: VoiceLang, onEnd?: () => void) {
+  if (!ttsSupported() || !text) {
+    onEnd?.();
+    return;
+  }
   try {
     const synth = window.speechSynthesis;
     synth.cancel();
@@ -116,9 +119,32 @@ export function speak(text: string, lang: VoiceLang) {
     const v = synth.getVoices().find((x) => x.lang?.replace('_', '-').toLowerCase() === lang.toLowerCase());
     if (v) u.voice = v;
     u.rate = 1.02;
+    // avisa quando acaba (para a conversa por voz voltar a ouvir); cancelar não avisa
+    let ended = false;
+    u.onend = () => {
+      if (!ended) {
+        ended = true;
+        onEnd?.();
+      }
+    };
     synth.speak(u);
   } catch {
-    /* sem voz */
+    onEnd?.();
+  }
+}
+
+/** Mantém o ecrã ligado durante a conversa por voz (onde o telemóvel deixa). */
+let lock: { release: () => Promise<void> } | null = null;
+export async function keepScreenOn(on: boolean) {
+  try {
+    const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock;
+    if (on && wl && !lock) lock = await wl.request('screen');
+    if (!on && lock) {
+      await lock.release();
+      lock = null;
+    }
+  } catch {
+    lock = null;
   }
 }
 

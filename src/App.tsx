@@ -16,7 +16,7 @@ import { blankState } from './domain/sample';
 import { clearFiles } from './domain/files';
 import { stock, took } from './domain/stats';
 import { scheduleReminder } from './reminders';
-import { pushMedTimes, pushStockEnd, pushSupported, updatePush } from './domain/push';
+import { pushMedTimes, pushReminders, pushStockEnd, pushSupported, updatePush } from './domain/push';
 import { reminderTimes } from './domain/meds';
 import { Check } from './screens/Check';
 import { Evolution } from './screens/Evolution';
@@ -167,6 +167,11 @@ export function App() {
   useEffect(() => {
     if (S.notifications && !S.sample && pushSupported()) pushMedTimes(medTimes ? medTimes.split(',') : []);
   }, [medTimes, S.notifications, authToken]);
+  // lembretes combinados com o assistente (data, hora e texto)
+  const remKey = JSON.stringify((S.reminders ?? []).filter((r) => r.date >= todayKey()));
+  useEffect(() => {
+    if (S.notifications && !S.sample && pushSupported()) pushReminders(JSON.parse(remKey));
+  }, [remKey, S.notifications, authToken]);
   // consentimentos: as escolhas vão para a conta (marketing com o e-mail; I&D para prova)
   const consentMark = `${authToken ?? ''}|${S.consents?.rd?.on ? 1 : 0}|${S.consents?.marketing?.on ? 1 : 0}`;
   useEffect(() => {

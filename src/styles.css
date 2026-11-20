@@ -586,3 +586,7 @@ ul.plain li.row{gap:8px}
 .tl-month{margin:12px 0 4px;color:var(--gold);font-weight:700;text-transform:capitalize}
 .tl-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
 .tl-icon{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);font-size:15px}
+/* assistente: memória e propostas */
+.memory-panel{margin-top:10px}
+.mem-row{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
+.proposal{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px dashed var(--gold);background:rgba(201,168,92,.07)}

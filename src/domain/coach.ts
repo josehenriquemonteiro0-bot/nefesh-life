@@ -15,12 +15,16 @@ import { targetsFor } from './body';
 import { setSource } from './sources';
 import { mealForHour, PHOTO_API, deviceId } from './photo';
 import { applyDose } from './doses';
+import { memoryContext } from './patterns';
+import { logLoads } from './gym';
 import { coachPlanMeal, coachPlanWorkout } from './planMeal';
 import { womenContext } from './women';
 import { notePremiumUse } from './analytics';
 import type { AppState, DayLog } from './types';
 
-export type CoachActionType = 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos' | 'humor' | 'stress' | 'gratidao' | 'respiracao';
+export type CoachActionType =
+  | 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos'
+  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -34,7 +38,21 @@ export interface CoachAction {
   status?: 'seguido' | 'alterado' | 'saltado' | '';
   note?: string;
   items: { food_id: string; name: string; grams: number; kcal100: number; p100: number; c100: number; f100: number }[];
+  /** lembrete e consulta */
+  date?: string;
+  time?: string;
+  /** desafio */
+  challenge?: string;
+  level?: 'leve' | 'firme';
+  friends?: string[];
+  /** abrir um ecrã */
+  screen?: string;
+  /** treino detalhado */
+  exercises?: { gym_id: string; name: string; sets: number; reps: number; kg: number }[];
 }
+
+/** Ações que só acontecem depois de a pessoa confirmar. */
+export const NEEDS_CONFIRM: CoachActionType[] = ['lembrete', 'consulta', 'desafio'];
 
 export interface CoachReply {
   reply: string;
@@ -51,7 +69,14 @@ export interface CoachMsg {
   /** o que foi registado com esta resposta */
   applied?: string[];
   /** registo do dia antes destas ações (para desfazer) */
-  undo?: { day: string; log: DayLog | null };
+  undo?: { day: string; log: DayLog | null; extra?: Pick<AppState, 'memory' | 'gymLoadLog' | 'gymLoads' | 'exNames'> };
+  /** propostas que pedem confirmação (lembretes, consulta, desafio) e o seu estado */
+  proposals?: CoachAction[];
+  proposalStatus?: 'pendente' | 'feito' | 'cancelado';
+  /** ecrãs que o assistente sugere abrir */
+  open?: string[];
+  /** resumo do dia gerado na app */
+  summary?: boolean;
   undone?: boolean;
   pro?: boolean;
   /** mensagem ditada por voz */
@@ -65,12 +90,15 @@ const STATUS = { seguido: 'seguido', alterado: 'com alterações', saltado: 'nã
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /** Resumo do contexto da pessoa (texto curto, sem dados de identificação além do primeiro nome). */
-export function buildContext(S: AppState, now = new Date()): string {
+export function buildContext(S: AppState, now = new Date(), extra: { friends?: string[] } = {}): string {
   const a = S.ans ?? {};
   const l = S.logs[todayKey(now)] ?? {};
   const lines: string[] = [];
   const hh = now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-  lines.push(`Agora: ${now.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, ${hh}.`);
+  lines.push(`Agora: ${now.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, ${hh}. Data de hoje: ${todayKey(now)}.`);
+  const mem = memoryContext(S, now);
+  if (mem) lines.push(mem);
+  if (extra.friends) lines.push(extra.friends.length ? `Amigos na app (alcunhas): ${extra.friends.slice(0, 30).join(', ')}.` : 'Ainda não tem amigos na app.');
   if (a.name) lines.push(`Primeiro nome: ${a.name}.`);
   if (!S.ans) lines.push('Ainda não fez a avaliação inicial (sugere fazê-la no separador Saúde → Plano).');
   else {
@@ -197,12 +225,26 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         break;
       }
       case 'treino': {
-        const minutes = Math.round(a.value);
-        const strength = /for[çc]a|gin[áa]sio|muscula|pesos|crossfit/i.test(a.title);
+        const ex = a.exercises ?? [];
+        // sem minutos ditos: cerca de 3 minutos por série (com descanso), mínimo 15
+        const minutes = Math.round(a.value) || Math.max(15, ex.reduce((t, e) => t + Math.max(1, e.sets) * 3, 0));
+        const strength = ex.length > 0 || /for[çc]a|gin[áa]sio|muscula|pesos|crossfit|peito|costas|pernas|bra[çc]os|ombro/i.test(a.title);
+        // cargas para o histórico e a evolução (exercícios do ginásio pelo id; os outros pelo nome)
+        const loads: Record<string, string> = {};
+        for (const e of ex) {
+          const key = e.gym_id || `livre:${e.name.trim().toLowerCase()}`;
+          const v = `${e.sets && e.reps ? `${e.sets}×${e.reps}` : e.sets ? `${e.sets} séries` : ''}${e.kg ? `${e.sets ? ' · ' : ''}${String(e.kg).replace('.', ',')} kg` : ''}`.trim();
+          if (v) loads[key] = v;
+          if (!e.gym_id) S.exNames = { ...(S.exNames ?? {}), [key]: e.name.trim() };
+        }
+        if (Object.keys(loads).length) {
+          S.gymLoadLog = logLoads(S.gymLoadLog, loads, todayKey(now));
+          S.gymLoads = { ...(S.gymLoads ?? {}), ...Object.fromEntries(Object.entries(loads).filter(([k]) => !k.startsWith('livre:'))) };
+        }
         const keep = a.replace ? (l.workouts || []).filter((w) => w.sessionId !== 'coach') : l.workouts || [];
         l.workouts = [...keep, { sessionId: 'coach', title: a.title || 'Treino', minutes, mvpa: a.intensity === 'leve' ? 0 : minutes, strength }];
         l.t = Math.max(l.t ?? 0, INTENSITY[a.intensity] ?? 2);
-        done.push(`💪 Treino: ${a.title || 'treino'}, ${minutes} min`);
+        done.push(`💪 Treino: ${a.title || 'treino'}, ${minutes} min${ex.length ? ` · ${ex.map((e) => `${e.name}${e.sets && e.reps ? ` ${e.sets}×${e.reps}` : ''}${e.kg ? ` ${String(e.kg).replace('.', ',')} kg` : ''}`).join(', ')}` : ''}`);
         break;
       }
       case 'plano_refeicao': {
@@ -226,7 +268,28 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         }
         break;
       }
+      case 'memoria': {
+        const t = (a.note ?? '').trim();
+        if (t && !(S.memory?.facts ?? []).some((f) => f.text.toLowerCase() === t.toLowerCase())) {
+          S.memory = { ...(S.memory ?? {}), facts: [...(S.memory?.facts ?? []), { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, text: t, at: now.toISOString() }].slice(-30) };
+          done.push(`🧠 Vou lembrar-me: ${t}`);
+        }
+        break;
+      }
+      case 'nota': {
+        const t = (a.note ?? '').trim();
+        if (t) {
+          l.notes = [...(l.notes ?? []), t].slice(-5);
+          done.push(`📝 Relato guardado: ${t}`);
+        }
+        break;
+      }
       case 'respiracao':
+      case 'lembrete':
+      case 'consulta':
+      case 'desafio':
+      case 'abrir':
+      case 'resumo':
         break;
       case 'plano_treino': {
         const msg = coachPlanWorkout(S, l, a.value, a.option ?? 0, (a.status || 'seguido') as 'seguido' | 'alterado' | 'saltado', a.note);
@@ -284,14 +347,14 @@ export class CoachError extends Error {
   }
 }
 
-export async function askCoach(S: AppState, history: CoachMsg[]): Promise<CoachReply> {
+export async function askCoach(S: AppState, history: CoachMsg[], extra: { friends?: string[] } = {}): Promise<CoachReply> {
   notePremiumUse('coach');
   let res: Response;
   try {
     res = await fetch(`${PHOTO_API}/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: todaysMessages(history), context: buildContext(S), device: deviceId() }),
+      body: JSON.stringify({ messages: todaysMessages(history), context: buildContext(S, new Date(), extra), device: deviceId() }),
     });
   } catch {
     throw new CoachError('Sem ligação à internet. Tente outra vez.', 0);
