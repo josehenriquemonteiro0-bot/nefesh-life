@@ -216,3 +216,8 @@ input[type=time]{background:var(--panel2);border:1px solid var(--line);border-ra
 .photo-soon{border-style:dashed}
 .photo-soon svg{width:30px;height:30px;color:var(--gold)}
 @media(max-width:360px){.macrobars{grid-template-columns:minmax(0,1fr)}}
+/* barra de estado do iPhone (app aberta pelo ícone) */
+header{padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
+.intro{padding-top:max(48px, calc(env(safe-area-inset-top, 0px) + 24px))}
+.reset-confirm{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px}
+.btn.danger{background:var(--warn);color:#1a0f00}

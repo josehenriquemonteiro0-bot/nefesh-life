@@ -8,7 +8,7 @@ import { Nutrition } from './screens/Nutrition';
 import { Consent } from './components/Consent';
 import { planFor } from './domain/plan';
 import { QUESTIONS } from './domain/content';
-import { todayKey } from './domain/dates';
+import { daysSince, todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
 import { blankState } from './domain/sample';
 import { took } from './domain/stats';
@@ -38,7 +38,19 @@ export function App() {
   const { S, update, replace, toast, toastMsg } = useStore();
   const [tab, setTab] = useState<Tab>('home');
   const [quiz, setQuiz] = useState<QuizState | null>(null);
-  const [showIntro, setShowIntro] = useState(!S.intro);
+  // abertura em cada utilização: boas-vindas completas sem plano, abertura curta com escolha com plano
+  const [intro, setIntro] = useState<null | 'welcome' | 'return'>(S.ans ? 'return' : 'welcome');
+  const setShowIntro = (v: boolean) => setIntro(v ? 'welcome' : null);
+  // ao voltar à app depois de 30 minutos em segundo plano, mostra de novo a abertura
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (document.hidden) hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000 && S.ans) setIntro('return');
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [S.ans]);
   const [reportOpen, setReportOpen] = useState(false);
   const [scienceOpen, setScienceOpen] = useState(false);
   const openScience = () => setScienceOpen(true);
@@ -56,14 +68,18 @@ export function App() {
     setTab(t);
     window.scrollTo(0, 0);
   };
-  const startQuiz = () => {
-    setQuiz({ draft: {}, qi: 0 });
+  /** Abre a avaliação; numa reavaliação, as respostas anteriores vêm preenchidas. */
+  const startQuiz = (fresh = false) => {
+    const prev = !fresh && S.ans ? { ...S.ans } : {};
+    // idades antigas em intervalo passam a número exato
+    if (typeof prev.idade === 'string') delete prev.idade;
+    setQuiz({ draft: prev, qi: 0 });
     setTab('quiz');
     window.scrollTo(0, 0);
   };
   const resetDemo = () => {
     replace(blankState());
-    startQuiz();
+    startQuiz(true);
   };
   const cancelQuiz = () => {
     setQuiz(null);
@@ -93,13 +109,13 @@ export function App() {
   if (tab === 'quiz') {
     if (quiz && !S.consent) screen = <Consent onAccept={() => setQuiz({ ...quiz })} onCancel={cancelQuiz} />;
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
-    else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={startQuiz} openScience={openScience} />;
-    else screen = <Plan answers={S.ans} go={go} onReassess={startQuiz} openScience={openScience} />;
+    else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
+    else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
   } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri') {
-    screen = <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />;
+    screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />,
+      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
@@ -124,7 +140,7 @@ export function App() {
             <img src={`${import.meta.env.BASE_URL}brand/logo-header.png`} alt="nefesh" width={130} height={30} />
             <small>LIFE</small>
           </div>
-          <button className="btn ghost sm" onClick={startQuiz}>{S.ans ? 'Reavaliar' : 'Avaliar'}</button>
+          <button className="btn ghost sm" onClick={() => startQuiz()}>{S.ans ? 'Reavaliar' : 'Avaliar'}</button>
         </header>
         <main key={tab + (quiz ? quiz.qi : '')} className="view">{screen}</main>
       </div>
@@ -136,13 +152,21 @@ export function App() {
           </button>
         ))}
       </nav>
-      {showIntro && (
+      {intro && (
         <Intro
+          mode={intro}
           hasPlan={!!S.ans}
-          onDone={() => {
-            setShowIntro(false);
+          name={S.ans?.name}
+          day={S.planStart ? daysSince(S.planStart) + 1 : undefined}
+          onDone={(a) => {
+            setIntro(null);
             update((d) => { d.intro = true; });
-            if (!S.ans) startQuiz();
+            if (a === 'reset') {
+              replace({ ...blankState(), intro: true });
+              toast('Dados apagados. Vamos começar do zero.');
+              startQuiz(true);
+            } else if (a === 'reassess' || !S.ans) startQuiz();
+            else go('home');
           }}
         />
       )}
