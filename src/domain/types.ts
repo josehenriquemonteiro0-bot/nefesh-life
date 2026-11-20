@@ -4,6 +4,14 @@ export type AreaKey = 'energia' | 'sono' | 'nutricao' | 'hidratacao' | 'moviment
 /** 'passos' fica para registos antigos; o hábito de passos passou para o cartão dos passos */
 export type HabitKey = 'sono' | 'passos' | 'resp' | 'veg';
 export type Scores = Record<AreaKey, number>;
+/**
+ * Origem de um dado (especificação v2, secção 7):
+ * device = medido por um aparelho e lido de uma captura do app Saúde;
+ * integration = chegou sozinho do app Saúde / Apple Watch (atalho NEFESH Saúde);
+ * declared = escrito ou tocado pela pessoa.
+ */
+export type DataSource = 'device' | 'integration' | 'declared';
+export type SourcedField = 'steps' | 'sleepH' | 'exMin';
 
 /** Respostas da avaliação. Todos os campos são opcionais durante o preenchimento. */
 export interface Answers {
@@ -59,6 +67,8 @@ export interface DayLog {
   sleepH?: number;
   /** tomas feitas através de uma receita (índices), que não gastam cápsulas */
   viaRecipe?: Record<number, string>;
+  /** origem de cada valor medível (sem entrada = escrito pela pessoa) */
+  src?: Partial<Record<SourcedField, DataSource>>;
 }
 
 export interface Bottle {

@@ -480,3 +480,6 @@ nav .nav-coach.on{color:var(--neon)}
 .coach-hero{text-align:center}
 .coach-mic{display:grid;place-items:center;width:72px;height:72px;margin:0 auto;border-radius:50%;background:var(--neon);color:#00140d}
 .coach-mic svg{width:34px;height:34px}
+/* origem dos dados (medido vs. escrito) */
+.src-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mute,#97a69f);white-space:nowrap}
+.src-tag.measured{border-color:var(--neon);color:var(--neon)}

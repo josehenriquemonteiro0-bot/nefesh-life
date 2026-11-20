@@ -44,7 +44,7 @@ export function HealthShotButton({ compact = false }: { compact?: boolean }) {
               return;
             }
             const day = { steps: r.steps, sleepH: r.sleepH, exMin: r.exMin, at: new Date().toISOString() };
-            update((d) => { applyHealthDays(d, { [todayKey()]: day }); });
+            update((d) => { applyHealthDays(d, { [todayKey()]: day }, 'device'); });
             toast(['✅', r.steps !== undefined && `${r.steps.toLocaleString('pt-PT')} passos`, r.exMin !== undefined && `${r.exMin} min de exercício`, r.sleepH !== undefined && `${fmtNum(r.sleepH)} h de sono`].filter(Boolean).join(' '));
             if (S.community) await pushPoints({ ...S }, true);
             await refresh();

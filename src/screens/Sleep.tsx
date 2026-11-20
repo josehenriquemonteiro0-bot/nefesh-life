@@ -4,6 +4,8 @@ import { PremiumTag } from '../components/PremiumTag';
 import { fmtNum, keyDaysAgo, longToday } from '../domain/dates';
 import { canAccess } from '../domain/features';
 import { useStore } from '../state/store';
+import { SourceTag } from '../components/SourceTag';
+import { setSource, sourceCount, sourceSummary } from '../domain/sources';
 
 const CHIPS = [5, 6, 7, 8, 9];
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -21,7 +23,7 @@ export function Sleep() {
   const d30 = days(30).filter((x) => x?.sleepH !== undefined && x?.e);
   const good = mean(d30.filter((x) => x!.sleepH! >= 7).map((x) => x!.e!));
   const bad = mean(d30.filter((x) => x!.sleepH! < 7).map((x) => x!.e!));
-  const set = (v: number | undefined) => updateToday((d) => { if (v === undefined) delete d.sleepH; else d.sleepH = Math.max(0, Math.min(16, Math.round(v * 2) / 2)); });
+  const set = (v: number | undefined) => updateToday((d) => { if (v === undefined) delete d.sleepH; else d.sleepH = Math.max(0, Math.min(16, Math.round(v * 2) / 2)); setSource(d, 'sleepH', null); });
 
   return (
     <>
@@ -38,8 +40,9 @@ export function Sleep() {
           </label>
         </div>
         <p className="small" style={{ margin: '10px 0 0', opacity: 0.85 }}>
-          {l.sleepH === undefined ? 'Registado à mão (declarado). Com o relógio ligado ao app Saúde, chega sozinho.' : l.sleepH >= 7 ? 'Boa noite de sono. 🌙' : 'Abaixo de 7 horas: tente deitar-se um pouco mais cedo hoje.'}
+          {l.sleepH === undefined ? 'Toque nas horas ou escreva o valor exato. Com o relógio ligado ao app Saúde, chega sozinho.' : l.sleepH >= 7 ? 'Boa noite de sono. 🌙' : 'Abaixo de 7 horas: tente deitar-se um pouco mais cedo hoje.'}
         </p>
+        {l.sleepH !== undefined && <p style={{ margin: '8px 0 0' }}><SourceTag l={l} f="sleepH" /></p>}
       </section>
 
       <section className="card">
@@ -51,6 +54,7 @@ export function Sleep() {
               Média: <b>{fmtNum(Math.round(avg! * 10) / 10)} h</b>
               {regular ? <> · horário <b>{regular}</b></> : null}
             </p>
+            <p className="small mute" style={{ margin: '4px 0 0' }}>Origem: {sourceSummary(sourceCount(S, 'sleepH', 14))}.</p>
           </>
         ) : (
           <p className="small mute">Ainda sem registos. Escreva as horas acima ou no check-in.</p>

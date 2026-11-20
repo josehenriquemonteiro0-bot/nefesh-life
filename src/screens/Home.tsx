@@ -4,18 +4,20 @@ import { Icon } from '../components/Icon';
 import { GLASS_ML, HABITS, PROS, SHOP_URL, STEP_GOAL, TIPS, whatsappLink } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
 import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
-import { adherence, habitOn, reorderText, stock, streak, took } from '../domain/stats';
+import { adherence, habitOn, reorderText, stock } from '../domain/stats';
 import { nextAction } from '../domain/nextAction';
 import { useStore } from '../state/store';
+import { useDoseToggle } from '../state/doses';
 import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
-import { pushRitualDone } from '../domain/push';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
 import { HealthShotButton } from '../components/HealthShot';
+import { SourceTag } from '../components/SourceTag';
+import { setSource } from '../domain/sources';
 import { activityStreak, dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
-import { mealForSlot, nextReassessment, spirulinaEntry, spirulinaInsight, weeklySummary } from '../domain/progress';
+import { nextReassessment, spirulinaInsight, weeklySummary } from '../domain/progress';
 import type { Nav } from '../App';
 
 const litres = (glasses: number) => fmtNum(((glasses * GLASS_ML) / 1000).toFixed(2).replace(/0$/, ''));
@@ -40,6 +42,7 @@ function ActivityCard({ openHealth }: { openHealth: () => void }) {
     updateToday((d) => {
       if (v === undefined || Number.isNaN(v)) delete d.steps;
       else d.steps = Math.max(0, Math.min(100000, Math.round(v)));
+      setSource(d, 'steps', null);
     });
   };
   return (
@@ -59,6 +62,7 @@ function ActivityCard({ openHealth }: { openHealth: () => void }) {
           <div><b>{fmtNum(Math.round(steps * 0.0007 * 10) / 10)} km</b><span>aprox.</span></div>
         </div>
       </div>
+      {l.steps !== undefined && <p style={{ margin: '10px 0 0' }}><SourceTag l={l} f="steps" /></p>}
       {S.health2 ? (
         <p className="small mute" style={{ margin: '10px 0 0' }}>
           Ligado ao app Saúde · últimos dados {syncedLabel(S.health2.lastAt)}.{' '}
@@ -193,26 +197,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   const low = st.days <= 10;
   const re = nextReassessment(S);
 
-  const toggleDose = (i: number) => {
-    const next = [...doses];
-    next[i] = !next[i];
-    const tag = `spirulina-${i}`;
-    updateToday((t) => {
-      t.doses = next;
-      // a toma entra (ou sai) sozinha no diário de nutrição
-      const meal = mealForSlot(sl[i].l);
-      const meals = { ...(t.meals || {}) };
-      for (const k of Object.keys(meals) as (keyof typeof meals)[]) meals[k] = (meals[k] || []).filter((e) => e.auto !== tag);
-      if (next[i]) meals[meal] = [...(meals[meal] || []), spirulinaEntry(S, sl[i], i)];
-      t.meals = meals;
-    });
-    const after = { ...S, logs: { ...S.logs, [todayKey()]: { ...l, doses: next } } };
-    if (took(after, after.logs[todayKey()]) && !took(S, l)) {
-      // ritual feito: hoje não há lembrete
-      if (S.notifications) pushRitualDone();
-      toast(`Ritual do dia cumprido. ${streak(after)} dias seguidos.`);
-    }
-  };
+  const { toggle: toggleDose } = useDoseToggle();
 
   const setWater = (n: number) => {
     updateToday((t) => { t.water = Math.max(0, n); });
@@ -342,7 +327,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           <div className="row">
             <div>
               <h2 style={{ margin: 0 }}>Como se sente hoje?</h2>
-              <p className="mute small" style={{ margin: '4px 0 0' }}>30 segundos: energia, sono, disposição e treino.</p>
+              <p className="mute small" style={{ margin: '4px 0 0' }}>30 segundos: energia, sono, disposição, treino e Spirulina.</p>
             </div>
             <button className="btn ghost sm" onClick={() => go('check')}>Check-in</button>
           </div>

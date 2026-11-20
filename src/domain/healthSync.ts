@@ -2,7 +2,8 @@
  * Dados do app Saúde (iPhone, Apple Watch e relógios que escrevem no app Saúde),
  * enviados pelo atalho NEFESH Saúde para a conta e trazidos para a app.
  */
-import type { AppState } from './types';
+import type { AppState, DataSource } from './types';
+import { setSource } from './sources';
 
 export interface HealthDay {
   steps?: number;
@@ -22,17 +23,19 @@ export const HEALTH_WORKOUT_ID = 'saude-exercicio';
  * Os minutos de exercício do relógio entram como atividade, descontando os treinos
  * registados à mão nesse dia (para não contar duas vezes).
  */
-export function applyHealthDays(S: AppState, days: Record<string, HealthDay>): boolean {
+export function applyHealthDays(S: AppState, days: Record<string, HealthDay>, source: DataSource = 'integration'): boolean {
   let changed = false;
   for (const [date, h] of Object.entries(days)) {
     const l = (S.logs[date] = S.logs[date] || {});
-    if (h.steps !== undefined && l.steps !== h.steps) {
+    if (h.steps !== undefined && (l.steps !== h.steps || l.src?.steps !== source)) {
       l.steps = h.steps;
+      setSource(l, 'steps', source);
       changed = true;
     }
     if (h.sleepH !== undefined && l.sleepH === undefined) {
       // o sono escrito no check-in tem prioridade
       l.sleepH = h.sleepH;
+      setSource(l, 'sleepH', source);
       changed = true;
     }
     if (h.exMin !== undefined) {
@@ -41,6 +44,10 @@ export function applyHealthDays(S: AppState, days: Record<string, HealthDay>): b
       const prev = (l.workouts || []).find((w) => w.sessionId === HEALTH_WORKOUT_ID);
       if ((prev?.minutes ?? 0) !== extra) {
         l.workouts = extra ? [...manual, { sessionId: HEALTH_WORKOUT_ID, title: 'Exercício (app Saúde)', minutes: extra, mvpa: extra, strength: false }] : manual;
+        changed = true;
+      }
+      if (extra && l.src?.exMin !== source) {
+        setSource(l, 'exMin', source);
         changed = true;
       }
     }

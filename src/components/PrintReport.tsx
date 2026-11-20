@@ -5,6 +5,7 @@ import { indexOf, planFor } from '../domain/plan';
 import { doseText } from '../domain/lots';
 import { totals } from '../domain/foods';
 import { adherence, streak, took } from '../domain/stats';
+import { isMeasured, sourceOf } from '../domain/sources';
 import { compareEvals, weeklySummary, workoutKcal } from '../domain/progress';
 import { weekAdherence, weekChanges } from '../domain/planAdherence';
 import { trainChanges, weekTrainAdherence } from '../domain/trainAdherence';
@@ -154,8 +155,8 @@ export function PrintReport() {
                   <td>{shortDate(k)}</td>
                   <td>{took(S, l, now) ? 'sim' : '—'}</td>
                   <td>{l?.water ? `${l.water} copos` : '—'}</td>
-                  <td>{l?.steps !== undefined ? l.steps.toLocaleString('pt-PT') : '—'}</td>
-                  <td>{l?.sleepH !== undefined ? `${fmtNum(l.sleepH)} h` : '—'}</td>
+                  <td>{l?.steps !== undefined ? `${l.steps.toLocaleString('pt-PT')}${isMeasured(sourceOf(l, 'steps')) ? ' ⌚' : ''}` : '—'}</td>
+                  <td>{l?.sleepH !== undefined ? `${fmtNum(l.sleepH)} h${isMeasured(sourceOf(l, 'sleepH')) ? ' ⌚' : ''}` : '—'}</td>
                   <td>{l?.e ? `${l.e}/5` : '—'}</td>
                   <td>{food && food.kcal ? `${Math.round(food.kcal)} kcal` : '—'}</td>
                   <td>{mins ? `${mins} min (${workoutKcal(S, k)} kcal)` : '—'}</td>
@@ -168,6 +169,7 @@ export function PrintReport() {
           Na semana: Spirulina em {w.spirulina}/7 dias · água na meta em {w.water}/7 · {w.minutes} min de atividade
           {w.sleep !== null ? ` · sono médio ${fmtNum(w.sleep)} h` : ''}{w.energy !== null ? ` · energia média ${fmtNum(w.energy)}/5` : ''}
         </p>
+        <p className="pr-small">⌚ medido pelo relógio ou telemóvel (app Saúde). Sem ⌚: registado pela pessoa. Energia, sono e disposição de 1 a 5 são sempre a avaliação da pessoa.</p>
       </section>
 
       {S.nutriPlan && (

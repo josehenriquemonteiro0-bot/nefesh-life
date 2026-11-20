@@ -9,6 +9,7 @@ import { weekAdherence, weekChanges } from './planAdherence';
 import { trainChanges, weekTrainAdherence } from './trainAdherence';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
+import { sourceCount, sourceSummary } from './sources';
 import type { AppState, DayLog } from './types';
 import type { IconName } from '../components/Icon';
 
@@ -213,8 +214,8 @@ export function report(S: AppState, now = new Date()) {
     `Adesão: ${adherence(S, 14, now)}% em 14 dias · ${adherence(S, 30, now)}% em 30 dias`,
     `Médias última semana (1–5): energia ${f(average(S, 0, 6, 'e', now))}, sono ${f(average(S, 0, 6, 's', now))}, disposição ${f(average(S, 0, 6, 'd', now))}`,
     `Semana anterior: energia ${f(average(S, 7, 13, 'e', now))}, sono ${f(average(S, 7, 13, 's', now))}, disposição ${f(average(S, 7, 13, 'd', now))}`,
-    meanOf(S, 'steps', now) !== null ? `Passos médios (7 dias): ${Math.round(meanOf(S, 'steps', now)!).toLocaleString('pt-PT')}` : null,
-    meanOf(S, 'sleepH', now) !== null ? `Sono médio (7 dias): ${fmtNum(meanOf(S, 'sleepH', now)!.toFixed(1))} h` : null,
+    meanOf(S, 'steps', now) !== null ? `Passos médios (7 dias): ${Math.round(meanOf(S, 'steps', now)!).toLocaleString('pt-PT')} (${sourceSummary(sourceCount(S, 'steps', 7, now))})` : null,
+    meanOf(S, 'sleepH', now) !== null ? `Sono médio (7 dias): ${fmtNum(meanOf(S, 'sleepH', now)!.toFixed(1))} h (${sourceSummary(sourceCount(S, 'sleepH', 7, now))})` : null,
     `Hidratação média (7 dias): ${f((water7 * GLASS_ML) / 1000)} L/dia`,
   ];
   return lines.filter(Boolean).join('\n');

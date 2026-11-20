@@ -2,7 +2,10 @@ import { TRAINING } from '../domain/content';
 import { longToday } from '../domain/dates';
 import type { DayLog } from '../domain/types';
 import { useStore } from '../state/store';
+import { useDoseToggle } from '../state/doses';
 import { DecimalInput } from '../components/DecimalInput';
+import { SourceTag } from '../components/SourceTag';
+import { setSource } from '../domain/sources';
 
 const SLEEP_CHIPS = [5, 6, 7, 8, 9];
 
@@ -13,7 +16,8 @@ const METRICS: [keyof Pick<DayLog, 'e' | 's' | 'd'>, string, string, string][] =
 ];
 
 export function Check({ onSaved }: { onSaved: () => void }) {
-  const { todayLog: l, updateToday, toast } = useStore();
+  const { S, todayLog: l, updateToday, toast } = useStore();
+  const { slots, doses, toggle } = useDoseToggle();
   const complete = !!(l.e && l.s && l.d);
   return (
     <>
@@ -31,10 +35,10 @@ export function Check({ onSaved }: { onSaved: () => void }) {
           </div>
         ))}
         <div className="metric" role="group" aria-label="Horas de sono">
-          <div className="lbl"><span>Quantas horas dormiu?</span><span className="mute small">opcional</span></div>
+          <div className="lbl"><span>Quantas horas dormiu?</span>{l.sleepH !== undefined ? <SourceTag l={l} f="sleepH" /> : <span className="mute small">opcional</span>}</div>
           <div className="chips">
             {SLEEP_CHIPS.map((h) => (
-              <button key={h} className={`chip ${l.sleepH === h ? 'on' : ''}`} aria-pressed={l.sleepH === h} onClick={() => updateToday((d) => { d.sleepH = d.sleepH === h ? undefined : h; })}>{h === 9 ? '9+' : h}</button>
+              <button key={h} className={`chip ${l.sleepH === h ? 'on' : ''}`} aria-pressed={l.sleepH === h} onClick={() => updateToday((d) => { d.sleepH = d.sleepH === h ? undefined : h; setSource(d, 'sleepH', null); })}>{h === 9 ? '9+' : h}</button>
             ))}
             <label className="hin" style={{ width: 92 }}>
               <span>outro</span>
@@ -42,11 +46,21 @@ export function Check({ onSaved }: { onSaved: () => void }) {
                 placeholder="7,5"
                 value={l.sleepH !== undefined && !SLEEP_CHIPS.includes(l.sleepH) ? l.sleepH : undefined}
                 aria-label="Horas de sono exatas"
-                onValue={(v) => updateToday((d) => { if (v === undefined) delete d.sleepH; else d.sleepH = Math.max(0, Math.min(24, Math.round(v * 2) / 2)); })}
+                onValue={(v) => updateToday((d) => { if (v === undefined) delete d.sleepH; else d.sleepH = Math.max(0, Math.min(24, Math.round(v * 2) / 2)); setSource(d, 'sleepH', null); })}
               />
             </label>
           </div>
         </div>
+        {S.ans && slots.length > 0 && (
+          <div className="metric" role="group" aria-label="Spirulina de hoje">
+            <div className="lbl"><span>Spirulina hoje</span><span className="mute small">toque no que já tomou</span></div>
+            <div className="chips">
+              {slots.map((s, i) => (
+                <button key={s.l} className={`chip ${doses[i] ? 'on' : ''}`} aria-pressed={!!doses[i]} onClick={() => toggle(i)}>{doses[i] ? '✓ ' : ''}{s.l}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="metric" role="group" aria-label="Treino">
           <div className="lbl"><span>Treino</span></div>
           <div className="chips">
