@@ -48,6 +48,8 @@ export interface CoachMsg {
   undo?: { day: string; log: DayLog | null };
   undone?: boolean;
   pro?: boolean;
+  /** mensagem ditada por voz */
+  voice?: boolean;
 }
 
 const MEAL_LABEL = Object.fromEntries(MEALS) as Record<MealKey, string>;

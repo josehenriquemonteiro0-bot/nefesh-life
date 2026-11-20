@@ -499,3 +499,16 @@ nav .nav-coach.on{color:var(--neon)}
 .coach-starters .chip{font-weight:600;font-size:14px}
 .coach-input{display:flex;gap:8px;align-items:flex-end}
 .coach-input textarea{flex:1;font:inherit;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:inherit;resize:none;min-height:46px}
+/* voz */
+button.coach-mic{border:0;cursor:pointer;box-shadow:0 0 0 0 rgba(0,254,138,.5)}
+button.coach-mic.on{animation:micPulse 1.2s infinite}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(0,254,138,.55)}100%{box-shadow:0 0 0 18px rgba(0,254,138,0)}}
+.coach-mic.sm{width:46px;height:46px;margin:0;flex:none}
+.coach-mic.sm svg{width:22px;height:22px}
+.coach-mic:disabled{opacity:.5}
+.coach-voice-opts{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
+.coach-voice-opts .chips{gap:6px}
+.chip.sm{min-height:34px;font-size:13px;font-weight:600}
+.toggle-line{display:inline-flex;align-items:center;gap:6px}
+.next-action .talk-big{flex:1 1 100%;margin-top:2px;border-color:rgba(0,254,138,.45)}
+.next-action .talk-big svg{width:18px;height:18px}

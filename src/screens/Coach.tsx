@@ -8,6 +8,8 @@ import { dailyQuota, TEST_MODE } from '../domain/features';
 import { ritualJustDone } from '../state/doses';
 import { useStore } from '../state/store';
 import type { DayLog } from '../domain/types';
+import { notePremiumUse } from '../domain/analytics';
+import { listen, speak, speechSupported, stopSpeaking, takeListenRequest, ttsSupported, voiceLang, type Listening } from '../domain/voice';
 
 const STARTERS = [
   'Bebi 2 copos de água',
@@ -17,7 +19,7 @@ const STARTERS = [
   'O que posso jantar hoje?',
 ];
 
-/** AI Coach por texto (a voz chega no módulo 6). */
+/** AI Coach por texto e voz. */
 export function Coach({ go }: { go: Nav }) {
   const { S, update, toast } = useStore();
   const [hist, setHist] = useState<CoachMsg[]>(loadHistory);
@@ -26,7 +28,11 @@ export function Coach({ go }: { go: Nav }) {
   const [err, setErr] = useState<string | null>(null);
   const [quota, setQuota] = useState<{ remaining: number; limit: number } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const free = dailyQuota(S, 'coach');
+  const lang = voiceLang(S);
+  const [listening, setListening] = useState(false);
+  const rec = useRef<Listening | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: 'end', behavior: 'smooth' });
@@ -37,11 +43,11 @@ export function Coach({ go }: { go: Nav }) {
     saveHistory(h);
   };
 
-  const send = async (raw: string) => {
+  const send = async (raw: string, viaVoice = false) => {
     const t = raw.trim();
     if (!t || busy) return;
     const now = new Date().toISOString();
-    const withUser = [...hist, { role: 'user' as const, text: t, at: now }];
+    const withUser = [...hist, { role: 'user' as const, text: t, at: now, voice: viaVoice || undefined }];
     save(withUser);
     setText('');
     setErr(null);
@@ -67,6 +73,7 @@ export function Coach({ go }: { go: Nav }) {
         ...withUser,
         { role: 'assistant', text: r.reply, at: new Date().toISOString(), applied, undo: applied.length ? { day: key, log: before } : undefined, pro: r.suggest_professional },
       ]);
+      if (S.voiceReply) speak(r.reply, lang);
     } catch (e) {
       const ce = e as CoachError;
       setErr(ce.message);
@@ -75,6 +82,52 @@ export function Coach({ go }: { go: Nav }) {
       setBusy(false);
     }
   };
+
+  // voz: fala → texto (reconhecimento do telemóvel) → mesmo caminho do Coach
+  const startVoice = () => {
+    if (busy) return;
+    stopSpeaking();
+    if (listening) {
+      rec.current?.stop();
+      return;
+    }
+    setErr(null);
+    if (!speechSupported()) {
+      setErr('Este navegador não reconhece voz. Toque na caixa de texto e use o microfone do teclado 🎤 para ditar.');
+      inputRef.current?.focus();
+      return;
+    }
+    notePremiumUse('voz');
+    const r = listen(lang, {
+      onText: (t) => setText(t),
+      onDone: (t) => {
+        setListening(false);
+        rec.current = null;
+        if (t) send(t, true);
+      },
+      onError: (msg) => {
+        setListening(false);
+        rec.current = null;
+        setErr(msg);
+      },
+    });
+    if (!r) {
+      setErr('Não foi possível ligar o microfone. Use o microfone do teclado 🎤 para ditar.');
+      return;
+    }
+    rec.current = r;
+    setText('');
+    setListening(true);
+  };
+  // "Toca para falar" no Início abre o Coach já a ouvir
+  useEffect(() => {
+    if (takeListenRequest()) startVoice();
+    return () => {
+      rec.current?.abort();
+      stopSpeaking();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const undo = (idx: number) => {
     const m = hist[idx];
@@ -99,10 +152,10 @@ export function Coach({ go }: { go: Nav }) {
 
       {hist.length === 0 && (
         <section className="card hero coach-hero">
-          <div className="coach-mic" aria-hidden="true"><Icon name="mic" width={2} /></div>
-          <h2 style={{ margin: '12px 0 6px' }}>Escreva como falaria com um amigo</h2>
+          <button className={`coach-mic ${listening ? 'on' : ''}`} onClick={startVoice} aria-label={listening ? 'Parar de ouvir' : 'Toca para falar'}><Icon name="mic" width={2} /></button>
+          <h2 style={{ margin: '12px 0 6px' }}>{listening ? 'A ouvir… fale à vontade' : 'Toca para falar'}</h2>
           <p className="small" style={{ margin: 0, opacity: 0.9 }}>
-            "Dormi mal, comi dois ovos e pão, vou treinar à tarde e estou cansado." O Coach regista o sono, a refeição e a energia, e devolve uma sugestão para o seu dia.
+            Fale ou escreva como falaria com um amigo: "Dormi mal, comi dois ovos e pão, vou treinar à tarde e estou cansado." O Coach regista o sono, a refeição e a energia, e devolve uma sugestão para o seu dia.
           </p>
         </section>
       )}
@@ -110,7 +163,7 @@ export function Coach({ go }: { go: Nav }) {
       <div className="coach-chat" aria-live="polite">
         {hist.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{m.text}</p>
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{m.voice ? '🎙️ ' : ''}{m.text}</p>
             {m.applied && m.applied.length > 0 && (
               <div className={`coach-applied ${m.undone ? 'undone' : ''}`}>
                 {m.applied.map((a, k) => <span key={k} className="small">{m.undone ? '' : '✓ '}{a}</span>)}
@@ -134,6 +187,7 @@ export function Coach({ go }: { go: Nav }) {
 
       {hist.length === 0 && (
         <div className="chips coach-starters">
+          <button className="chip" onClick={startVoice} disabled={busy}>🎙️ Contar como foi o meu dia</button>
           {STARTERS.map((s) => <button key={s} className="chip" onClick={() => send(s)} disabled={busy}>{s}</button>)}
         </div>
       )}
@@ -145,11 +199,15 @@ export function Coach({ go }: { go: Nav }) {
           send(text);
         }}
       >
+        <button type="button" className={`coach-mic sm ${listening ? 'on' : ''}`} onClick={startVoice} disabled={busy} aria-label={listening ? 'Parar de ouvir' : 'Falar'}>
+          <Icon name="mic" width={2} />
+        </button>
         <textarea
+          ref={inputRef}
           rows={2}
           value={text}
           maxLength={1200}
-          placeholder="Escreva aqui… ex.: almocei frango com arroz"
+          placeholder={listening ? 'A ouvir…' : 'Fale ou escreva… ex.: almocei frango com arroz'}
           aria-label="Mensagem para o Coach"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -162,8 +220,24 @@ export function Coach({ go }: { go: Nav }) {
         <button className="btn" disabled={busy || !text.trim()} aria-label="Enviar">Enviar</button>
       </form>
 
+      <div className="coach-voice-opts">
+        <div className="chips" role="group" aria-label="Português da voz">
+          {(['pt-PT', 'pt-BR'] as const).map((v) => (
+            <button key={v} className={`chip sm ${lang === v ? 'on' : ''}`} aria-pressed={lang === v} onClick={() => update((d) => { d.voiceLang = v; })}>
+              {v === 'pt-PT' ? '🇵🇹 Portugal' : '🇧🇷 Brasil'}
+            </button>
+          ))}
+        </div>
+        {ttsSupported() && (
+          <label className="small toggle-line">
+            <input type="checkbox" checked={!!S.voiceReply} onChange={(e) => { const on = e.target.checked; update((d) => { d.voiceReply = on; }); if (!on) stopSpeaking(); }} />
+            Ler as respostas em voz alta
+          </label>
+        )}
+        <PremiumTag f="voz" />
+      </div>
       <p className="small mute" style={{ margin: '8px 0 0' }}>
-        🎙️ Falar com o Coach chega na próxima atualização.{' '}
+        A voz usa o reconhecimento do próprio telemóvel: o áudio não é guardado pela NEFESH.{' '}
         {TEST_MODE
           ? 'Fase de teste: aberto a todos (no plano grátis serão 5 mensagens por dia).'
           : Number.isFinite(free)

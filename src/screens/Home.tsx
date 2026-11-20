@@ -8,6 +8,7 @@ import { adherence, habitOn, reorderText, stock } from '../domain/stats';
 import { nextAction } from '../domain/nextAction';
 import { useStore } from '../state/store';
 import { useDoseToggle } from '../state/doses';
+import { requestListen } from '../domain/voice';
 import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
@@ -227,12 +228,10 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
               <h2 style={{ margin: '2px 0 2px' }}>{na.title}</h2>
               <p className="small mute" style={{ margin: 0 }}>{na.detail}</p>
             </div>
-            <div className="na-actions">
-              {label && <button className="btn sm" onClick={run}>{label}</button>}
-              <button className="btn ghost sm talk" onClick={() => go('coach')} aria-label="Toca para falar com o Coach">
-                <Icon name="mic" /> Falar
-              </button>
-            </div>
+            {label && <div className="na-actions"><button className="btn sm" onClick={run}>{label}</button></div>}
+            <button className="btn ghost full talk talk-big" onClick={() => { requestListen(); go('coach'); }} aria-label="Toca para falar com o Coach">
+              <Icon name="mic" /> Toca para falar
+            </button>
           </section>
         );
       })()}

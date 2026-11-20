@@ -11,7 +11,8 @@ export function ritualJustDone(S: AppState, before: DayLog | undefined, after: D
   const S2 = { ...S, logs: { ...S.logs, [todayKey()]: after } };
   if (!took(S2, after) || took(S, before)) return null;
   if (S.notifications) pushRitualDone();
-  return `Ritual do dia cumprido. ${streak(S2)} dias seguidos.`;
+  const n = streak(S2);
+  return `Ritual do dia cumprido. ${n} ${n === 1 ? 'dia seguido' : 'dias seguidos'}.`;
 }
 
 export function useDoseToggle() {

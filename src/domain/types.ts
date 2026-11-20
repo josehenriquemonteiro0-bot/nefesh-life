@@ -128,6 +128,10 @@ export interface AppState {
   communityPush?: boolean;
   /** tutorial guiado já visto */
   tourDone?: boolean;
+  /** língua do reconhecimento de voz (por omissão, a do telemóvel) */
+  voiceLang?: 'pt-PT' | 'pt-BR';
+  /** o Coach lê as respostas em voz alta */
+  voiceReply?: boolean;
   /** dicas de primeira visita já fechadas, por separador */
   tipsSeen?: Record<string, boolean>;
   /** nível escolhido para os treinos sugeridos (sobrepõe-se ao da avaliação) */
