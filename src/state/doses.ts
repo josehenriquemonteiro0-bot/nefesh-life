@@ -1,36 +1,29 @@
 import { todayKey } from '../domain/dates';
 import { slotsFor } from '../domain/plan';
-import { mealForSlot, spirulinaEntry } from '../domain/progress';
+import { applyDose } from '../domain/doses';
 import { pushRitualDone } from '../domain/push';
 import { streak, took } from '../domain/stats';
+import type { AppState, DayLog } from '../domain/types';
 import { useStore } from './store';
 
-/**
- * Marcar (ou desmarcar) uma toma de Spirulina: a toma entra sozinha no diário de
- * nutrição e, com o ritual cumprido, o lembrete de hoje é cancelado.
- * Usado no Início e no check-in.
- */
+/** Com o ritual de hoje acabado de cumprir: cancela o lembrete e devolve a mensagem. */
+export function ritualJustDone(S: AppState, before: DayLog | undefined, after: DayLog) {
+  const S2 = { ...S, logs: { ...S.logs, [todayKey()]: after } };
+  if (!took(S2, after) || took(S, before)) return null;
+  if (S.notifications) pushRitualDone();
+  return `Ritual do dia cumprido. ${streak(S2)} dias seguidos.`;
+}
+
 export function useDoseToggle() {
   const { S, todayLog: l, updateToday, toast } = useStore();
   const sl = slotsFor(S);
   const doses = l.doses || [];
   const toggle = (i: number) => {
-    const next = [...doses];
-    next[i] = !next[i];
-    const tag = `spirulina-${i}`;
-    updateToday((t) => {
-      t.doses = next;
-      const meal = mealForSlot(sl[i].l);
-      const meals = { ...(t.meals || {}) };
-      for (const k of Object.keys(meals) as (keyof typeof meals)[]) meals[k] = (meals[k] || []).filter((e) => e.auto !== tag);
-      if (next[i]) meals[meal] = [...(meals[meal] || []), spirulinaEntry(S, sl[i], i)];
-      t.meals = meals;
-    });
-    const after = { ...S, logs: { ...S.logs, [todayKey()]: { ...l, doses: next } } };
-    if (took(after, after.logs[todayKey()]) && !took(S, l)) {
-      if (S.notifications) pushRitualDone();
-      toast(`Ritual do dia cumprido. ${streak(after)} dias seguidos.`);
-    }
+    const after: DayLog = JSON.parse(JSON.stringify(l));
+    applyDose(S, after, i, !doses[i]);
+    updateToday((t) => applyDose(S, t, i, !doses[i]));
+    const msg = ritualJustDone(S, l, after);
+    if (msg) toast(msg);
   };
   return { slots: sl, doses, toggle };
 }

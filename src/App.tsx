@@ -228,7 +228,7 @@ export function App() {
       nutri: <Nutrition />,
       treino: <Training />,
       sono: <Sleep />,
-      coach: <Coach />,
+      coach: <Coach go={go} />,
       saude: null,
       pros: <Pros openReport={() => setReportOpen(true)} />,
       social: <Community openAccount={() => openAccount('perfil')} />,

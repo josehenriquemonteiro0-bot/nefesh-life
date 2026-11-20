@@ -483,3 +483,19 @@ nav .nav-coach.on{color:var(--neon)}
 /* origem dos dados (medido vs. escrito) */
 .src-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mute,#97a69f);white-space:nowrap}
 .src-tag.measured{border-color:var(--neon);color:var(--neon)}
+/* AI Coach */
+.coach-chat{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.bubble{max-width:88%;padding:10px 14px;border-radius:16px;line-height:1.4}
+.bubble.user{align-self:flex-end;background:var(--neon);color:#00140d;border-bottom-right-radius:4px}
+.bubble.assistant{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.coach-applied{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.coach-applied.undone span{text-decoration:line-through;opacity:.6}
+.coach-applied .link{align-self:flex-start;margin-top:2px}
+.bubble.typing{display:flex;gap:5px;padding:14px}
+.bubble.typing span{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.4;animation:coachDot 1s infinite}
+.bubble.typing span:nth-child(2){animation-delay:.15s}.bubble.typing span:nth-child(3){animation-delay:.3s}
+@keyframes coachDot{0%,100%{opacity:.25}50%{opacity:.9}}
+.coach-starters{flex-wrap:wrap;margin-bottom:10px}
+.coach-starters .chip{font-weight:600;font-size:14px}
+.coach-input{display:flex;gap:8px;align-items:flex-end}
+.coach-input textarea{flex:1;font:inherit;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:inherit;resize:none;min-height:46px}

@@ -173,6 +173,10 @@ export interface FoodEntry {
   planRef?: string;
   /** entrada automática (ex.: toma de Spirulina), para a retirar ao desmarcar */
   auto?: string;
+  /** registada pelo AI Coach (pode ser substituída numa correção) */
+  coach?: boolean;
+  /** valores estimados (alimento fora da tabela) */
+  est?: boolean;
   foodId?: string;
   name: string;
   grams: number;

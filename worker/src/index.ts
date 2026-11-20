@@ -18,6 +18,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { LIMIT_MESSAGES, check, cleanDeviceId, count, dayKey, type Limits } from './limits';
 import { handlePlan, type PlanBody } from './plan';
 import { handleTip } from './tips';
+import { coachLimits, handleCoach } from './coach';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
 import * as push from './push';
@@ -414,6 +415,15 @@ export default {
     if (path === '/evento') {
       await savePing(env.LIMITS as never, device, body as Record<string, unknown>);
       return new Response(null, { status: 204, headers: h });
+    }
+    // AI Coach por texto
+    if (path === '/coach') {
+      try {
+        const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+        return await handleCoach(body as Record<string, unknown>, env.LIMITS, coachLimits(env), client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+      } catch (err) {
+        return apiError(err, h);
+      }
     }
     // leitura do plano alimentar do nutricionista
     if (path === '/dica') {
