@@ -15,10 +15,11 @@ import { targetsFor } from './body';
 import { setSource } from './sources';
 import { mealForHour, PHOTO_API, deviceId } from './photo';
 import { applyDose } from './doses';
+import { coachPlanMeal, coachPlanWorkout } from './planMeal';
 import { notePremiumUse } from './analytics';
 import type { AppState, DayLog } from './types';
 
-export type CoachActionType = 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'treino' | 'passos';
+export type CoachActionType = 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -27,6 +28,10 @@ export interface CoachAction {
   intensity: 'leve' | 'moderado' | 'intenso' | '';
   title: string;
   replace: boolean;
+  /** plano_refeicao: opção, estado e alterações */
+  option?: number;
+  status?: 'seguido' | 'alterado' | 'saltado' | '';
+  note?: string;
   items: { food_id: string; name: string; grams: number; kcal100: number; p100: number; c100: number; f100: number }[];
 }
 
@@ -53,6 +58,7 @@ export interface CoachMsg {
 }
 
 const MEAL_LABEL = Object.fromEntries(MEALS) as Record<MealKey, string>;
+const STATUS = { seguido: 'seguido', alterado: 'com alterações', saltado: 'não fez' } as const;
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /** Resumo do contexto da pessoa (texto curto, sem dados de identificação além do primeiro nome). */
@@ -81,8 +87,25 @@ export function buildContext(S: AppState, now = new Date()): string {
     const tg = targetsFor(S);
     lines.push(`Metas diárias (${tg.source === 'pro' ? `do profissional ${tg.by ?? ''}`.trim() : 'referência da app'}): ${tg.kcal} kcal, ${tg.protein} g de proteína; água ${c.water} copos.`);
   }
-  if (S.plans?.nutri) lines.push(`Tem plano alimentar do nutricionista${S.plans.nutri.by ? ` (${S.plans.nutri.by})` : ''}: segue-o, não o alteres.`);
-  if (S.plans?.treino) lines.push(`Tem plano de treino do personal${S.plans.treino.by ? ` (${S.plans.treino.by})` : ''}: segue-o.`);
+  // só o plano lido do ficheiro atual (como no cartão do plano)
+  const nutriPlan = S.nutriPlan && S.plans?.nutri && S.nutriPlan.name === S.plans.nutri.name ? S.nutriPlan : null;
+  const trainPlan = S.trainPlan && S.plans?.treino && S.trainPlan.name === S.plans.treino.name ? S.trainPlan : null;
+  if (nutriPlan?.meals.length) {
+    const log = l.planLog ?? {};
+    lines.push(
+      `Plano alimentar do nutricionista${nutriPlan.professional ? ` (${nutriPlan.professional})` : ''} (segue-o, não o alteres). Refeições do plano [n] e o que já está marcado hoje:\n${nutriPlan.meals
+        .map((m, i) => `[${i}] ${m.label}${m.time ? ` (${m.time})` : ''}: ${m.options.map((o, j) => `opção ${j}: ${o.items.map((it) => it.name).join(', ')}`).join(' | ')}${log[String(i)] ? ` — hoje: ${STATUS[log[String(i)].status]}` : ''}`)
+        .join('\n')}`,
+    );
+  } else if (S.plans?.nutri) lines.push(`Tem plano alimentar do nutricionista${S.plans.nutri.by ? ` (${S.plans.nutri.by})` : ''}: segue-o, não o alteres.`);
+  if (trainPlan?.workouts.length) {
+    const tlog = l.trainLog ?? {};
+    lines.push(
+      `Plano de treino do personal${trainPlan.professional ? ` (${trainPlan.professional})` : ''} (segue-o). Treinos [n] e o que já está marcado hoje:\n${trainPlan.workouts
+        .map((w, i) => `[${i}] ${w.name}${w.focus ? ` — ${w.focus}` : ''}${w.day ? ` (${w.day})` : ''}${tlog[String(i)] ? ` — hoje: ${STATUS[tlog[String(i)].status]}` : ''}`)
+        .join('\n')}`,
+    );
+  } else if (S.plans?.treino) lines.push(`Tem plano de treino do personal${S.plans.treino.by ? ` (${S.plans.treino.by})` : ''}: segue-o.`);
   // hoje
   const today: string[] = [];
   today.push(`água ${l.water ?? 0} copos`);
@@ -173,6 +196,16 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         l.workouts = [...keep, { sessionId: 'coach', title: a.title || 'Treino', minutes, mvpa: a.intensity === 'leve' ? 0 : minutes, strength }];
         l.t = Math.max(l.t ?? 0, INTENSITY[a.intensity] ?? 2);
         done.push(`💪 Treino: ${a.title || 'treino'}, ${minutes} min`);
+        break;
+      }
+      case 'plano_refeicao': {
+        const msg = coachPlanMeal(S, l, a.value, a.option ?? 0, (a.status || 'seguido') as 'seguido' | 'alterado' | 'saltado', a.note);
+        if (msg) done.push(`📋 ${msg}${a.status === 'alterado' && a.note ? ` (${a.note})` : ''} ✓`);
+        break;
+      }
+      case 'plano_treino': {
+        const msg = coachPlanWorkout(S, l, a.value, a.option ?? 0, (a.status || 'seguido') as 'seguido' | 'alterado' | 'saltado', a.note);
+        if (msg) done.push(`🏋️ ${msg} ✓`);
         break;
       }
       case 'refeicao': {

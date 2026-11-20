@@ -74,3 +74,65 @@ describe('AI Coach na app', () => {
     expect(todaysMessages(h, NOW).map((m) => m.text)).toEqual(['hoje']);
   });
 });
+
+describe('Coach e o plano do nutricionista', () => {
+  const withPlan = () => {
+    const S = person();
+    S.nutriPlan = {
+      is_plan: true, at: '2026-11-01', name: 'plano.pdf', daily_kcal: 1800, daily_protein_g: 90, professional: 'Dra. Ana', notes: '',
+      meals: [
+        { meal: 'pa', label: 'Pequeno-almoço', time: '08:00', options: [{ name: 'A', items: [{ name: 'Iogurte', quantity: '1', grams: 125, kcal: 80, protein_g: 5, carbs_g: 6, fat_g: 3 } as never] }] },
+        { meal: 'almoco', label: 'Almoço', time: '13:00', options: [
+          { name: 'A', items: [{ name: 'Frango', quantity: '150 g', grams: 150, kcal: 240, protein_g: 40, carbs_g: 0, fat_g: 8 } as never, { name: 'Arroz', quantity: '100 g', grams: 100, kcal: 130, protein_g: 3, carbs_g: 28, fat_g: 0 } as never] },
+          { name: 'B', items: [{ name: 'Peixe', quantity: '150 g', grams: 150, kcal: 180, protein_g: 35, carbs_g: 0, fat_g: 4 } as never] },
+        ] },
+      ],
+    };
+    S.plans = { nutri: { name: 'plano.pdf', type: 'application/pdf', size: 1, at: '2026-11-01' } as never };
+    return S;
+  };
+
+  it('o contexto mostra as refeições do plano com o número e o que já foi marcado', () => {
+    const S = withPlan();
+    S.logs[todayKey(NOW)] = { planLog: { '0': { status: 'seguido', option: 0 } } };
+    const c = buildContext(S, NOW);
+    expect(c).toMatch(/\[0\] Pequeno-almoço \(08:00\): opção 0: Iogurte — hoje: seguido/);
+    expect(c).toMatch(/\[1\] Almoço \(13:00\): opção 0: Frango, Arroz \| opção 1: Peixe/);
+  });
+
+  it('"fiz o almoço do plano" põe o ✓ e os alimentos no diário; corrigir não duplica', () => {
+    const S = withPlan();
+    const done = applyCoachActions(S, [act({ type: 'plano_refeicao', value: 1, option: 0, status: 'seguido' })], NOW);
+    const l = S.logs[todayKey(NOW)];
+    expect(l.planLog!['1']).toEqual({ status: 'seguido', option: 0 });
+    expect(l.meals!.almoco!.map((e) => e.planRef)).toEqual(['1', '1']);
+    expect(done[0]).toMatch(/Almoço: segui o plano ✓/);
+    applyCoachActions(S, [act({ type: 'plano_refeicao', value: 1, option: 1, status: 'alterado', note: 'sem arroz' })], NOW);
+    expect(l.planLog!['1']).toMatchObject({ status: 'alterado', option: 1, changes: ['sem arroz'] });
+    expect(S.logs[todayKey(NOW)].meals!.almoco!.map((e) => e.name)).toEqual(['Peixe (150 g)']);
+    applyCoachActions(S, [act({ type: 'plano_refeicao', value: 0, status: 'saltado' })], NOW);
+    expect(S.logs[todayKey(NOW)].planLog!['0'].status).toBe('saltado');
+    // refeição inexistente: ignora
+    expect(applyCoachActions(S, [act({ type: 'plano_refeicao', value: 9 })], NOW)).toEqual([]);
+  });
+});
+
+describe('Coach e o plano do personal', () => {
+  it('"fiz o treino A" marca o treino do plano e conta os minutos', () => {
+    const S = person();
+    S.trainPlan = { is_workout: true, at: '2026-11-01', name: 'treino.pdf', per_week: 3, professional: 'PT Rui', notes: '', workouts: [
+      { name: 'Treino A', focus: 'Pernas', day: 'Segunda', exercises: [{ name: 'Agachamento', sets: 3, reps: '10', load: '20 kg', rest: '60 s', notes: '' }] },
+    ] };
+    S.plans = { treino: { name: 'treino.pdf', type: 'application/pdf', size: 1, at: '2026-11-01' } as never };
+    expect(buildContext(S, NOW)).toMatch(/\[0\] Treino A — Pernas \(Segunda\)/);
+    const done = applyCoachActions(S, [act({ type: 'plano_treino', value: 0, option: 50, status: 'seguido' })], NOW);
+    const l = S.logs[todayKey(NOW)];
+    expect(l.trainLog!['0']).toMatchObject({ status: 'seguido', minutes: 50 });
+    expect(l.trainLog!['0'].sets.every((x) => x.done)).toBe(true);
+    expect(l.workouts).toEqual([{ sessionId: 'plano-0', title: 'Treino A', minutes: 50, mvpa: 50, strength: true }]);
+    expect(done[0]).toBe('🏋️ Treino A: feito como planeado, 50 min ✓');
+    // outra vez não duplica
+    applyCoachActions(S, [act({ type: 'plano_treino', value: 0, option: 40, status: 'seguido' })], NOW);
+    expect(S.logs[todayKey(NOW)].workouts).toHaveLength(1);
+  });
+});

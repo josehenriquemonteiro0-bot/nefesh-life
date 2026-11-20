@@ -28,13 +28,15 @@ describe('AI Coach', () => {
   it('valida as ações: tipos, intervalos e alimentos da tabela', () => {
     const a = cleanActions([
       { type: 'energia', value: 9, meal: '', intensity: '', title: '', replace: false, items: [] },
+      { type: 'plano_refeicao', value: 1, option: 7, status: 'alterado', note: 'sem arroz', meal: '', intensity: '', title: '', replace: false, items: [] },
       { type: 'refeicao', value: 1, meal: 'pa', intensity: '', title: '', items: [{ food_id: 'inventado', name: 'Bolo da avó', grams: 80, kcal100: 380, p100: 5, c100: 50, f100: 18 }] },
       { type: 'hackear', value: 1 },
       { type: 'sono', value: 0, meal: '', intensity: '', title: '', items: [] },
     ]);
-    expect(a.map((x) => x.type)).toEqual(['energia', 'refeicao']);
+    expect(a.map((x) => x.type)).toEqual(['energia', 'plano_refeicao', 'refeicao']);
+    expect(a[1]).toMatchObject({ value: 1, option: 7, status: 'alterado', note: 'sem arroz' });
     expect(a[0].value).toBe(5);
-    expect(a[1].items[0].food_id).toBe('');
+    expect(a[2].items[0].food_id).toBe('');
   });
 
   it('responde, devolve as ações e conta o limite diário', async () => {

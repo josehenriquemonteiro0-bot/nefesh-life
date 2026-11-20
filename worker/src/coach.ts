@@ -17,7 +17,7 @@ export function coachLimits(env: { TEST_MODE?: string }): Limits {
   return { device: Number.isFinite(q) ? q : 40, ip: Number.isFinite(q) ? q * 4 : 120, global: 3000 };
 }
 
-const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'treino', 'passos'] as const;
+const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos'] as const;
 export type CoachActionType = (typeof ACTION_TYPES)[number];
 
 export const COACH_SCHEMA = {
@@ -31,7 +31,10 @@ export const COACH_SCHEMA = {
         type: 'object',
         properties: {
           type: { type: 'string', enum: ACTION_TYPES },
-          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; spirulina e refeicao: 1' },
+          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); spirulina e refeicao: 1' },
+          option: { type: 'number', description: 'plano_refeicao: número da opção do plano que comeu (0 se só houver uma ou se não disser); plano_treino: minutos do treino (0 se não disser); 0 nos outros' },
+          status: { type: 'string', enum: ['seguido', 'alterado', 'saltado', ''], description: 'só para plano_refeicao e plano_treino: seguido = como no plano; alterado = com mudanças; saltado = não fez; "" nos outros' },
+          note: { type: 'string', description: 'só para plano_refeicao alterado: as mudanças em poucas palavras (ex.: "sem arroz", "mais 1 ovo"); "" nos outros' },
           meal: { type: 'string', enum: ['pa', 'almoco', 'lanche', 'jantar', ''], description: 'só para refeicao: pa = pequeno-almoço; "" se não for refeição' },
           intensity: { type: 'string', enum: ['leve', 'moderado', 'intenso', ''], description: 'só para treino' },
           title: { type: 'string', description: 'só para treino: nome curto (ex.: "Corrida", "Ginásio"); "" nos outros' },
@@ -55,7 +58,7 @@ export const COACH_SCHEMA = {
             },
           },
         },
-        required: ['type', 'value', 'meal', 'intensity', 'title', 'replace', 'items'],
+        required: ['type', 'value', 'option', 'status', 'note', 'meal', 'intensity', 'title', 'replace', 'items'],
         additionalProperties: false,
       },
     },
@@ -80,6 +83,8 @@ Regras de registo:
 - Água: "bebi 2 copos" → value 2; "bebi meio litro" → 2; "1 litro" → 4.
 - Spirulina: "tomei a Spirulina" → spirulina (value 1). Nunca sugiras doses diferentes do plano dela.
 - Refeição: escolhe food_id da tabela abaixo sempre que houver um equivalente razoável (ex.: "ovo" → o id de ovo); usa grams pela quantidade dita ou pela porção habitual. Só sem equivalente deixas food_id "" e dás uma estimativa por 100 g. Não escrevas calorias na resposta: a app calcula-as.
+- Plano do nutricionista: se o contexto tiver "Plano alimentar do nutricionista" e a pessoa disser que fez uma refeição do plano ("almocei o do plano", "segui o plano ao jantar", "fiz o pequeno-almoço do plano mas sem pão"), usa plano_refeicao com value = número [n] dessa refeição, option = opção, status = seguido / alterado (com note) / saltado ("não fiz o lanche"). NÃO envies também refeicao para a mesma refeição: a app põe os alimentos do plano no diário. O que comer a mais, fora do plano, vai como refeicao.
+- Plano do personal: se o contexto tiver "Plano de treino do personal" e a pessoa disser que fez um treino do plano ("fiz o treino A", "treinei pernas do plano"), usa plano_treino com value = número [n] desse treino, option = minutos (0 se não disser), status e note como acima. NÃO envies também treino para o mesmo.
 - Acrescentar ("também comi uma maçã"): envia só o que é novo, com replace = false.
 - Correções ("não, foram três ovos", "afinal dormi 6 horas"): envia o registo corrigido completo com replace = true; a app substitui o que o Coach registou antes nessa refeição (ou o valor desse dia). Para água, replace = true quer dizer o total de copos do dia.
 - Energia e disposição: escala 1 a 5 (cansado/em baixo = 2, normal = 3, bem = 4, ótimo = 5).
@@ -129,11 +134,14 @@ export function cleanActions(raw: unknown) {
     .slice(0, 8)
     .map((a) => ({
       type: a.type as CoachActionType,
-      value: a.type === 'energia' || a.type === 'disposicao' ? Math.round(num(a.value, 1, 5)) : a.type === 'sono' ? num(a.value, 0, 16) : a.type === 'passos' ? Math.round(num(a.value, 0, 100000)) : a.type === 'treino' ? Math.round(num(a.value, 0, 600)) : a.type === 'agua' ? Math.round(num(a.value, -20, 20)) : 1,
+      value: a.type === 'plano_refeicao' || a.type === 'plano_treino' ? Math.round(num(a.value, 0, 30)) : a.type === 'energia' || a.type === 'disposicao' ? Math.round(num(a.value, 1, 5)) : a.type === 'sono' ? num(a.value, 0, 16) : a.type === 'passos' ? Math.round(num(a.value, 0, 100000)) : a.type === 'treino' ? Math.round(num(a.value, 0, 600)) : a.type === 'agua' ? Math.round(num(a.value, -20, 20)) : 1,
       meal: ['pa', 'almoco', 'lanche', 'jantar'].includes(a.meal) ? a.meal : '',
       intensity: ['leve', 'moderado', 'intenso'].includes(a.intensity) ? a.intensity : '',
       title: String(a.title ?? '').slice(0, 40),
       replace: a.replace === true,
+      option: Math.max(0, Math.min(a.type === 'plano_treino' ? 600 : 10, Math.round(Number(a.option) || 0))),
+      status: ['seguido', 'alterado', 'saltado'].includes(a.status) ? a.status : 'seguido',
+      note: String(a.note ?? '').slice(0, 120),
       items: (Array.isArray(a.items) ? a.items : []).slice(0, 12).map((i: Record<string, unknown>) => ({
         food_id: ids.has(String(i.food_id)) ? String(i.food_id) : '',
         name: String(i.name ?? '').slice(0, 60),

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { FOODS, MEALS, entryOf, type FoodEntry } from '../domain/foods';
-import { STATUS_LABEL, describeChanges, type PlanMealLog, type PlanStatus } from '../domain/planAdherence';
+import { STATUS_LABEL, describeChanges, type PlanStatus } from '../domain/planAdherence';
 import { diaryMeal, planEntries, type PlanItem } from '../domain/planRead';
-import type { DayLog } from '../domain/types';
 import { useStore } from '../state/store';
+import { clearPlanMeal, savePlanMeal } from '../domain/planMeal';
 import { DecimalInput } from './DecimalInput';
 
 const FACTORS = [0.5, 1, 1.5, 2];
@@ -11,20 +11,6 @@ const scale = (it: PlanItem, f: number): PlanItem =>
   f === 1
     ? it
     : { ...it, quantity: `${it.quantity || 'porção'} ×${String(f).replace('.', ',')}`, grams: it.grams * f, kcal: it.kcal * f, protein_g: it.protein_g * f, carbs_g: it.carbs_g * f, fat_g: it.fat_g * f };
-
-/** Remove do diário as entradas que vieram desta refeição do plano. */
-function clearPlanMeal(d: DayLog, ref: string) {
-  if (d.meals) {
-    const m = { ...d.meals };
-    for (const k of Object.keys(m) as (keyof typeof m)[]) m[k] = (m[k] || []).filter((e) => e.planRef !== ref);
-    d.meals = m;
-  }
-  if (d.planLog) {
-    const p = { ...d.planLog };
-    delete p[ref];
-    d.planLog = p;
-  }
-}
 
 /** Marcar uma refeição do plano: segui, fiz alterações ou não fiz. */
 export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => void }) {
@@ -53,13 +39,7 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
 
   const save = (status: PlanStatus, entries: FoodEntry[], changes?: string[]) => {
     updateToday((d) => {
-      clearPlanMeal(d, ref);
-      if (entries.length) {
-        d.meals = { ...(d.meals || {}) };
-        d.meals[target] = [...(d.meals[target] || []), ...entries.map((e) => ({ ...e, planRef: ref }))];
-      }
-      const entry: PlanMealLog = { status, option: opt, ...(changes?.length ? { changes } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
-      d.planLog = { ...(d.planLog || {}), [ref]: entry };
+      savePlanMeal(S, d, idx, opt, status, entries, changes, note);
     });
     toast(`${meal.label}: ${STATUS_LABEL[status].toLowerCase()}.`);
     onClose();
