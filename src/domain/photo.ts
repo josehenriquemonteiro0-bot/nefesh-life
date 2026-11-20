@@ -1,7 +1,8 @@
 import type { FoodEntry, MealKey } from './foods';
 
-/** Endereço do serviço de fotos (Cloudflare Worker), definido no build. Vazio = funcionalidade desligada. */
-export const PHOTO_API: string = (import.meta.env.VITE_PHOTO_API as string | undefined)?.trim() ?? '';
+/** Endereço do serviço de fotos (Cloudflare Worker). Pode ser trocado no build com VITE_PHOTO_API. */
+export const PHOTO_API: string =
+  (import.meta.env.VITE_PHOTO_API as string | undefined)?.trim() || 'https://nefesh-foto.josehenriquemonteiro0.workers.dev';
 
 export interface PhotoItem {
   name: string;
