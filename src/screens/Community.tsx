@@ -87,6 +87,7 @@ function TodayPoints() {
         <h2 style={{ margin: 0 }}>Hoje: {d.points} pontos</h2>
         <button className="link small inline" onClick={() => setOpen((v) => !v)}>{open ? 'fechar' : 'como ganho pontos?'}</button>
       </div>
+      {d.halved && <p className="small key-warn">🌿 Ainda sem Spirulina hoje: os outros hábitos estão a valer metade. Tome a sua dose para os pontos contarem por inteiro.</p>}
       <div className="flags">
         {HABIT_POINTS.map((h) => {
           const got = d.parts[h.flag as Flag];
@@ -102,7 +103,8 @@ function TodayPoints() {
           {HABIT_POINTS.map((h) => (
             <li key={h.flag}>{FLAG_ICON[h.flag]} {h.label}: {h.full} pontos{h.part ? ` (${h.partLabel}: ${h.part})` : ''}</li>
           ))}
-          <li>🔥 Sequência de 7 dias: +5% por dia · 30 dias: +10% (máximo 100 por dia). Um dia falhado por semana conta como descanso.</li>
+          <li>🌿 A Spirulina é a chave do dia: sem nenhuma toma, os outros hábitos valem metade.</li>
+          <li>🔥 A sequência conta os dias seguidos com o ritual da Spirulina. Com 7 dias, +5% por dia; com 30, +10% (máximo 100 por dia). Um dia falhado por semana conta como descanso.</li>
           <li>📈 Reavaliação nesta semana: +20, mais 5 por cada ponto que o Índice NEFESH subir, ou +30 por manter um Índice de 70 ou mais.</li>
           <li>🏅 Desafio da semana cumprido: +50.</li>
         </ul>
@@ -441,7 +443,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
           </div>
           <div className="hero-stats">
             <div><b>{week}</b><span>pontos na semana</span></div>
-            <div><b>🔥 {streak}</b><span>dias seguidos</span></div>
+            <div><b>🔥 {streak}</b><span>dias de ritual</span></div>
           </div>
         </div>
         <Bar pct={lvl.pct} />

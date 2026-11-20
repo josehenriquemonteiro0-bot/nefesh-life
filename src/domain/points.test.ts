@@ -27,13 +27,24 @@ describe('pontos NEFESH', () => {
     expect(dayScore(S, keyDaysAgo(0, NOW), NOW).parts.m).toBe(0);
   });
 
-  it('sequência com um dia de descanso por semana', () => {
+  it('sem Spirulina, os outros hábitos valem metade', () => {
     const S = base();
-    for (let i = 1; i <= 10; i++) S.logs[keyDaysAgo(i, NOW)] = fullDay as never;
+    S.logs[keyDaysAgo(0, NOW)] = { ...fullDay, doses: [] } as never;
+    const d = dayScore(S, keyDaysAgo(0, NOW), NOW);
+    expect(d.points).toBe(38); // 75 / 2
+    expect(d.halved).toBe(true);
+  });
+
+  it('a sequência é a do ritual da Spirulina, com um dia de descanso por semana', () => {
+    const S = base();
+    for (let i = 1; i <= 10; i++) S.logs[keyDaysAgo(i, NOW)] = { doses: [true, true, true, true] } as never;
     expect(activityStreak(S, NOW)).toBe(10); // hoje ainda não conta
     delete S.logs[keyDaysAgo(3, NOW)]; // terça: descanso
     expect(activityStreak(S, NOW)).toBe(9);
     delete S.logs[keyDaysAgo(2, NOW)]; // quarta: segunda falha na mesma semana
+    expect(activityStreak(S, NOW)).toBe(1);
+    // um dia cheio de outros hábitos sem Spirulina não conta
+    S.logs[keyDaysAgo(0, NOW)] = { ...fullDay, doses: [] } as never;
     expect(activityStreak(S, NOW)).toBe(1);
   });
 

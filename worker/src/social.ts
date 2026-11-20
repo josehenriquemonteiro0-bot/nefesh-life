@@ -61,9 +61,14 @@ export const CHALLENGE_KINDS: Record<string, { flag: string; days: number; targe
   treino: { flag: 't', days: 7, target: 4 },
   checkin: { flag: 'c', days: 7, target: 6 },
   passos: { flag: 'p', days: 7, target: 5 },
+  // desafios combinados: a Spirulina e outro hábito no mesmo dia
+  ritual_agua: { flag: 'sa', days: 7, target: 6 },
+  ritual_treino: { flag: 'st', days: 7, target: 4 },
+  ritual_checkin: { flag: 'sc', days: 7, target: 6 },
+  ritual_refeicoes: { flag: 'sm', days: 7, target: 5 },
 };
-/** Desafio oficial da semana (roda todas as semanas). */
-const OFFICIAL = ['agua', 'ritual', 'treino', 'checkin', 'passos'] as const;
+/** Desafio NEFESH da semana: sempre com a Spirulina (roda todas as semanas). */
+const OFFICIAL = ['ritual', 'ritual_agua', 'ritual_treino', 'ritual_checkin', 'ritual_refeicoes'] as const;
 
 type Day = { p: number; f: string };
 type Ok = { status: number; body: Record<string, unknown> };
@@ -119,9 +124,9 @@ export function cleanDays(raw: unknown, week: string, today: string): Record<str
   return out;
 }
 
-/** Quantos dias com uma letra entre duas datas. */
+/** Quantos dias com todas as letras pedidas (ex.: 'sa' = Spirulina e água) entre duas datas. */
 export function countFlag(days: Record<string, Day>, flag: string, from: string, to: string) {
-  return Object.entries(days).filter(([k, d]) => k >= from && k <= to && d.f.includes(flag)).length;
+  return Object.entries(days).filter(([k, d]) => k >= from && k <= to && [...flag].every((x) => d.f.includes(x))).length;
 }
 
 /* ---------- perfil ---------- */

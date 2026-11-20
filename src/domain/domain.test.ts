@@ -79,9 +79,13 @@ describe('estatísticas', () => {
     expect(streak(S, NOW)).toBe(5);
     S.logs[todayKey(NOW)] = { doses: [true, true] };
     expect(streak(S, NOW)).toBe(6);
+    // um dia falhado na semana conta como descanso
     S.logs[keyDaysAgo(3, NOW)] = { doses: [false] };
-    expect(streak(S, NOW)).toBe(3);
-    expect(bestStreak(S, NOW)).toBe(3);
+    expect(streak(S, NOW)).toBe(5);
+    // o segundo dia falhado na mesma semana quebra a sequência
+    S.logs[keyDaysAgo(2, NOW)] = { doses: [false] };
+    expect(streak(S, NOW)).toBe(2);
+    expect(bestStreak(S, NOW)).toBe(2);
   });
 
   it('calcula a adesão e o stock restante', () => {

@@ -100,3 +100,12 @@ describe('schema.sql', () => {
     expect(file.split('\n').slice(1).join('\n').trim()).toBe(so.SCHEMA.trim());
   });
 });
+
+describe('desafios com a Spirulina', () => {
+  it('o desafio da semana é sempre com a Spirulina e os combinados pedem os dois hábitos', () => {
+    for (let w = 0; w < 10; w++) expect(so.officialChallenge(`2026-${String(1 + (w % 12)).padStart(2, '0')}-05`)).toMatch(/^ritual/);
+    const days = { '2026-11-16': { p: 1, f: 'sa' }, '2026-11-17': { p: 1, f: 'a' }, '2026-11-18': { p: 1, f: 's' } };
+    expect(so.countFlag(days, 'sa', '2026-11-16', '2026-11-22')).toBe(1);
+    expect(so.countFlag(days, 's', '2026-11-16', '2026-11-22')).toBe(2);
+  });
+});

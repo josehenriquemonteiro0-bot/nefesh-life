@@ -82,7 +82,7 @@ function StatusStrip({ go }: { go: Nav }) {
   const unread = unreadCount(st);
   return (
     <button className="status-strip" onClick={() => go('social')} aria-label="Abrir a Comunidade">
-      <span><b>🔥 {streakN}</b><small>{streakN === 1 ? 'dia seguido' : 'dias seguidos'}</small></span>
+      <span><b>🔥 {streakN}</b><small>{streakN === 1 ? 'dia de ritual' : 'dias de ritual'}</small></span>
       <span><b>⭐ {pts}</b><small>pontos hoje</small></span>
       {joined ? (
         <span><b>🏆 {me ? `${me.rank}.º` : '—'}</b><small>liga {LEAGUES[st?.me?.league ?? 0]}</small></span>

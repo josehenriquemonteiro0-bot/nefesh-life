@@ -1,5 +1,5 @@
 import { AREAS, CAPS_PER_BOTTLE, GLASS_ML, GOAL_LABEL } from './content';
-import { daysSince, fmtNum, keyDaysAgo } from './dates';
+import { dayKey, daysAgo, daysSince, fmtNum, keyDaysAgo } from './dates';
 import { SLEEP_HABIT, STEPS_HABIT } from './health';
 import { studiesFor } from './science';
 import { BODY_GOAL_LABEL, bodyOf, targetsFor } from './body';
@@ -33,12 +33,33 @@ export function stock(S: AppState, now = new Date()) {
   return { left, used, days: Math.floor(left / per), pct: S.stockCaps ? Math.min(100, (left / S.stockCaps) * 100) : 0 };
 }
 
-/** Dias seguidos com o ritual cumprido. Hoje ainda por cumprir não quebra a sequência. */
+/** Segunda-feira (chave) da semana de uma data local. */
+function mondayOf(d: Date) {
+  const x = new Date(d);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return dayKey(x);
+}
+
+/**
+ * Sequência do ritual: dias seguidos com a Spirulina tomada. É a única sequência da app
+ * (Início, Evolução e Comunidade). Um dia falhado por semana (segunda a domingo) conta como
+ * dia de descanso e não a quebra. Hoje ainda por cumprir também não a quebra.
+ */
 export function streak(S: AppState, now = new Date()) {
   let n = 0;
-  for (let i = 0; i < 400; i++) {
-    if (took(S, S.logs[keyDaysAgo(i, now)], now)) n++;
-    else if (i > 0) break;
+  const rested = new Set<string>();
+  for (let i = 0; i < 730; i++) {
+    if (took(S, S.logs[keyDaysAgo(i, now)], now)) {
+      n++;
+      continue;
+    }
+    if (i === 0) continue;
+    const wk = mondayOf(daysAgo(i, now));
+    if (n > 0 && !rested.has(wk)) {
+      rested.add(wk);
+      continue;
+    }
+    break;
   }
   return n;
 }

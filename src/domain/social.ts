@@ -22,6 +22,10 @@ export const MESSAGES: Record<string, string> = {
 };
 
 export const CHALLENGES: Record<string, { title: string; text: string; icon: string }> = {
+  ritual_agua: { title: 'Spirulina e hidratação', text: 'Spirulina e meta de água no mesmo dia', icon: '🌿💧' },
+  ritual_treino: { title: 'Spirulina e movimento', text: 'Spirulina e treino ou atividade no mesmo dia', icon: '🌿💪' },
+  ritual_checkin: { title: 'Spirulina e check-in', text: 'Spirulina e check-in no mesmo dia', icon: '🌿📝' },
+  ritual_refeicoes: { title: 'Spirulina e boa alimentação', text: 'Spirulina e 3 refeições registadas', icon: '🌿🍽️' },
   ritual: { title: 'Ritual de 7 dias', text: 'Spirulina todos os dias', icon: '🌿' },
   agua: { title: 'Semana da hidratação', text: 'Meta de água', icon: '💧' },
   treino: { title: 'Corpo em movimento', text: 'Dias com treino ou atividade', icon: '💪' },

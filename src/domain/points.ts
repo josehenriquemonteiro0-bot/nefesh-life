@@ -3,9 +3,9 @@
  * níveis e pontos de evolução do Índice NEFESH.
  */
 import { STEP_GOAL } from './content';
-import { dayKey, keyDaysAgo, parseKey } from './dates';
+import { dayKey, keyDaysAgo } from './dates';
 import { indexOf, planFor } from './plan';
-import { took } from './stats';
+import { streak, took } from './stats';
 import type { AppState, DayLog } from './types';
 
 /** Letras dos hábitos (iguais às do servidor). */
@@ -21,17 +21,15 @@ export const HABIT_POINTS: { flag: Flag; label: string; full: number; part?: num
   { flag: 'n', label: '7 horas de sono', full: 10 },
 ];
 export const DAY_CAP = 100;
-/** um dia conta para a sequência com pelo menos estes pontos */
-export const ACTIVE_DAY = 30;
 
 const mealsLogged = (l: DayLog) =>
   Object.values(l.meals ?? {}).filter((m) => (m ?? []).some((e) => !e.auto)).length;
 
 /** Pontos e hábitos cumpridos num dia (sem o bónus da sequência). */
-export function dayScore(S: AppState, key: string, now = new Date()): { points: number; flags: string; parts: Record<Flag, number> } {
+export function dayScore(S: AppState, key: string, now = new Date()): { points: number; flags: string; parts: Record<Flag, number>; halved: boolean } {
   const l = S.logs[key];
   const parts = { s: 0, a: 0, c: 0, m: 0, t: 0, p: 0, n: 0 } as Record<Flag, number>;
-  if (!l || !S.ans) return { points: 0, flags: '', parts };
+  if (!l || !S.ans) return { points: 0, flags: '', parts, halved: false };
   const doses = (l.doses ?? []).filter(Boolean).length;
   if (took(S, l, now)) parts.s = 20;
   else if (doses) parts.s = 10;
@@ -49,7 +47,10 @@ export function dayScore(S: AppState, key: string, now = new Date()): { points: 
   if ((l.sleepH ?? 0) >= 7) parts.n = 10;
   const full: Record<Flag, number> = { s: 20, a: 15, c: 10, m: 15, t: 15, p: 10, n: 10 };
   const flags = (Object.keys(parts) as Flag[]).filter((f) => parts[f] === full[f]).join('');
-  return { points: Object.values(parts).reduce((a, b) => a + b, 0), flags, parts };
+  // a Spirulina é a chave do dia: sem nenhuma toma, os outros hábitos valem metade
+  const others = Object.entries(parts).filter(([k]) => k !== 's').reduce((a, [, v]) => a + v, 0);
+  const keyed = parts.s ? others : Math.round(others / 2);
+  return { points: parts.s + keyed, flags, parts, halved: !parts.s && others > 0 };
 }
 
 /** Segunda-feira (chave) da semana de uma data. */
@@ -59,30 +60,8 @@ export function weekStart(now = new Date()) {
   return dayKey(d);
 }
 
-/**
- * Sequência de dias ativos (30+ pontos). Um dia falhado por semana (de segunda a domingo)
- * conta como dia de descanso e não quebra a sequência. Hoje só conta quando já estiver ativo.
- */
-export function activityStreak(S: AppState, now = new Date()) {
-  let n = 0;
-  const rested = new Set<string>();
-  for (let i = 0; i < 730; i++) {
-    const k = keyDaysAgo(i, now);
-    const active = dayScore(S, k, now).points >= ACTIVE_DAY;
-    if (active) {
-      n++;
-      continue;
-    }
-    if (i === 0) continue; // hoje ainda pode ficar ativo
-    const wk = weekStart(parseKey(k));
-    if (!rested.has(wk) && n > 0) {
-      rested.add(wk);
-      continue;
-    }
-    break;
-  }
-  return n;
-}
+/** A sequência da comunidade é a sequência do ritual da Spirulina (com dia de descanso semanal). */
+export const activityStreak = (S: AppState, now = new Date()) => streak(S, now);
 
 /** Pontos do dia com o bónus da sequência (+5% com 7 dias, +10% com 30), até 100. */
 export function dayPoints(S: AppState, key: string, streak: number, now = new Date()) {
