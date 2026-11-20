@@ -211,9 +211,11 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
       <section className="card">
         <div className="row">
           <div style={{ flex: '1 1 200px' }}>
-            <h2 style={{ margin: 0 }}>Lembrete diário</h2>
+            <h2 style={{ margin: 0 }}>Notificações</h2>
             <p className="mute small" style={{ margin: '4px 0 0' }}>
-              {S.notifications ? 'Notificações ativas neste telemóvel, mesmo com a app fechada. Se já tiver tomado a Spirulina, não recebe o lembrete.' : 'Receba uma notificação à hora da sua toma, mesmo com a app fechada.'}
+              {S.notifications
+                ? 'Ativas neste telemóvel, mesmo com a app fechada. Lembrete da Spirulina à hora indicada ao lado (se já tiver tomado, não recebe).'
+                : 'Receba o lembrete da Spirulina à hora indicada ao lado e os avisos da comunidade, mesmo com a app fechada.'}
             </p>
           </div>
           <input
