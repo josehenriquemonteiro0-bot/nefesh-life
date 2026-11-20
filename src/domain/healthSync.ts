@@ -13,7 +13,7 @@ export interface HealthDay {
 
 /** Link do atalho partilhado pelo iCloud (definido quando o atalho oficial estiver criado). */
 export const HEALTH_SHORTCUT_URL: string =
-  (import.meta.env.VITE_HEALTH_SHORTCUT as string | undefined)?.trim() || 'https://www.icloud.com/shortcuts/95da9b59400542248db1d97fe59ce4b2';
+  (import.meta.env.VITE_HEALTH_SHORTCUT as string | undefined)?.trim() || '';
 
 export const HEALTH_WORKOUT_ID = 'saude-exercicio';
 
