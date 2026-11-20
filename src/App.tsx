@@ -39,6 +39,7 @@ import { getAuth, logout, saveConsents } from './domain/account';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { saveInviteFromUrl } from './domain/social';
+import { requestListen } from './domain/voice';
 import { Community } from './screens/Community';
 import { AvatarImg } from './components/Avatar';
 import { GuidedTour, TAB_TIPS } from './components/GuidedTour';
@@ -339,7 +340,11 @@ export function App() {
       </div>
       <nav aria-label="Navegação principal">
         {TABS.map(([k, t, icon]) => (
-          <button key={k} data-tour={`nav-${k}`} className={`${(NAV_OF[tab] ?? tab) === k ? 'on' : ''} ${k === 'coach' ? 'nav-coach' : ''}`} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => go(k)}>
+          <button key={k} data-tour={`nav-${k}`} className={`${(NAV_OF[tab] ?? tab) === k ? 'on' : ''} ${k === 'coach' ? 'nav-coach' : ''}`} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => {
+            // o botão do centro abre o Coach já a ouvir
+            if (k === 'coach') requestListen();
+            go(k);
+          }}>
             {k === 'coach' ? <span className="coach-btn"><Icon name={icon} width={2.2} /></span> : <Icon name={icon} />}
             {t}
           </button>

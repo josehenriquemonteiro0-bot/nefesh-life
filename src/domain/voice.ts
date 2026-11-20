@@ -133,11 +133,37 @@ export const stopSpeaking = () => {
 /** Pedido para o Coach começar logo a ouvir (vindo do botão "Toca para falar" do Início). */
 const LISTEN_KEY = 'nefesh-coach-ouvir';
 export function requestListen() {
+  // acorda o áudio já no toque (no iPhone, só um toque o pode ligar)
+  primeAudio();
   try {
     sessionStorage.setItem(LISTEN_KEY, '1');
   } catch {
     /* sem armazenamento */
   }
+  // o Coach já aberto (toque no botão do centro outra vez) começa a ouvir
+  try {
+    window.dispatchEvent(new Event('nefesh-ouvir'));
+  } catch {
+    /* sem eventos */
+  }
+}
+
+/** Contexto de áudio partilhado, criado e ligado durante um toque (regra do iPhone). */
+let shared: AudioContext | null = null;
+function audioCtx(): AudioContext | null {
+  try {
+    if (shared && shared.state !== 'closed') return shared;
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    shared = AC ? new AC() : null;
+    return shared;
+  } catch {
+    return null;
+  }
+}
+/** Chamar no toque que abre o microfone: cria e liga o áudio a tempo. */
+export function primeAudio() {
+  const c = audioCtx();
+  c?.resume().catch(() => {});
 }
 export function takeListenRequest() {
   try {
@@ -178,18 +204,19 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
   let aborted = false;
   let stopped = false;
   let spoke = false;
-  // o contexto de áudio tem de nascer no toque (regra do iPhone)
-  try {
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    ctx = AC ? new AC() : null;
-  } catch {
-    ctx = null;
-  }
+  // o contexto de áudio tem de nascer num toque (regra do iPhone): reutiliza o que o toque acordou
+  ctx = audioCtx();
+  let source: MediaStreamAudioSourceNode | null = null;
   const cleanup = () => {
     cancelAnimationFrame(raf);
     window.clearTimeout(timer);
     stream?.getTracks().forEach((t) => t.stop());
-    ctx?.close().catch(() => {});
+    // o contexto fica para a próxima vez; só se desliga a fonte
+    try {
+      source?.disconnect();
+    } catch {
+      /* já desligada */
+    }
   };
   const finish = () => {
     stopped = true;
@@ -223,7 +250,8 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
       await ctx.resume();
       const an = ctx.createAnalyser();
       an.fftSize = 1024;
-      ctx.createMediaStreamSource(stream).connect(an);
+      source = ctx.createMediaStreamSource(stream);
+      source.connect(an);
       const buf = new Uint8Array(an.fftSize);
       const t0 = performance.now();
       let quietSince = 0;

@@ -10,7 +10,7 @@ import { useStore } from '../state/store';
 import { requestBreath } from '../domain/mind';
 import type { DayLog } from '../domain/types';
 import { notePremiumUse } from '../domain/analytics';
-import { KEYBOARD_DICTATION_HINT, listen, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
+import { KEYBOARD_DICTATION_HINT, listen, primeAudio, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
 import { deviceId, PHOTO_API } from '../domain/photo';
 import { isIOS } from '../domain/push';
 
@@ -92,6 +92,7 @@ export function Coach({ go }: { go: Nav }) {
   // voz: fala → texto (reconhecimento do telemóvel) → mesmo caminho do Coach
   const startVoice = () => {
     if (busy) return;
+    primeAudio();
     stopSpeaking();
     if (listening) {
       rec.current?.stop();
@@ -161,10 +162,19 @@ export function Coach({ go }: { go: Nav }) {
     setText('');
     setListening(true);
   };
+  // versão sempre atual (com a conversa de agora) para o toque no botão do centro
+  const startRef = useRef(startVoice);
+  startRef.current = startVoice;
   // "Toca para falar" no Início abre o Coach já a ouvir
   useEffect(() => {
     if (takeListenRequest()) startVoice();
+    // toque no botão do centro com o Coach já aberto
+    const onAsk = () => {
+      if (takeListenRequest() && !rec.current) startRef.current();
+    };
+    window.addEventListener('nefesh-ouvir', onAsk);
     return () => {
+      window.removeEventListener('nefesh-ouvir', onAsk);
       rec.current?.abort();
       stopSpeaking();
     };
