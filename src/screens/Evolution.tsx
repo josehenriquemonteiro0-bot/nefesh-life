@@ -7,7 +7,7 @@ import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
 
-export function Evolution({ openReport }: { openReport: () => void }) {
+export function Evolution({ openReport, go }: { openReport: () => void; go?: (t: 'check') => void }) {
   const { S } = useStore();
   const [days, setDays] = useState<14 | 30>(14);
   if (!S.ans) return null;
@@ -21,7 +21,10 @@ export function Evolution({ openReport }: { openReport: () => void }) {
 
   return (
     <>
-      <h1>A sua evolução</h1>
+      <div className="row">
+        <h1>A sua evolução</h1>
+        {go && <button className="btn sm" onClick={() => go('check')}>Check-in de hoje</button>}
+      </div>
       <section className="card hero">
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>Resumo{S.planStart ? ` desde ${shortDate(S.planStart)}` : ''}</p>
         {de !== null ? (

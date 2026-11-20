@@ -2,6 +2,8 @@ import { AREAS, CAPS_PER_BOTTLE, GLASS_ML, GOAL_LABEL } from './content';
 import { daysSince, fmtNum, keyDaysAgo } from './dates';
 import { SLEEP_HABIT, STEPS_HABIT } from './health';
 import { studiesFor } from './science';
+import { bodyOf } from './body';
+import { totals } from './foods';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
 import type { AppState, DayLog } from './types';
@@ -131,6 +133,16 @@ export function report(S: AppState, now = new Date()) {
     S.ans.name ? `Nome: ${S.ans.name}` : null,
     `Objetivo: ${GOAL_LABEL[S.ans.goal ?? 'energia']}`,
     `Índice NEFESH: ${ev ? `${indexOf(ev.sc)}/100 (${AREAS.map(([k, t]) => `${t} ${ev.sc[k]}`).join(', ')})` : '—'}`,
+    (() => {
+      const b = bodyOf(S.ans!);
+      return b ? `Corpo: IMC ${fmtNum(b.bmi)} (${b.bmiLabel}) · gordura ${fmtNum(b.fat)}% (${b.fatMethod === 'medidas' ? 'medidas' : 'estimada pelo IMC'}) · meta ${b.target} kcal/dia` : null;
+    })(),
+    (() => {
+      const days = Array.from({ length: 7 }, (_, i) => S.logs[keyDaysAgo(i, now)]?.meals).filter((m) => m && Object.values(m).some((x) => x?.length));
+      if (!days.length) return null;
+      const avg = days.reduce((t, m) => t + totals(Object.values(m!).flat() as never).kcal, 0) / days.length;
+      return `Alimentação: média de ${Math.round(avg)} kcal/dia (${days.length} ${days.length === 1 ? 'dia registado' : 'dias registados'} na última semana)`;
+    })(),
     `Dose atual: ${fmtNum(c.g)} g/dia (${doseText(c.caps, c.format)} · ${fmtNum(c.gPerKg.toFixed(3))} g/kg)${S.proDose ? ` · indicada por ${S.proDose.by}` : ' · dentro do rótulo'}`,
     `Base científica: ${studiesFor(S.ans.goal ?? 'energia').filter((x) => x.level !== 'seguranca').map((x) => x.cite).join('; ')}`,
     `Adesão: ${adherence(S, 14, now)}% em 14 dias · ${adherence(S, 30, now)}% em 30 dias`,

@@ -8,7 +8,14 @@ export interface Answers {
   name?: string;
   goal?: Goal;
   sexo?: string;
-  idade?: string;
+  /** idade em anos (versões antigas guardavam um intervalo, ex.: '30-44') */
+  idade?: number | string;
+  /** altura em cm */
+  altura?: number;
+  /** medidas em cm (opcionais) */
+  cintura?: number;
+  pescoco?: number;
+  anca?: number;
   peso?: number;
   ativ?: string;
   sonoh?: string;
@@ -34,6 +41,8 @@ export interface DayLog {
   d?: number;
   /** treino: 0 nenhum, 1 leve, 2 moderado, 3 intenso */
   t?: number;
+  /** diário alimentar do dia, por refeição */
+  meals?: Partial<Record<'pa' | 'almoco' | 'lanche' | 'jantar', import('./foods').FoodEntry[]>>;
   /** passos do dia (registados ou lidos do app Saúde) */
   steps?: number;
   /** horas de sono na noite anterior */
@@ -119,6 +128,7 @@ export interface Slot {
 
 export type Question =
   | { id: keyof Answers; t: string; kind: 'text'; placeholder: string }
-  | { id: keyof Answers; t: string; kind: 'num'; min: number; max: number; def: number; unit: string }
+  | { id: keyof Answers; t: string; kind: 'num'; min: number; max: number; def: number; unit: string; step?: number; hint?: string }
+  | { id: keyof Answers; t: string; kind: 'measures'; hint: string }
   | { id: keyof Answers; t: string; kind: 'scale'; labels: [string, string] }
   | { id: keyof Answers; t: string; kind: 'options'; o: [string, string][]; multi?: boolean };

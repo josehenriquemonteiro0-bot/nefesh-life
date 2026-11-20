@@ -4,7 +4,7 @@ import { Intro } from './components/Intro';
 import { ReportSheet } from './components/ReportSheet';
 import { ScienceSheet } from './components/Science';
 import { BottleSheet } from './components/Bottle';
-import { Recipes } from './screens/Recipes';
+import { Nutrition } from './screens/Nutrition';
 import { Consent } from './components/Consent';
 import { planFor } from './domain/plan';
 import { QUESTIONS } from './domain/content';
@@ -21,17 +21,18 @@ import { Pros } from './screens/Pros';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'evo' | 'recipes' | 'pros';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'evo' | 'recipes' | 'pros';
 export type Nav = (t: Tab) => void;
 
-const TABS: [Tab, string][] = [
-  ['home', 'Início'],
-  ['quiz', 'Plano'],
-  ['check', 'Check-in'],
-  ['evo', 'Evolução'],
-  ['recipes', 'Receitas'],
-  ['pros', 'Saúde'],
+const TABS: [Tab, string, IconName][] = [
+  ['home', 'Início', 'home'],
+  ['quiz', 'Plano', 'quiz'],
+  ['nutri', 'Nutrição', 'recipes'],
+  ['evo', 'Evolução', 'evo'],
+  ['pros', 'Saúde', 'pros'],
 ];
+/** separadores sem botão próprio na barra: Check-in pertence ao Início, Receitas à Nutrição */
+const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'nutri' };
 
 export function App() {
   const { S, update, replace, toast, toastMsg } = useStore();
@@ -94,14 +95,15 @@ export function App() {
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={startQuiz} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={startQuiz} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes') {
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri') {
     screen = <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />;
   } else {
     screen = {
       home: <Home go={go} startQuiz={startQuiz} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />,
       check: <Check onSaved={() => go('evo')} />,
-      evo: <Evolution openReport={() => setReportOpen(true)} />,
-      recipes: <Recipes />,
+      evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
+      recipes: <Nutrition initial="receitas" />,
+      nutri: <Nutrition />,
       pros: <Pros openReport={() => setReportOpen(true)} />,
     }[tab];
   }
@@ -127,9 +129,9 @@ export function App() {
         <main key={tab + (quiz ? quiz.qi : '')} className="view">{screen}</main>
       </div>
       <nav aria-label="Navegação principal">
-        {TABS.map(([k, t]) => (
-          <button key={k} className={tab === k ? 'on' : ''} aria-current={tab === k ? 'page' : undefined} onClick={() => go(k)}>
-            <Icon name={k as IconName} />
+        {TABS.map(([k, t, icon]) => (
+          <button key={k} className={(NAV_OF[tab] ?? tab) === k ? 'on' : ''} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => go(k)}>
+            <Icon name={icon} />
             {t}
           </button>
         ))}

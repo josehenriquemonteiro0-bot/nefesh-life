@@ -10,6 +10,7 @@ import { doseText, lotFor, stockText } from '../domain/lots';
 import { recipeOfDay } from '../domain/recipes';
 import { RecipeArt } from '../components/RecipeArt';
 import { DataCard } from '../components/DataCard';
+import { DecimalInput } from '../components/DecimalInput';
 import { parseHealthPaste } from '../domain/healthPaste';
 import { enableNotifications, notificationsSupported } from '../reminders';
 import type { Nav } from '../App';
@@ -24,28 +25,6 @@ export function SampleBanner({ onReset }: { onReset: () => void }) {
       <span>Está a ver uma demonstração com dados de exemplo.</span>
       <button className="btn sm" onClick={onReset}>Começar</button>
     </div>
-  );
-}
-
-/** Campo de horas que aceita vírgula enquanto se escreve (só formata ao sair). */
-function SleepInput({ value, onChange }: { value?: number; onChange: (raw: string) => void }) {
-  const [text, setText] = useState(value !== undefined ? fmtNum(value) : '');
-  const [focus, setFocus] = useState(false);
-  const shown = focus ? text : value !== undefined ? fmtNum(value) : '';
-  return (
-    <input
-      inputMode="decimal"
-      placeholder="ex.: 7,5"
-      value={shown}
-      aria-label="Horas de sono"
-      onFocus={() => { setFocus(true); setText(value !== undefined ? fmtNum(value) : ''); }}
-      onBlur={() => setFocus(false)}
-      onChange={(e) => {
-        const t = e.target.value.replace(/[^\d.,]/g, '');
-        setText(t);
-        if (!/[.,]$/.test(t)) onChange(t);
-      }}
-    />
   );
 }
 
@@ -108,17 +87,17 @@ function ActivityCard() {
           </label>
           <label className="hin">
             <span>Sono (h)</span>
-            <SleepInput value={l.sleepH} onChange={(v) => setNum('sleepH', v)} />
+            <DecimalInput placeholder="ex.: 7,5" value={l.sleepH} aria-label="Horas de sono" onValue={(v) => setNum('sleepH', v === undefined ? '' : String(v))} />
           </label>
           <div><b>{Math.round(p * 100)}%</b><span>meta {STEP_GOAL.toLocaleString('pt-PT')}</span></div>
           <div><b>{fmtNum(Math.round(steps * 0.0007 * 10) / 10)} km</b><span>aprox.</span></div>
         </div>
       </div>
-      <button className="btn full" style={{ marginTop: 14 }} onClick={pasteHealth}>
+      <button className="btn ghost sm" style={{ marginTop: 14 }} onClick={pasteHealth}>
         <Icon name="steps" /> Colar do app Saúde
       </button>
       <button className="link small inline" style={{ marginTop: 10 }} onClick={() => setHelp((v) => !v)}>
-        {help ? 'Fechar instruções' : 'Como configurar o atalho (1 minuto, só uma vez)'}
+        {help ? 'Fechar instruções' : 'Opção avançada: ligar ao app Saúde com um atalho'}
       </button>
       {help && <ShortcutHelp />}
       <p className="small mute" style={{ margin: '10px 0 0' }}>

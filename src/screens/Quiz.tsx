@@ -1,3 +1,4 @@
+import { DecimalInput } from '../components/DecimalInput';
 import { useEffect, useRef } from 'react';
 import { QUESTIONS } from '../domain/content';
 import type { Answers } from '../domain/types';
@@ -22,6 +23,7 @@ export function Quiz({ state, setState, onCancel }: { state: QuizState; setState
   const next = () => {
     // garante o valor por omissão no campo numérico mesmo sem mexer no slider
     if (q.kind === 'num' && v === undefined) set({ [q.id]: q.def }, true);
+    else if (q.kind === 'num') set({ [q.id]: Math.max(q.min, Math.min(q.max, v as number)) }, true);
     else setState({ draft, qi: qi + 1 });
   };
   const last = qi === QUESTIONS.length - 1;
@@ -45,11 +47,59 @@ export function Quiz({ state, setState, onCancel }: { state: QuizState; setState
     );
   } else if (q.kind === 'num') {
     showNext = true;
+    const step = q.step ?? 1;
     const val = (v as number) ?? q.def;
+    const clamp = (n: number) => Math.max(q.min, Math.min(q.max, Math.round(n / step) * step));
     body = (
       <>
-        <div className="num"><output>{val}</output><span className="mute">{q.unit}</span></div>
-        <input type="range" min={q.min} max={q.max} value={val} aria-label={q.t} onChange={(e) => set({ [q.id]: +e.target.value })} />
+        <div className="num-exact">
+          <button className="btn ghost" aria-label="Menos" onClick={() => set({ [q.id]: clamp(val - step) })}>−</button>
+          <label className="num-box">
+            <DecimalInput
+              decimals={step < 1}
+              value={val}
+              aria-label={q.t}
+              onValue={(n) => n !== undefined && set({ [q.id]: n })}
+              onBlur={() => set({ [q.id]: clamp(val) })}
+            />
+            <span className="mute">{q.unit}</span>
+          </label>
+          <button className="btn ghost" aria-label="Mais" onClick={() => set({ [q.id]: clamp(val + step) })}>+</button>
+        </div>
+        <input type="range" min={q.min} max={q.max} step={step} value={val} aria-label={`${q.t} (deslizar)`} onChange={(e) => set({ [q.id]: +e.target.value })} />
+        {q.hint && <p className="small mute">{q.hint}</p>}
+      </>
+    );
+  } else if (q.kind === 'measures') {
+    showNext = true;
+    const female = draft.sexo !== 'm';
+    const fields: [keyof Answers, string, string][] = [
+      ['cintura', 'Cintura', 'À altura do umbigo, sem apertar.'],
+      ['pescoco', 'Pescoço', 'Logo abaixo da maçã de Adão.'],
+      ...(female ? [['anca', 'Anca', 'Na parte mais larga das nádegas.'] as [keyof Answers, string, string]] : []),
+    ];
+    body = (
+      <>
+        <p className="small mute">{q.hint}</p>
+        <div className="measures">
+          {fields.map(([k, label, how]) => (
+            <label key={k} className="measure">
+              <span><b>{label}</b><span className="small mute">{how}</span></span>
+              <span className="measure-in">
+                <DecimalInput
+                  placeholder="—"
+                  value={draft[k] as number | undefined}
+                  aria-label={`${label} em cm`}
+                  onValue={(n) => set({ [k]: n } as Partial<Answers>)}
+                />
+                cm
+              </span>
+            </label>
+          ))}
+        </div>
+        <button className="link small inline" style={{ marginTop: 12 }} onClick={() => setState({ draft: { ...draft, cintura: undefined, pescoco: undefined, anca: undefined }, qi: qi + 1 })}>
+          Não tenho fita métrica, saltar
+        </button>
       </>
     );
   } else if (q.kind === 'scale') {

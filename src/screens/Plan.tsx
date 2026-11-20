@@ -1,6 +1,7 @@
 import { Bar, Radar } from '../components/Charts';
 import { DoseSteps, LevelTag, StudyCard } from '../components/Science';
 import { useState } from 'react';
+import { BodyCard } from '../components/BodyCard';
 import { ADVICE, AREAS, EXPECT } from '../domain/content';
 import { PRODUCTS, doseText, type ProductId } from '../domain/lots';
 import { GOAL_EVIDENCE, LEVELS, SAFETY_REASONS, studiesFor } from '../domain/science';
@@ -141,6 +142,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
           ))}
         </div>
       </section>
+      <BodyCard a={a} onReassess={isNew ? undefined : onReassess} />
       <section className="card">
         <h3>A sua maior oportunidade: {weak[1]}</h3>
         <p className="small mute" style={{ margin: 0 }}>{ADVICE[weak[0]]}</p>
