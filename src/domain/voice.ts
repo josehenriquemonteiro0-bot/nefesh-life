@@ -40,8 +40,19 @@ export function voiceLang(S: Pick<AppState, 'voiceLang'>, nav = typeof navigator
   return /^pt-BR/i.test(nav ?? '') ? 'pt-BR' : 'pt-PT';
 }
 
+/** Passos para desbloquear o microfone, conforme o telemóvel. */
+export function micBlockedHelp(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    return 'O microfone está bloqueado para a NEFESH Life. No iPhone: abra Definições → Safari → Microfone (no iOS 18 ou mais recente: Definições → Apps → Safari → Microfone) e escolha "Permitir". Depois feche a app (deslize para cima) e abra-a outra vez.';
+  }
+  if (/Android/.test(ua)) {
+    return 'O microfone está bloqueado para a NEFESH Life. No Android: toque sem largar no ícone da app → Informações da app → Permissões → Microfone → "Permitir durante a utilização". Se usar a app no Chrome: toque no cadeado ao lado do endereço → Permissões → Microfone → Permitir.';
+  }
+  return 'O microfone está bloqueado para esta página. Toque no cadeado ao lado do endereço e autorize o microfone.';
+}
+
 export const VOICE_ERRORS: Record<string, string> = {
-  'not-allowed': 'O microfone está bloqueado. Autorize o microfone para esta app nas definições do telemóvel.',
+  'not-allowed': micBlockedHelp(),
   'service-not-allowed': 'O reconhecimento de voz não está disponível aqui. Use o microfone do teclado 🎤 para ditar.',
   'no-speech': 'Não ouvi nada. Toque outra vez e fale perto do telemóvel.',
   'audio-capture': 'Não foi possível usar o microfone.',
@@ -158,7 +169,7 @@ const SILENCE_MS = 1600;
  * Grava a frase da pessoa e para sozinha quando ela se cala (ou ao fim de 60 s).
  * onDone recebe o áudio e se houve fala.
  */
-export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string) => void; onLevel?: (rms: number) => void }): Listening {
+export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string, code?: string) => void; onLevel?: (rms: number) => void }): Listening {
   let rec: MediaRecorder | null = null;
   let stream: MediaStream | null = null;
   let ctx: AudioContext | null = null;
@@ -190,7 +201,8 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     } catch (e) {
       cleanup();
-      h.onError((e as DOMException)?.name === 'NotAllowedError' ? 'O microfone não foi autorizado. Toque outra vez e escolha Permitir (ou autorize nas definições do telemóvel).' : 'Não foi possível usar o microfone.');
+      const name = (e as DOMException)?.name;
+      h.onError(name === 'NotAllowedError' || name === 'SecurityError' ? micBlockedHelp() : name === 'NotFoundError' ? 'Não encontrámos um microfone neste aparelho.' : 'Não foi possível usar o microfone. Feche a app e abra-a outra vez.', name ?? '');
       return;
     }
     if (stopped) return cleanup();

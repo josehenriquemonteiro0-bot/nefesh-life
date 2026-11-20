@@ -74,3 +74,11 @@ describe('voz no iPhone', () => {
     expect(shouldRecord(false)).toBe(true); // sem reconhecimento: grava
   });
 });
+
+describe('microfone bloqueado', () => {
+  it('dá os passos certos para iPhone e Android', async () => {
+    const { micBlockedHelp } = await import('./voice');
+    expect(micBlockedHelp('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')).toMatch(/Definições → Safari → Microfone/);
+    expect(micBlockedHelp('Mozilla/5.0 (Linux; Android 14)')).toMatch(/Informações da app → Permissões → Microfone/);
+  });
+});

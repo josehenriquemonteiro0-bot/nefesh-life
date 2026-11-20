@@ -227,7 +227,12 @@ export function Coach({ go }: { go: Nav }) {
         <div ref={endRef} />
       </div>
 
-      {err && <p className="small" style={{ color: 'var(--warn, #ffb37a)' }}>{err}</p>}
+      {err && (
+        <div className="coach-warn small" role="alert">
+          <p style={{ margin: 0 }}>{err}</p>
+          {/bloqueado/.test(err) && <p className="mute" style={{ margin: '6px 0 0' }}>Entretanto, pode escrever a mensagem na caixa abaixo.</p>}
+        </div>
+      )}
       {note && <p className="small coach-note">🎤 {note}</p>}
 
       {hist.length === 0 && (

@@ -513,3 +513,4 @@ button.coach-mic.on{animation:micPulse 1.2s infinite}
 .next-action .talk-big{flex:1 1 100%;margin-top:2px;border-color:rgba(0,254,138,.45)}
 .next-action .talk-big svg{width:18px;height:18px}
 .coach-note{background:rgba(0,254,138,.08);border:1px solid rgba(0,254,138,.35);border-radius:12px;padding:8px 12px}
+.coach-warn{border:1px solid var(--warn);background:rgba(255,179,107,.08);color:var(--ink);border-radius:12px;padding:10px 12px;margin:6px 0}
