@@ -1,3 +1,4 @@
+export type BodyGoal = 'perder-suave' | 'perder-moderado' | 'manter' | 'ganhar-suave' | 'ganhar-moderado';
 export type Goal = 'energia' | 'desporto' | 'imunidade' | 'foco' | 'nutricao' | 'peso';
 export type AreaKey = 'energia' | 'sono' | 'nutricao' | 'hidratacao' | 'movimento';
 export type HabitKey = 'sono' | 'passos' | 'resp';
@@ -12,6 +13,8 @@ export interface Answers {
   idade?: number | string;
   /** altura em cm */
   altura?: number;
+  /** objetivo para o corpo */
+  corpo?: BodyGoal;
   /** medidas em cm (opcionais) */
   cintura?: number;
   pescoco?: number;
@@ -85,8 +88,14 @@ export interface AppState {
   followLabel?: boolean;
   /** data em que aceitou o aviso de privacidade */
   consent?: string;
-  /** código de acesso ao serviço de fotos (fase de testes) */
+  /** código de acesso ao serviço de fotos (versões antigas) */
   photoCode?: string;
+  /** metas definidas pelo nutricionista, que substituem as da app */
+  nutriPro?: { kcal?: number; protein?: number; by: string; at: string } | null;
+  /** a pessoa prefere não ver calorias */
+  hideCalories?: boolean;
+  /** planos carregados pela pessoa (o ficheiro fica no IndexedDB) */
+  plans?: Partial<Record<'nutri' | 'treino', { name: string; type: string; size: number; at: string; by?: string }>>;
 }
 
 /** Um passo do cálculo da dose, com a sua origem: estudo ou critério NEFESH. */

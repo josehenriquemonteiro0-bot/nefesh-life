@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { APP_VERSION, whatsappLink } from '../domain/content';
 import { backupFileName, makeBackup, readBackup } from '../domain/backup';
 import { blankState } from '../domain/sample';
+import { clearFiles } from '../domain/files';
 import { useStore } from '../state/store';
 import { PrivacyText } from './Consent';
 
@@ -75,6 +76,7 @@ export function DataCard() {
           onClick={() => {
             if (!confirm('Apagar todos os seus dados deste telemóvel? Esta ação não pode ser desfeita.')) return;
             replace({ ...blankState(), intro: false });
+            clearFiles().catch(() => undefined);
             toast('Dados apagados.');
           }}
         >

@@ -12,6 +12,7 @@ import { QUESTIONS } from './domain/content';
 import { daysSince, todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
 import { blankState } from './domain/sample';
+import { clearFiles } from './domain/files';
 import { took } from './domain/stats';
 import { scheduleReminder } from './reminders';
 import { Check } from './screens/Check';
@@ -166,6 +167,7 @@ export function App() {
             update((d) => { d.intro = true; });
             if (a === 'reset') {
               replace({ ...blankState(), intro: true });
+              clearFiles().catch(() => undefined);
               toast('Dados apagados. Vamos começar do zero.');
               startQuiz(true);
             } else if (a === 'reassess' || !S.ans) startQuiz();

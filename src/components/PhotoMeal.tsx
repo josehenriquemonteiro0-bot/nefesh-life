@@ -9,7 +9,8 @@ import { Icon } from './Icon';
 const CONF: Record<string, string> = { alta: 'pos-up', media: 'pos-ok', baixa: 'pos-low' };
 
 function PhotoSheet({ onClose }: { onClose: () => void }) {
-  const { updateToday, toast } = useStore();
+  const { S, updateToday, toast } = useStore();
+  const hide = !!S.hideCalories;
   const file = useRef<HTMLInputElement>(null);
   const [img, setImg] = useState<{ data: string; media_type: 'image/jpeg' } | null>(null);
   const [hint, setHint] = useState('');
@@ -113,7 +114,7 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
                       <span className="measure-in">
                         <DecimalInput value={grams[i]} onValue={(v) => setGrams(grams.map((g, j) => (j === i ? v : g)))} aria-label={`Gramas de ${it.name}`} />g
                       </span>
-                      <span className="small mute">{e ? `${e.kcal} kcal · P ${fmtNum(e.p)} · H ${fmtNum(e.c)} · G ${fmtNum(e.f)}` : '—'}</span>
+                      <span className="small mute">{e ? `${hide ? '' : `${e.kcal} kcal · `}P ${fmtNum(e.p)} · H ${fmtNum(e.c)} · G ${fmtNum(e.f)}` : '—'}</span>
                     </div>
                   </div>
                 );
@@ -132,11 +133,11 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
                   d.meals = { ...(d.meals || {}) };
                   d.meals[meal] = [...(d.meals[meal] || []), ...(entries as NonNullable<(typeof entries)[number]>[])];
                 });
-                toast(`${entries.length} ${entries.length === 1 ? 'alimento adicionado' : 'alimentos adicionados'} ao ${label.toLowerCase()} (${total} kcal).`);
+                toast(`${entries.length} ${entries.length === 1 ? 'alimento adicionado' : 'alimentos adicionados'} ao ${label.toLowerCase()}${hide ? '' : ` (${total} kcal)`}.`);
                 onClose();
               }}
             >
-              Adicionar ao {label.toLowerCase()} · {total} kcal
+              Adicionar ao {label.toLowerCase()}{hide ? '' : ` · ${total} kcal`}
             </button>
             <p className="small mute" style={{ marginTop: 10 }}>Estimativa feita por inteligência artificial a partir da foto. Confira as quantidades: a margem de erro pode ser de 20% ou mais.</p>
           </>

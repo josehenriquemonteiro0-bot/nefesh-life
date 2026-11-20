@@ -56,6 +56,7 @@ export interface Session {
 
 const STRENGTH_A = ['agachamento', 'flexoes', 'ponte', 'prancha', 'remada'];
 const STRENGTH_B = ['afundos', 'remada', 'superman', 'flexoes', 'escalador'];
+const STRENGTH_C = ['agachamento', 'remada', 'afundos', 'flexoes', 'ponte', 'prancha'];
 const HIIT = ['polichinelos', 'agachamento', 'escalador', 'afundos'];
 const MOBILITY = ['gato_vaca', 'anca', 'peito_porta', 'ponte'];
 
@@ -69,11 +70,11 @@ export function levelOf(a: Answers | null | undefined): Level {
 export const LEVEL_LABEL: Record<Level, string> = { iniciante: 'Iniciante', intermedio: 'Intermédio', avancado: 'Avançado' };
 
 function session(kind: SessionKind, level: Level, variant = ''): Session {
-  const walk = { iniciante: 30, intermedio: 35, avancado: 45 }[level];
+  const walk = { iniciante: 35, intermedio: 35, avancado: 45 }[level];
   const rounds = { iniciante: 2, intermedio: 3, avancado: 4 }[level];
   switch (kind) {
     case 'forca':
-      return { id: `forca${variant}`, kind, title: `Força em casa ${variant}`.trim(), minutes: 10 + rounds * 6, mvpa: 10 + rounds * 4, exercises: variant === 'B' ? STRENGTH_B : STRENGTH_A, rounds, text: `${rounds} voltas ao circuito, 30 a 60 s de descanso entre exercícios.` };
+      return { id: `forca${variant}`, kind, title: `Força em casa ${variant}`.trim(), minutes: 10 + rounds * 6, mvpa: 10 + rounds * 4, exercises: variant === 'B' ? STRENGTH_B : variant === 'C' ? STRENGTH_C : STRENGTH_A, rounds, text: `${rounds} voltas ao circuito, 30 a 60 s de descanso entre exercícios.` };
     case 'caminhada':
       return { id: 'caminhada', kind, title: 'Caminhada rápida', minutes: walk, mvpa: walk, exercises: [], text: 'Ritmo em que consegue falar mas não cantar. Conta também para os passos do dia.' };
     case 'intervalos':
@@ -102,7 +103,9 @@ export function weekPlan(a: Answers | null | undefined): Session[] {
     imunidade: [W, F('A'), W, M, F('B'), W, W],
     nutricao: [W, F('A'), W, M, F('B'), W, W],
   };
-  const plan = plans[goal];
+  // o objetivo para o corpo tem prioridade: ganhar massa pede 3 dias de força; perder gordura, mais cardio
+  const corpo = a?.corpo ?? (goal === 'peso' ? 'perder-suave' : 'manter');
+  const plan = corpo.startsWith('ganhar') ? [F('A'), W, F('B'), W, F('C'), W, M] : corpo.startsWith('perder') ? plans.peso : plans[goal];
   // iniciantes: substituir o intervalado por caminhada
   return level === 'iniciante' ? plan.map((s) => (s.kind === 'intervalos' ? W : s)) : plan;
 }

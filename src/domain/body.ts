@@ -1,4 +1,20 @@
-import type { Answers, Goal } from './types';
+import type { Answers, AppState, BodyGoal, Goal } from './types';
+
+export const BODY_GOALS: [BodyGoal, string][] = [
+  ['perder-suave', 'Perder gordura, ritmo suave'],
+  ['perder-moderado', 'Perder gordura, ritmo moderado'],
+  ['manter', 'Manter o peso'],
+  ['ganhar-suave', 'Ganhar massa muscular, ritmo suave'],
+  ['ganhar-moderado', 'Ganhar massa muscular, ritmo moderado'],
+];
+export const BODY_GOAL_LABEL = Object.fromEntries(BODY_GOALS) as Record<BodyGoal, string>;
+
+/** Objetivo para o corpo; avaliações antigas (sem a pergunta) deduzem-no do objetivo principal. */
+export function bodyGoalOf(a: Answers, bmiLevel?: string): BodyGoal {
+  if (a.corpo) return a.corpo;
+  if (a.goal === 'peso') return bmiLevel === 'excesso' || bmiLevel === 'obesidade' ? 'perder-moderado' : 'perder-suave';
+  return 'manter';
+}
 
 /**
  * Composição corporal e necessidades energéticas.
@@ -25,6 +41,10 @@ export interface BodyResult {
   tdee: number;
   target: number;
   targetNote: string;
+  /** objetivo para o corpo usado no cálculo */
+  corpo: BodyGoal;
+  /** se a meta foi travada por segurança, o motivo */
+  safety?: string;
   protein: number;
   carbs: number;
   fatG: number;
@@ -97,19 +117,34 @@ export function bodyOf(a: Answers): BodyResult | null {
   const bmr = mifflin(sex, kg, cm, age);
   const tdee = bmr * (ACTIVITY[a.ativ ?? ''] ?? 1.375);
   const goal: Goal = a.goal ?? 'energia';
+  const corpo = bodyGoalOf(a, bmiLevel);
+  const [dir, pace] = corpo.split('-') as ['perder' | 'manter' | 'ganhar', 'suave' | 'moderado' | undefined];
+
+  // travões de segurança: sem défice para menores, IMC baixo ou gravidez/amamentação
+  const pregnant = (a.safe || []).includes('gravidez');
+  let safety: string | undefined;
+  if (dir === 'perder' && (age < 18 || bmiLevel === 'baixo' || pregnant)) {
+    safety = age < 18
+      ? 'Abaixo dos 18 anos não definimos défices calóricos. Fale com um nutricionista.'
+      : pregnant
+        ? 'Na gravidez e amamentação não se faz défice calórico. A meta deve ser definida pelo seu médico ou nutricionista.'
+        : 'Com o IMC abaixo de 18,5 não é recomendado perder peso. Fale com um nutricionista.';
+  }
+
   let target = tdee;
   let targetNote = 'Para manter o peso atual, com o seu nível de atividade.';
-  if (goal === 'peso' && bmiLevel !== 'baixo' && bmiLevel !== 'normal') {
-    target = Math.max(tdee - 500, bmr, sex === 'm' ? 1500 : 1200);
-    targetNote = 'Um défice moderado (cerca de 500 kcal) para perder peso de forma sustentável, sem descer abaixo do metabolismo basal.';
-  } else if (goal === 'peso') {
-    target = Math.max(tdee - 250, bmr);
-    targetNote = 'O seu IMC está adequado: um défice ligeiro, só para controlo e saciedade.';
-  } else if (goal === 'desporto') {
-    target = tdee + 150;
-    targetNote = 'Um pequeno excedente para apoiar o treino e a recuperação.';
+  if (dir === 'perder' && !safety) {
+    const deficit = Math.min(500, tdee * (pace === 'moderado' ? 0.2 : 0.1));
+    target = Math.max(tdee - deficit, bmr, sex === 'm' ? 1500 : 1200);
+    targetNote = `Um défice ${pace === 'moderado' ? 'moderado' : 'suave'} (cerca de ${Math.round((tdee - target) / 10) * 10} kcal) para perder gordura de forma sustentável, sem descer abaixo do metabolismo basal.`;
+  } else if (dir === 'ganhar') {
+    target = tdee + (pace === 'moderado' ? 300 : 200);
+    targetNote = `Um pequeno excedente (+${pace === 'moderado' ? 300 : 200} kcal) para ganhar massa muscular, junto com treino de força. Excedentes maiores acrescentam sobretudo gordura.`;
+  } else if (safety) {
+    targetNote = safety;
   }
-  const protein = kg * (goal === 'desporto' || goal === 'peso' ? 1.6 : 1.2);
+  // proteína (g/kg): mais alta para perder gordura sem perder músculo e para ganhar massa
+  const protein = kg * (dir === 'ganhar' ? 2 : dir === 'perder' ? 1.8 : goal === 'desporto' ? 1.6 : 1.4);
   const fatG = (target * 0.3) / 9;
   const carbs = Math.max(0, (target - protein * 4 - fatG * 9) / 4);
 
@@ -125,8 +160,33 @@ export function bodyOf(a: Answers): BodyResult | null {
     tdee: Math.round(tdee),
     target: Math.round(target / 10) * 10,
     targetNote,
+    corpo,
+    safety,
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fatG: Math.round(fatG),
   };
+}
+
+export interface NutritionTargets {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  source: 'app' | 'pro' | 'padrao';
+  by?: string;
+}
+
+/** Metas do diário: as do nutricionista, se existirem; senão as calculadas pela app. */
+export function targetsFor(S: AppState): NutritionTargets {
+  const b = S.ans ? bodyOf(S.ans) : null;
+  const pro = S.nutriPro;
+  if (pro && (pro.kcal || pro.protein)) {
+    const kcal = pro.kcal ?? b?.target ?? 2000;
+    const protein = pro.protein ?? b?.protein ?? 90;
+    const fat = Math.round((kcal * 0.3) / 9);
+    return { kcal, protein, fat, carbs: Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4)), source: 'pro', by: pro.by };
+  }
+  if (b) return { kcal: b.target, protein: b.protein, carbs: b.carbs, fat: b.fatG, source: 'app' };
+  return { kcal: 2000, protein: 90, carbs: 250, fat: 65, source: 'padrao' };
 }

@@ -20,6 +20,16 @@ describe('guia de atividade física', () => {
       }
     }
   });
+  it('adapta-se ao objetivo para o corpo, sempre dentro da OMS', () => {
+    for (const corpo of ['perder-suave', 'perder-moderado', 'manter', 'ganhar-suave', 'ganhar-moderado'] as const) {
+      for (const ativ of ['0', '3-4', '5+']) {
+        const plan = weekPlan({ goal: 'energia', ativ, corpo });
+        expect(plan.reduce((t, s) => t + s.mvpa, 0), `${corpo}/${ativ}`).toBeGreaterThanOrEqual(150);
+        const strength = plan.filter((s) => s.kind === 'forca').length;
+        expect(strength).toBe(corpo.startsWith('ganhar') ? 3 : 2);
+      }
+    }
+  });
   it('não dá cardio intervalado a iniciantes', () => {
     expect(weekPlan({ goal: 'peso', ativ: '0' }).some((s) => s.kind === 'intervalos')).toBe(false);
   });

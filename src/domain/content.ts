@@ -37,6 +37,18 @@ export const QUESTIONS: Question[] = [
   { id: 'idade', t: 'Qual é a sua idade?', kind: 'num', min: 16, max: 95, def: 35, unit: 'anos' },
   { id: 'altura', t: 'Qual é a sua altura?', kind: 'num', min: 130, max: 215, def: 170, unit: 'cm' },
   { id: 'peso', t: 'Qual é o seu peso?', kind: 'num', min: 35, max: 200, def: 70, unit: 'kg', step: 0.5, hint: 'De preferência pesado de manhã, em jejum.' },
+  {
+    id: 'corpo',
+    t: 'Qual é o seu objetivo para o corpo?',
+    kind: 'options',
+    o: [
+      ['perder-suave', 'Perder gordura · ritmo suave'],
+      ['perder-moderado', 'Perder gordura · ritmo moderado'],
+      ['manter', 'Manter o peso'],
+      ['ganhar-suave', 'Ganhar massa muscular · ritmo suave'],
+      ['ganhar-moderado', 'Ganhar massa muscular · ritmo moderado'],
+    ],
+  },
   { id: 'cintura', t: 'As suas medidas', kind: 'measures', hint: 'Com uma fita métrica, ficamos a saber a sua % de gordura com mais rigor. Pode saltar este passo.' },
   { id: 'ativ', t: 'Quantas vezes treina por semana?', kind: 'options', o: [['0', 'Raramente'], ['1-2', '1 a 2 vezes'], ['3-4', '3 a 4 vezes'], ['5+', '5 ou mais']] },
   { id: 'sonoh', t: 'Quantas horas dorme, em média?', kind: 'options', o: [['<5', 'Menos de 5 horas'], ['5-6', '5 a 6 horas'], ['7-8', '7 a 8 horas'], ['>8', 'Mais de 8 horas']] },

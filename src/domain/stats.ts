@@ -2,7 +2,7 @@ import { AREAS, CAPS_PER_BOTTLE, GLASS_ML, GOAL_LABEL } from './content';
 import { daysSince, fmtNum, keyDaysAgo } from './dates';
 import { SLEEP_HABIT, STEPS_HABIT } from './health';
 import { studiesFor } from './science';
-import { bodyOf } from './body';
+import { BODY_GOAL_LABEL, bodyOf, targetsFor } from './body';
 import { totals } from './foods';
 import { weekProgress } from './training';
 import { indexOf, planFor, slotsFor } from './plan';
@@ -136,7 +136,9 @@ export function report(S: AppState, now = new Date()) {
     `Índice NEFESH: ${ev ? `${indexOf(ev.sc)}/100 (${AREAS.map(([k, t]) => `${t} ${ev.sc[k]}`).join(', ')})` : '—'}`,
     (() => {
       const b = bodyOf(S.ans!);
-      return b ? `Corpo: IMC ${fmtNum(b.bmi)} (${b.bmiLabel}) · gordura ${fmtNum(b.fat)}% (${b.fatMethod === 'medidas' ? 'medidas' : 'estimada pelo IMC'}) · meta ${b.target} kcal/dia` : null;
+      if (!b) return null;
+      const tg = targetsFor(S);
+      return `Corpo: IMC ${fmtNum(b.bmi)} (${b.bmiLabel}) · gordura ${fmtNum(b.fat)}% (${b.fatMethod === 'medidas' ? 'medidas' : 'estimada pelo IMC'})\nObjetivo para o corpo: ${BODY_GOAL_LABEL[b.corpo]} · meta ${tg.kcal} kcal e ${tg.protein} g de proteína/dia (${tg.source === 'pro' ? `definida por ${tg.by}` : 'referência geral da app'})`;
     })(),
     (() => {
       const days = Array.from({ length: 7 }, (_, i) => S.logs[keyDaysAgo(i, now)]?.meals).filter((m) => m && Object.values(m).some((x) => x?.length));
@@ -148,6 +150,8 @@ export function report(S: AppState, now = new Date()) {
       const w = weekProgress(S, now);
       return w.mvpa || w.strengthDays ? `Atividade esta semana: ${w.mvpa} min moderados a vigorosos · ${w.strengthDays} ${w.strengthDays === 1 ? 'dia' : 'dias'} de força` : null;
     })(),
+    S.plans?.nutri ? `Plano alimentar carregado: ${S.plans.nutri.name}${S.plans.nutri.by ? ` (${S.plans.nutri.by})` : ''}` : null,
+    S.plans?.treino ? `Plano de treino carregado: ${S.plans.treino.name}${S.plans.treino.by ? ` (${S.plans.treino.by})` : ''}` : null,
     `Dose atual: ${fmtNum(c.g)} g/dia (${doseText(c.caps, c.format)} · ${fmtNum(c.gPerKg.toFixed(3))} g/kg)${S.proDose ? ` · indicada por ${S.proDose.by}` : ' · dentro do rótulo'}`,
     `Base científica: ${studiesFor(S.ans.goal ?? 'energia').filter((x) => x.level !== 'seguranca').map((x) => x.cite).join('; ')}`,
     `Adesão: ${adherence(S, 14, now)}% em 14 dias · ${adherence(S, 30, now)}% em 30 dias`,

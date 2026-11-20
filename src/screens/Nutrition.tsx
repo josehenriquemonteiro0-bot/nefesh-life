@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Bar, Ring } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
 import { PhotoMealCard } from '../components/PhotoMeal';
-import { bodyOf } from '../domain/body';
+import { targetsFor } from '../domain/body';
+import { PlanUpload } from '../components/PlanUpload';
 import { fmtNum, keyDaysAgo, longToday } from '../domain/dates';
 import { FOODS, MEALS, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
 import { useStore } from '../state/store';
@@ -24,7 +25,8 @@ function useRecent(): Food[] {
 }
 
 function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
-  const { updateToday, toast } = useStore();
+  const { S, updateToday, toast } = useStore();
+  const hide = !!S.hideCalories;
   const [q, setQ] = useState('');
   const [pick, setPick] = useState<Food | null>(null);
   const [portions, setPortions] = useState(1);
@@ -46,7 +48,7 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
       d.meals = { ...(d.meals || {}) };
       d.meals[meal] = [...(d.meals[meal] || []), e];
     });
-    toast(`${e.name} adicionado ao ${label.toLowerCase()} (${e.kcal} kcal).`);
+    toast(`${e.name} adicionado ao ${label.toLowerCase()}${hide ? '' : ` (${e.kcal} kcal)`}.`);
     onClose();
   };
 
@@ -83,7 +85,7 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
         ) : pick ? (
           <>
             <h3 style={{ marginTop: 14 }}>{pick.name}</h3>
-            <p className="small mute" style={{ marginTop: 0 }}>{pick.kcal} kcal por 100 g · porção: {pick.portion}</p>
+            <p className="small mute" style={{ marginTop: 0 }}>{hide ? '' : `${pick.kcal} kcal por 100 g · `}porção: {pick.portion}</p>
             <div className="num-exact" style={{ marginBottom: 8 }}>
               <button className="btn ghost" aria-label="Menos meia porção" onClick={() => { setGrams(undefined); setPortions(Math.max(0.5, portions - 0.5)); }}>−</button>
               <div className="num-box" style={{ flexDirection: 'column', alignItems: 'center' }}>
@@ -98,7 +100,7 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
             </label>
             {preview && (
               <div className="macros" style={{ marginBottom: 14 }}>
-                <span><b>{preview.kcal}</b> kcal</span>
+                {!hide && <span><b>{preview.kcal}</b> kcal</span>}
                 <span><b>{fmtNum(preview.p)} g</b> proteína</span>
                 <span><b>{fmtNum(preview.c)} g</b> hidratos</span>
                 <span><b>{fmtNum(preview.f)} g</b> gordura</span>
@@ -119,7 +121,7 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
                     <b>{f.name}</b>
                     <span className="small mute">{f.portion}</span>
                   </span>
-                  <span className="small mute">{Math.round((f.kcal * f.grams) / 100)} kcal</span>
+                  {!hide && <span className="small mute">{Math.round((f.kcal * f.grams) / 100)} kcal</span>}
                 </button>
               ))}
               {!list.length && <p className="small mute">Nada encontrado para "{q}".</p>}
@@ -134,36 +136,56 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
 }
 
 function Diary() {
-  const { S, todayLog: l, updateToday } = useStore();
+  const { S, todayLog: l, updateToday, update } = useStore();
   const [adding, setAdding] = useState<MealKey | null>(null);
   const meals = l.meals || {};
   const all = MEALS.flatMap(([k]) => meals[k] || []);
   const t = totals(all);
-  const b = S.ans ? bodyOf(S.ans) : null;
-  const target = b?.target ?? 2000;
-  const left = target - t.kcal;
+  const tg = targetsFor(S);
+  const hide = !!S.hideCalories;
+  const left = tg.kcal - t.kcal;
+  const count = all.length;
 
   return (
     <>
       <section className="card hero">
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>{longToday()}</p>
-        <div className="health" style={{ marginTop: 10 }}>
-          <Ring value={t.kcal} goal={target} label="kcal" />
-          <div>
-            <p style={{ margin: 0, font: '600 22px Sora' }}>{left >= 0 ? `Faltam ${left.toLocaleString('pt-PT')}` : `+${(-left).toLocaleString('pt-PT')} acima`}</p>
-            <p className="small" style={{ margin: '2px 0 0', opacity: 0.8 }}>meta {target.toLocaleString('pt-PT')} kcal{b ? '' : ' (indicativa)'}</p>
+        {hide ? (
+          <div style={{ marginTop: 10 }}>
+            <p style={{ margin: 0, font: '600 22px Sora' }}>{count ? `${count} ${count === 1 ? 'alimento registado' : 'alimentos registados'}` : 'Ainda sem registos hoje'}</p>
+            <p className="small" style={{ margin: '2px 0 10px', opacity: 0.8 }}>Modo sem calorias: o foco está nas refeições e na proteína.</p>
+            <div className="row small"><span>Proteína</span><span className="mute">{Math.round(t.p)} / {tg.protein} g</span></div>
+            <Bar pct={(t.p / tg.protein) * 100} />
           </div>
-        </div>
-        <div className="macrobars">
-          {([['Proteína', t.p, b?.protein ?? 90], ['Hidratos', t.c, b?.carbs ?? 250], ['Gordura', t.f, b?.fatG ?? 65]] as const).map(([n, v, goal]) => (
-            <div key={n}>
-              <div className="row small"><span>{n}</span><span className="mute">{Math.round(v)} / {goal} g</span></div>
-              <Bar pct={(v / goal) * 100} />
+        ) : (
+          <>
+            <div className="health" style={{ marginTop: 10 }}>
+              <Ring value={t.kcal} goal={tg.kcal} label="kcal" />
+              <div>
+                <p style={{ margin: 0, font: '600 22px Sora' }}>{left >= 0 ? `Faltam ${left.toLocaleString('pt-PT')}` : `+${(-left).toLocaleString('pt-PT')} acima`}</p>
+                <p className="small" style={{ margin: '2px 0 0', opacity: 0.8 }}>
+                  {tg.source === 'pro' ? `meta do nutricionista (${tg.by})` : tg.source === 'app' ? 'referência geral' : 'referência indicativa'}: {tg.kcal.toLocaleString('pt-PT')} kcal
+                </p>
+              </div>
             </div>
-          ))}
-        </div>
-        {!b && <p className="small" style={{ margin: '8px 0 0', opacity: 0.85 }}>Complete a avaliação com altura e peso para ter a sua meta personalizada.</p>}
+            <div className="macrobars">
+              {([['Proteína', t.p, tg.protein], ['Hidratos', t.c, tg.carbs], ['Gordura', t.f, tg.fat]] as const).map(([n, v, goal]) => (
+                <div key={n}>
+                  <div className="row small"><span>{n}</span><span className="mute">{Math.round(v)} / {goal} g</span></div>
+                  <Bar pct={(v / goal) * 100} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {tg.source === 'padrao' && <p className="small" style={{ margin: '8px 0 0', opacity: 0.85 }}>Complete a avaliação com altura e peso para ter a sua referência personalizada.</p>}
+        <label className="check" style={{ marginTop: 12 }}>
+          <input type="checkbox" checked={hide} onChange={(e) => update((d) => { d.hideCalories = e.target.checked; })} />
+          <span className="small">Não quero ver calorias</span>
+        </label>
       </section>
+
+      <PlanUpload kind="nutri" />
 
       <PhotoMealCard />
 
@@ -174,7 +196,7 @@ function Diary() {
           <section className="card" key={k}>
             <div className="row">
               <h2 style={{ margin: 0 }}>{name}</h2>
-              <span className="small mute">{mt.kcal} kcal</span>
+              {!hide && <span className="small mute">{mt.kcal} kcal</span>}
             </div>
             {items.length > 0 && (
               <ul className="meal">
@@ -182,7 +204,7 @@ function Diary() {
                   <li key={e.id}>
                     <span>
                       {e.name}
-                      <span className="small mute">{e.grams ? `${fmtNum(e.grams)} g · ` : ''}{e.kcal} kcal</span>
+                      <span className="small mute">{e.grams ? `${fmtNum(e.grams)} g` : ''}{hide ? '' : `${e.grams ? ' · ' : ''}${e.kcal} kcal`}</span>
                     </span>
                     <button
                       className="x"
