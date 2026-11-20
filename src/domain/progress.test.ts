@@ -75,3 +75,18 @@ describe('treino e calorias do dia', () => {
     expect(targetsFor(S, 400).kcal).toBe(2400);
   });
 });
+
+describe('a Spirulina e você', async () => {
+  const { spirulinaInsight } = await import('./progress');
+  it('compara os dias com e sem ritual', () => {
+    const S = base(30);
+    S.followLabel = true;
+    for (let i = 0; i < 4; i++) S.logs[keyDaysAgo(i, NOW)] = { doses: [true, true, true, true], e: 4, s: 4, d: 5 };
+    for (let i = 4; i < 7; i++) S.logs[keyDaysAgo(i, NOW)] = { e: 2, s: 3, d: 3 };
+    const r = spirulinaInsight(S, NOW);
+    expect(r.comparable).toBe(true);
+    expect(r.with).toMatchObject({ n: 4, e: 4 });
+    expect(r.without).toMatchObject({ n: 3, e: 2 });
+    expect(r.energyDiff).toBe(2);
+  });
+});

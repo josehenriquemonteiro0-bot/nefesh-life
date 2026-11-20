@@ -68,9 +68,9 @@ export function App() {
   const cloud = useCloudSync();
   useSocialSync();
   /** para onde ir depois do ecrã de conta */
-  const [afterAccount, setAfterAccount] = useState<'quiz' | 'perfil'>('perfil');
+  const [afterAccount, setAfterAccount] = useState<'quiz' | 'perfil' | 'guardar'>('perfil');
   const [accountMode, setAccountMode] = useState<'criar' | 'entrar'>('criar');
-  const openAccount = (next: 'quiz' | 'perfil', mode: 'criar' | 'entrar' = 'criar') => {
+  const openAccount = (next: 'quiz' | 'perfil' | 'guardar', mode: 'criar' | 'entrar' = 'criar') => {
     setAfterAccount(next);
     setAccountMode(mode);
     setQuiz(null);
@@ -129,7 +129,8 @@ export function App() {
     if (!quiz) return;
     const ans = quiz.draft;
     const ev = { date: todayKey(), sc: scores(ans), body: bodySnapshot(ans) };
-    if (S.sample || !S.ans) {
+    const first = S.sample || !S.ans;
+    if (first) {
       const fresh = blankState();
       replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications, consent: S.consent });
     } else {
@@ -140,9 +141,14 @@ export function App() {
       });
     }
     setQuiz(null);
+    toast(`Plano guardado. Índice NEFESH: ${indexOf(ev.sc)}.`);
+    // primeiro plano sem conta: propõe criar a conta para o guardar (pode saltar)
+    if (first && !getAuth()) {
+      openAccount('guardar');
+      return;
+    }
     setTab('home');
     window.scrollTo(0, 0);
-    toast(`Plano guardado. Índice NEFESH: ${indexOf(ev.sc)}.`);
   };
 
   let screen: JSX.Element | null;
@@ -167,10 +173,12 @@ export function App() {
         <AccountScreen
           key={accountMode}
           initial={accountMode}
-          onSkip={afterAccount === 'quiz' ? () => startQuiz() : () => go('perfil')}
+          save={afterAccount === 'guardar'}
+          onSkip={afterAccount === 'quiz' ? () => startQuiz() : afterAccount === 'guardar' ? () => go('home') : () => go('perfil')}
           onDone={(r) => {
             // com dados na nuvem, a sincronização traz o plano; sem plano, segue para a avaliação
-            if (afterAccount === 'quiz' && !r.updatedAt && !S.ans) startQuiz();
+            if (afterAccount === 'guardar') go('home');
+            else if (afterAccount === 'quiz' && !r.updatedAt && !S.ans) startQuiz();
             else go(r.updatedAt && !S.ans ? 'home' : 'perfil');
           }}
         />
@@ -229,11 +237,8 @@ export function App() {
               toast('Dados apagados. Vamos começar do zero.');
               startQuiz(true);
             } else if (a === 'reassess') startQuiz();
-            else if (!S.ans) {
-              // primeira utilização: conta primeiro (pode continuar sem conta), depois a avaliação
-              if (getAuth()) startQuiz();
-              else openAccount('quiz');
-            }
+            // primeira utilização: a avaliação vem primeiro; a conta é proposta no fim, para guardar o plano
+            else if (!S.ans) startQuiz();
             // 'continue': fica no separador onde está (não interrompe um toque feito durante a animação)
           }}
         />

@@ -200,3 +200,13 @@ export function report(S: AppState, now = new Date()) {
   ];
   return lines.filter(Boolean).join('\n');
 }
+
+/** Mensagem de encomenda já preenchida, com frascos suficientes para 30 dias de ritual. */
+export function reorderText(S: AppState, now = new Date()) {
+  const st = stock(S, now);
+  const per = slotsFor(S, now).reduce((t, s) => t + s.n, 0) || 4;
+  const format = S.format ?? 'caps';
+  const n = Math.max(1, Math.ceil((per * 30) / CAPS_PER_BOTTLE));
+  const name = { caps: 'Spirulina em cápsulas (120 cápsulas)', po: 'Spirulina em pó (60 g)', nibs: 'Spirulina em palhinha / Nibs (60 g)' }[format];
+  return `Olá NEFESH! Quero encomendar ${n} ${n === 1 ? 'frasco' : 'frascos'} de ${name}${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}. O meu stock acaba em ${st.days} ${st.days === 1 ? 'dia' : 'dias'}.`;
+}

@@ -118,3 +118,33 @@ export function workoutKcal(S: AppState, key: string): number {
   const kg = S.ans?.peso ?? 70;
   return Math.round((S.logs[key]?.workouts ?? []).reduce((t, w) => t + (metOf(w) - 1) * kg * (w.minutes / 60), 0));
 }
+
+/* ---------- a Spirulina e você ---------- */
+
+const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+
+/**
+ * Compara como a pessoa se sentiu nos dias com o ritual da Spirulina e nos dias sem ele
+ * (últimos 30 dias com check-in). É uma observação pessoal, não uma prova científica.
+ */
+export function spirulinaInsight(S: AppState, now = new Date(), days = 30) {
+  const rows = Array.from({ length: days }, (_, i) => S.logs[keyDaysAgo(i, now)]).filter((l) => l && l.e);
+  const withR = rows.filter((l) => took(S, l, now));
+  const without = rows.filter((l) => !took(S, l, now));
+  const group = (ls: typeof rows) => ({ n: ls.length, e: avg(ls.map((l) => l!.e!)), s: avg(ls.map((l) => l!.s!).filter(Boolean)), d: avg(ls.map((l) => l!.d!).filter(Boolean)) });
+  const a = group(withR);
+  const b = group(without);
+  const first = S.evals[0];
+  const last = S.evals[S.evals.length - 1];
+  return {
+    with: a,
+    without: b,
+    /** há dias suficientes nos dois grupos para comparar */
+    comparable: a.n >= 3 && b.n >= 3,
+    /** fez o ritual em (quase) todos os dias com check-in */
+    allIn: a.n >= 5 && b.n === 0,
+    energyDiff: a.e !== null && b.e !== null ? Math.round((a.e - b.e) * 10) / 10 : null,
+    checkins: rows.length,
+    index: first && last && first !== last ? { from: indexOf(first.sc), to: indexOf(last.sc) } : null,
+  };
+}

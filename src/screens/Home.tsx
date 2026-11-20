@@ -4,14 +4,14 @@ import { Icon } from '../components/Icon';
 import { GLASS_ML, HABITS, PROS, SHOP_URL, STEP_GOAL, TIPS, whatsappLink } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
 import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
-import { habitOn, stock, streak, took } from '../domain/stats';
+import { habitOn, reorderText, stock, streak, took } from '../domain/stats';
 import { useStore } from '../state/store';
 import { doseText, stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
 import { activityStreak, dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
-import { mealForSlot, nextReassessment, spirulinaEntry, weeklySummary } from '../domain/progress';
+import { mealForSlot, nextReassessment, spirulinaEntry, spirulinaInsight, weeklySummary } from '../domain/progress';
 import type { Nav } from '../App';
 
 const litres = (glasses: number) => fmtNum(((glasses * GLASS_ML) / 1000).toFixed(2).replace(/0$/, ''));
@@ -137,6 +137,12 @@ function WeekCard({ go }: { go: Nav }) {
         <h2 style={{ margin: 0 }}>A sua semana</h2>
         <button className="link small inline" onClick={() => go('evo')}>ver evolução →</button>
       </div>
+      {(() => {
+        const r = spirulinaInsight(S);
+        return r.comparable && r.energyDiff! > 0 ? (
+          <p className="small" style={{ margin: '8px 0 0' }}>🌿 Nos dias com ritual, a sua energia foi <b className="neon">{fmtNum(r.energyDiff!)} pontos mais alta</b>.</p>
+        ) : null;
+      })()}
       <div className="week-grid">
         {items.map(([k, v]) => (
           <div key={k}><span className="small mute">{k}</span><b>{v}</b></div>
@@ -179,7 +185,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   const w = l.water || 0;
   const tip = TIPS[((daysSince('2026-01-01') % TIPS.length) + TIPS.length) % TIPS.length];
   const totalCaps = sl.reduce((t, s) => t + s.n, 0);
-  const low = st.days <= 7;
+  const low = st.days <= 10;
   const re = nextReassessment(S);
 
   const toggleDose = (i: number) => {
@@ -254,6 +260,22 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         {inAdaptation(S) && <p className="small" style={{ margin: '12px 0 0', opacity: 0.85 }}>Semana de adaptação: está a tomar metade da dose.</p>}
       </section>
 
+      {low && (
+        <section className="card">
+          <div className="row">
+            <h2 style={{ margin: 0 }}>Reposição</h2>
+            <span className="mute small">{c.format === 'caps' ? st.left : fmtNum(st.left / 2)} de {stockText(S.stockCaps, c.format)}</span>
+          </div>
+          <Bar pct={st.pct} variant="low" />
+          <p className="small">{st.days ? `A sua Spirulina acaba em ${st.days} ${st.days === 1 ? 'dia' : 'dias'}.` : 'A sua Spirulina acabou.'} Encomende já para o ritual não parar: a entrega demora alguns dias.</p>
+          <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
+            <a className="btn sm" href={whatsappLink(reorderText(S))} target="_blank" rel="noopener">Encomendar pelo WhatsApp</a>
+            <a className="btn ghost sm" href={SHOP_URL} target="_blank" rel="noopener">Loja online</a>
+            <button className="btn ghost sm" onClick={openBottle}><Icon name="qr" /> Chegou o frasco novo</button>
+          </div>
+        </section>
+      )}
+
       <section className="card">
         <div className="row">
           <h2 style={{ margin: 0 }}>Hidratação</h2>
@@ -318,20 +340,6 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
 
       <WeekCard go={go} />
 
-      {low && (
-        <section className="card">
-          <div className="row">
-            <h2 style={{ margin: 0 }}>Reposição</h2>
-            <span className="mute small">{c.format === 'caps' ? st.left : fmtNum(st.left / 2)} de {stockText(S.stockCaps, c.format)}</span>
-          </div>
-          <Bar pct={st.pct} variant="low" />
-          <p className="small">O seu stock acaba em {st.days} dias. Encomende já para não interromper o ritual.</p>
-          <div className="row" style={{ justifyContent: 'flex-start' }}>
-            <a className="btn sm" href={SHOP_URL} target="_blank" rel="noopener">Encomendar</a>
-            <button className="btn ghost sm" onClick={openBottle}><Icon name="qr" /> Ler QR do frasco</button>
-          </div>
-        </section>
-      )}
 
       <section className="card tip">
         <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>

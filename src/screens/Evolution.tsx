@@ -7,7 +7,46 @@ import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
 import { weekAdherence, weekChanges } from '../domain/planAdherence';
-import { compareEvals, nextReassessment } from '../domain/progress';
+import { compareEvals, nextReassessment, spirulinaInsight } from '../domain/progress';
+
+/** A Spirulina e você: como se sentiu nos dias com e sem o ritual. */
+export function SpirulinaInsight() {
+  const { S } = useStore();
+  const r = spirulinaInsight(S);
+  const row = (t: string, a: number | null, b: number | null) => (
+    <tr key={t}><td>{t}</td><td><b>{a === null ? '—' : fmtNum(a)}</b></td><td>{b === null ? '—' : fmtNum(b)}</td></tr>
+  );
+  return (
+    <section className="card insight">
+      <h2 style={{ marginTop: 0 }}>🌿 A Spirulina e você</h2>
+      {r.comparable ? (
+        <>
+          <p style={{ margin: '0 0 8px' }}>
+            {r.energyDiff! > 0
+              ? <>Nos dias em que fez o ritual, a sua energia foi <b className="neon">{fmtNum(r.energyDiff!)} pontos mais alta</b>.</>
+              : r.energyDiff! < 0
+                ? <>Por agora, a energia não foi mais alta nos dias com ritual. Dê tempo: os estudos medem efeitos ao fim de 4 a 12 semanas de uso diário.</>
+                : <>Por agora, a energia é parecida nos dias com e sem ritual. A regularidade é o que faz a diferença.</>}
+          </p>
+          <table className="cmp">
+            <thead><tr><th>últimos 30 dias (1 a 5)</th><th>com ritual ({r.with.n})</th><th>sem ritual ({r.without.n})</th></tr></thead>
+            <tbody>{[row('Energia', r.with.e, r.without.e), row('Sono', r.with.s, r.without.s), row('Disposição', r.with.d, r.without.d)]}</tbody>
+          </table>
+        </>
+      ) : r.allIn ? (
+        <p style={{ margin: 0 }}>Fez o ritual em todos os dias com check-in: <b className="neon">energia média de {fmtNum(r.with.e!)}</b> em 5. Continue assim!</p>
+      ) : (
+        <p className="small mute" style={{ margin: 0 }}>
+          Faça o check-in todos os dias. Com alguns dias com e sem ritual, mostramos aqui como se sente quando toma a Spirulina. ({r.checkins} {r.checkins === 1 ? 'check-in' : 'check-ins'} nos últimos 30 dias)
+        </p>
+      )}
+      {r.index && (
+        <p className="small" style={{ margin: '10px 0 0' }}>Índice NEFESH: {r.index.from} → <b>{r.index.to}</b> desde a primeira avaliação.</p>
+      )}
+      <p className="small mute" style={{ margin: '8px 0 0' }}>É uma observação sobre si, não uma prova científica: o sono, o stress e a alimentação também contam.</p>
+    </section>
+  );
+}
 
 /** Antes e depois: primeira avaliação contra a mais recente. */
 export function Comparison() {
@@ -74,8 +113,10 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
         )}
       </section>
 
+      <SpirulinaInsight />
+
       <div className="stats">
-        <div className="stat"><b>{streak(S)}</b><span>dias seguidos</span></div>
+        <div className="stat"><b>{streak(S)}</b><span>dias de ritual</span></div>
         <div className="stat"><b>{adherence(S, 30)}%</b><span>adesão 30 dias</span></div>
         <div className="stat"><b>{got}/{bs.length}</b><span>conquistas</span></div>
       </div>

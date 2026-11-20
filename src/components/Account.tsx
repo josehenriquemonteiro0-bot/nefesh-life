@@ -45,7 +45,7 @@ function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
 }
 
 /** Criar conta, entrar ou recuperar a palavra-passe. */
-export function AccountScreen({ initial = 'criar', onDone, onSkip }: { initial?: Mode; onDone: (r: { updatedAt: string | null; isNew: boolean }) => void; onSkip?: () => void }) {
+export function AccountScreen({ initial = 'criar', onDone, onSkip, save }: { initial?: Mode; onDone: (r: { updatedAt: string | null; isNew: boolean }) => void; onSkip?: () => void; save?: boolean }) {
   const [mode, setMode] = useState<Mode>(initial);
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
@@ -74,13 +74,15 @@ export function AccountScreen({ initial = 'criar', onDone, onSkip }: { initial?:
     }
   };
 
-  const title = mode === 'criar' ? 'Crie a sua conta' : mode === 'entrar' ? 'Entrar na sua conta' : 'Recuperar a palavra-passe';
+  const title = mode === 'criar' ? (save ? 'Guarde o seu plano' : 'Crie a sua conta') : mode === 'entrar' ? 'Entrar na sua conta' : 'Recuperar a palavra-passe';
   return (
     <>
       <h1>{title}</h1>
       <p className="mute">
         {mode === 'criar'
-          ? 'Com uma conta, o seu plano e o seu progresso ficam guardados na nuvem e voltam se trocar de telemóvel.'
+          ? save
+            ? 'O seu plano está pronto. Crie a conta para não o perder se trocar de telemóvel e para entrar na comunidade NEFESH.'
+            : 'Com uma conta, o seu plano e o seu progresso ficam guardados na nuvem e voltam se trocar de telemóvel.'
           : mode === 'entrar'
             ? 'Os seus dados voltam para este telemóvel.'
             : 'Use o código de recuperação que guardou quando criou a conta.'}
@@ -127,7 +129,7 @@ export function AccountScreen({ initial = 'criar', onDone, onSkip }: { initial?:
       {mode === 'criar' && <p className="small mute">Guardamos o e-mail e os dados da app num servidor na Cloudflare. A palavra-passe nunca é guardada: só uma impressão cifrada dela.</p>}
       {onSkip && (
         <p style={{ textAlign: 'center' }}>
-          <button className="skip" onClick={onSkip}>Continuar sem conta</button>
+          <button className="skip" onClick={onSkip}>{save ? 'Agora não' : 'Continuar sem conta'}</button>
         </p>
       )}
     </>

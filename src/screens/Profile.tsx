@@ -1,10 +1,10 @@
 import { Bar } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { DataCard } from '../components/DataCard';
-import { SHOP_URL, GOAL_LABEL } from '../domain/content';
+import { SHOP_URL, GOAL_LABEL, whatsappLink } from '../domain/content';
 import { daysSince, fmtNum } from '../domain/dates';
 import { indexOf, planFor } from '../domain/plan';
-import { stock } from '../domain/stats';
+import { reorderText, stock } from '../domain/stats';
 import { lotFor, stockText } from '../domain/lots';
 import { nextReassessment } from '../domain/progress';
 import { BODY_GOAL_LABEL, bodyGoalOf, bodyOf } from '../domain/body';
@@ -41,7 +41,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
   }
   const c = planFor(S);
   const st = stock(S);
-  const low = st.days <= 7;
+  const low = st.days <= 10;
   const ev = S.evals[S.evals.length - 1];
   const re = nextReassessment(S);
   const lastLot = lotFor([...(S.bottles || [])].reverse().find((b) => b.code)?.code);
@@ -126,7 +126,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           {lastLot ? ` Lote ${lastLot.code}: ${lastLot.values.filter((v) => v.pos === 'acima').map((v) => v.label).join(', ')} acima da referência.` : ''}
         </p>
         <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
-          <a className="btn sm" href={SHOP_URL} target="_blank" rel="noopener">Encomendar</a>
+          <a className="btn sm" href={whatsappLink(reorderText(S))} target="_blank" rel="noopener">Encomendar pelo WhatsApp</a>
+          <a className="btn ghost sm" href={SHOP_URL} target="_blank" rel="noopener">Loja online</a>
           <button className="btn ghost sm" onClick={openBottle}><Icon name="qr" /> {lastLot ? 'Ver análises' : 'Ler QR do frasco'}</button>
         </div>
       </section>
