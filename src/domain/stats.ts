@@ -4,6 +4,7 @@ import { SLEEP_HABIT, STEPS_HABIT } from './health';
 import { studiesFor } from './science';
 import { bodyOf } from './body';
 import { totals } from './foods';
+import { weekProgress } from './training';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
 import type { AppState, DayLog } from './types';
@@ -142,6 +143,10 @@ export function report(S: AppState, now = new Date()) {
       if (!days.length) return null;
       const avg = days.reduce((t, m) => t + totals(Object.values(m!).flat() as never).kcal, 0) / days.length;
       return `Alimentação: média de ${Math.round(avg)} kcal/dia (${days.length} ${days.length === 1 ? 'dia registado' : 'dias registados'} na última semana)`;
+    })(),
+    (() => {
+      const w = weekProgress(S, now);
+      return w.mvpa || w.strengthDays ? `Atividade esta semana: ${w.mvpa} min moderados a vigorosos · ${w.strengthDays} ${w.strengthDays === 1 ? 'dia' : 'dias'} de força` : null;
     })(),
     `Dose atual: ${fmtNum(c.g)} g/dia (${doseText(c.caps, c.format)} · ${fmtNum(c.gPerKg.toFixed(3))} g/kg)${S.proDose ? ` · indicada por ${S.proDose.by}` : ' · dentro do rótulo'}`,
     `Base científica: ${studiesFor(S.ans.goal ?? 'energia').filter((x) => x.level !== 'seguranca').map((x) => x.cite).join('; ')}`,

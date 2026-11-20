@@ -5,6 +5,7 @@ import { ReportSheet } from './components/ReportSheet';
 import { ScienceSheet } from './components/Science';
 import { BottleSheet } from './components/Bottle';
 import { Nutrition } from './screens/Nutrition';
+import { Training } from './screens/Training';
 import { Consent } from './components/Consent';
 import { planFor } from './domain/plan';
 import { QUESTIONS } from './domain/content';
@@ -21,13 +22,14 @@ import { Pros } from './screens/Pros';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'evo' | 'recipes' | 'pros';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'evo' | 'recipes' | 'pros';
 export type Nav = (t: Tab) => void;
 
 const TABS: [Tab, string, IconName][] = [
   ['home', 'Início', 'home'],
   ['quiz', 'Plano', 'quiz'],
   ['nutri', 'Nutrição', 'recipes'],
+  ['treino', 'Treino', 'flame'],
   ['evo', 'Evolução', 'evo'],
   ['pros', 'Saúde', 'pros'],
 ];
@@ -111,7 +113,7 @@ export function App() {
     else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri') {
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino') {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} replayIntro={() => setShowIntro(true)} openBottle={openBottle} />;
   } else {
     screen = {
@@ -120,6 +122,7 @@ export function App() {
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
       nutri: <Nutrition />,
+      treino: <Training />,
       pros: <Pros openReport={() => setReportOpen(true)} />,
     }[tab];
   }

@@ -41,6 +41,8 @@ export interface DayLog {
   d?: number;
   /** treino: 0 nenhum, 1 leve, 2 moderado, 3 intenso */
   t?: number;
+  /** treinos feitos no dia */
+  workouts?: import('./training').WorkoutLog[];
   /** diário alimentar do dia, por refeição */
   meals?: Partial<Record<'pa' | 'almoco' | 'lanche' | 'jantar', import('./foods').FoodEntry[]>>;
   /** passos do dia (registados ou lidos do app Saúde) */
