@@ -148,10 +148,10 @@ export function mergeDecision(local: AppState, cloudAt: string | null, lastCloud
 }
 
 /** Chave pessoal para o atalho do iPhone. */
-export async function healthKey(): Promise<string> {
+export async function healthKey(nova = false): Promise<string> {
   const a = current;
   if (!a) throw new AccountError('Crie uma conta ou entre primeiro.', 401);
-  return (await call<{ key: string }>('saude-chave', { token: a.token })).key;
+  return (await call<{ key: string }>('saude-chave', { token: a.token, nova })).key;
 }
 
 export async function healthDays(): Promise<Record<string, import('./healthSync').HealthDay>> {

@@ -176,10 +176,15 @@ export interface HealthDay {
 }
 
 /** Chave pessoal do atalho do iPhone (não é a sessão: só serve para enviar dados de saúde). */
-export async function healthKey(store: AccountStore, token: unknown): Promise<Result> {
+export async function healthKey(store: AccountStore, token: unknown, rotate = false): Promise<Result> {
   const id = await sessionUser(store, token);
   if (!id) return err(401, 'A sessão terminou. Entre outra vez.');
   let key = await store.get(`hk:${id}`);
+  // nova chave: a antiga deixa de funcionar (ex.: se ficou gravada num atalho partilhado)
+  if (key && rotate) {
+    await store.delete(`h:${key}`);
+    key = null;
+  }
   if (!key) {
     key = random(12);
     await Promise.all([store.put(`hk:${id}`, key), store.put(`h:${key}`, id)]);

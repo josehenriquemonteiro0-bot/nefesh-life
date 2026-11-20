@@ -75,6 +75,11 @@ describe('app Saúde pelo atalho do iPhone', async () => {
     await healthPush(s, { chave: k.body.key, passos: 9000 }, '2026-11-20');
     const d = await healthPull(s, r.body.token);
     expect(d.body.days).toMatchObject({ '2026-11-20': { steps: 9000, sleepH: 7.5, exMin: 32 } });
+    // chave nova: a antiga deixa de servir
+    const k2 = await healthKey(s, r.body.token, true);
+    expect(k2.body.key).not.toBe(k.body.key);
+    expect((await healthPush(s, { chave: k.body.key, passos: 1 }, '2026-11-20')).status).toBe(401);
+    expect((await healthPush(s, { chave: k2.body.key, passos: 1 }, '2026-11-20')).status).toBe(200);
     await deleteAccount(s, r.body.token, 'a@b.pt', 'segredo123');
     expect(s.data.size).toBe(0);
   });

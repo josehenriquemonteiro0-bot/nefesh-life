@@ -172,7 +172,7 @@ export default {
       if (action === 'sair') return send(await logout(store, b.token));
       if (action === 'dados') return send(await getData(store, b.token));
       if (action === 'guardar') return send(await saveData(store, b.token, b.data, b.updatedAt));
-      if (action === 'saude-chave') return send(await healthKey(store, b.token));
+      if (action === 'saude-chave') return send(await healthKey(store, b.token, b.nova === true));
       if (action === 'saude-dados') return send(await healthPull(store, b.token));
       if (action === 'apagar') return send(await deleteAccount(store, b.token, b.email, b.password));
       return json({ error: 'rota desconhecida' }, 404, h);

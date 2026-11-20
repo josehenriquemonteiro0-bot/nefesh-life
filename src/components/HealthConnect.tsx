@@ -85,13 +85,29 @@ export function HealthConnectSheet({ onClose, openAccount, refresh }: { onClose:
                 <button className="btn sm" disabled={!key} onClick={() => key && copy(key, 'Chave copiada.')}>Copiar</button>
               </div>
             )}
-            <p className="small mute">A chave só serve para enviar passos, sono e exercício para a sua conta. Não dá acesso aos seus dados.</p>
+            <p className="small mute">
+              A chave só serve para enviar passos, sono e exercício para a sua conta. Não dá acesso aos seus dados. Não a partilhe.{' '}
+              <button
+                className="link small inline"
+                onClick={async () => {
+                  if (!confirm('Gerar uma chave nova? A antiga deixa de funcionar e terá de pôr a nova no atalho (editar o atalho e trocar o texto da chave).')) return;
+                  try {
+                    setKey(await healthKey(true));
+                    toast('Chave nova criada.');
+                  } catch (e) {
+                    toast((e as Error).message);
+                  }
+                }}
+              >
+                gerar chave nova
+              </button>
+            </p>
 
             <h3>2. Instale o atalho NEFESH Saúde</h3>
             {HEALTH_SHORTCUT_URL && (
               <>
                 <a className="btn" href={HEALTH_SHORTCUT_URL} target="_blank" rel="noopener">Instalar o atalho</a>
-                <p className="small mute">Toque em <b>Adicionar atalho</b> e, quando pedir, cole a chave. Depois toque nele uma vez e autorize o acesso ao app Saúde.</p>
+                <p className="small mute">Toque em <b>Configurar atalho</b> (ou Adicionar atalho) e, quando pedir a chave, cole-a. Depois toque no atalho uma vez e autorize o acesso ao app Saúde: deve aparecer a mensagem "NEFESH Life: … enviados".</p>
                 <button className="link small inline" onClick={() => setManual((v) => !v)}>{manual ? 'esconder' : 'prefiro criar o atalho à mão'}</button>
               </>
             )}
