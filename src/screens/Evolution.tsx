@@ -6,6 +6,7 @@ import { daysSince, keyDaysAgo, shortDate } from '../domain/dates';
 import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
+import { weekAdherence, weekChanges } from '../domain/planAdherence';
 
 export function Evolution({ openReport, go }: { openReport: () => void; go?: (t: 'check') => void }) {
   const { S } = useStore();
@@ -69,6 +70,27 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
           ]}
         />
       </section>
+
+      {S.nutriPlan && (() => {
+        const w = weekAdherence(S);
+        const changes = weekChanges(S);
+        return (
+          <section className="card">
+            <div className="row"><h2 style={{ margin: 0 }}>Plano alimentar</h2><span className="small mute">{w.pct === null ? 'sem registos' : `adesão ${w.pct}%`}</span></div>
+            <div className="cols" style={{ gridTemplateColumns: 'repeat(7,minmax(0,1fr))' }}>
+              {w.days.map((d) => <i key={d.key} className={d.pct >= 75 ? 'full' : ''} style={{ height: `${Math.max(d.done ? 4 : 0, d.pct)}%` }} title={`${d.pct}%`} />)}
+            </div>
+            <div className="cols-l"><span>há 7 dias</span><span>hoje</span></div>
+            {changes.length > 0 && (
+              <>
+                <h3 style={{ marginTop: 12 }}>Alterações desta semana</h3>
+                <ul className="small plan-list">{changes.slice(-6).map((c) => <li key={c}>{c}</li>)}</ul>
+              </>
+            )}
+            <p className="small mute" style={{ margin: '8px 0 0' }}>Refeição seguida conta inteira; com alterações conta metade. Estes dados vão no relatório para o nutricionista.</p>
+          </section>
+        );
+      })()}
 
       <section className="card">
         <div className="row"><h2 style={{ margin: 0 }}>Água</h2><span className="small mute">meta {gw} copos</span></div>

@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { todayKey } from '../domain/dates';
 import { loadFile } from '../domain/files';
-import { MEALS } from '../domain/foods';
 import type { PhotoError } from '../domain/photo';
-import { diaryMeal, planEntries, readPlan } from '../domain/planRead';
+import { readPlan } from '../domain/planRead';
+import { STATUS_LABEL, dayAdherence } from '../domain/planAdherence';
+import { Bar } from './Charts';
+import { PlanMealSheet } from './PlanMealSheet';
 import { useStore } from '../state/store';
 import { PremiumTag } from './PremiumTag';
 
 /** Plano do nutricionista lido pela IA: refeições, alternativas e registo com um toque. */
 export function NutriPlanCard() {
-  const { S, update, updateToday, toast } = useStore();
+  const { S, update, todayLog: l, toast } = useStore();
   const meta = S.plans?.nutri;
   const plan = S.nutriPlan && meta && S.nutriPlan.name === meta.name ? S.nutriPlan : null;
   const [busy, setBusy] = useState(false);
@@ -54,19 +56,26 @@ export function NutriPlanCard() {
     );
 
   const pro = plan.professional || meta.by;
+  const log = l.planLog ?? {};
+  const adh = dayAdherence(S, todayKey());
   return (
     <section className="card">
       <div className="row">
-        <h2 style={{ margin: 0 }}>O meu plano por refeição</h2>
+        <h2 style={{ margin: 0 }}>Hoje no seu plano</h2>
         <PremiumTag f="lerPlano" />
       </div>
       <p className="small mute" style={{ margin: '4px 0 10px' }}>
-        {pro ? `Plano de ${pro}. ` : ''}Toque numa refeição para ver as opções e registar.
+        {pro ? `Plano de ${pro}. ` : ''}Toque numa refeição para marcar o que fez.
       </p>
+      <div className="row small" style={{ marginBottom: 2 }}>
+        <span>{adh.done} de {adh.total} refeições marcadas</span>
+        <span className="mute">adesão {adh.pct}%</span>
+      </div>
+      <Bar pct={adh.pct} />
       {plan.daily_kcal > 0 && !S.nutriPro && !hide && (
         <button
           className="btn ghost sm"
-          style={{ marginBottom: 10 }}
+          style={{ margin: '6px 0 10px' }}
           onClick={() => {
             update((d) => { d.nutriPro = { kcal: Math.round(plan.daily_kcal), protein: plan.daily_protein_g ? Math.round(plan.daily_protein_g) : undefined, by: pro || 'o seu nutricionista', at: todayKey() }; });
             toast('A meta do plano passou a ser a do diário.');
@@ -75,45 +84,20 @@ export function NutriPlanCard() {
           Usar a meta do plano ({Math.round(plan.daily_kcal).toLocaleString('pt-PT')} kcal)
         </button>
       )}
-      <div className="planmeals">
+      <div className="planmeals" style={{ marginTop: 10 }}>
         {plan.meals.map((m, i) => {
-          const isOpen = open === i;
-          const target = diaryMeal(m.meal);
-          const targetLabel = MEALS.find((x) => x[0] === target)![1];
+          const st = log[String(i)];
           return (
-            <div key={i} className="planmeal">
-              <button className="ex-head" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen}>
+            <button key={i} className={`planrow ${st ? `st-${st.status}` : ''}`} onClick={() => setOpen(i)}>
+              <span className="st-dot" aria-hidden="true">{st ? (st.status === 'seguido' ? '✓' : st.status === 'alterado' ? '✎' : '–') : ''}</span>
+              <span style={{ flex: 1, display: 'grid' }}>
                 <b>{m.label}{m.time ? ` · ${m.time}` : ''}</b>
-                <span className="small mute">{m.options.length} {m.options.length === 1 ? 'opção' : 'opções'}</span>
-              </button>
-              {isOpen &&
-                m.options.map((o, j) => {
-                  const kcal = o.items.reduce((t, it) => t + (it.kcal || 0), 0);
-                  return (
-                    <div key={j} className="planopt">
-                      {m.options.length > 1 && <p className="small" style={{ margin: '0 0 4px', fontWeight: 700 }}>{o.name}</p>}
-                      <ul className="small">
-                        {o.items.map((it, k) => (
-                          <li key={k}>{it.name}{it.quantity ? ` — ${it.quantity}` : ''}</li>
-                        ))}
-                      </ul>
-                      <button
-                        className="btn sm"
-                        onClick={() => {
-                          const entries = planEntries(o.items);
-                          updateToday((d) => {
-                            d.meals = { ...(d.meals || {}) };
-                            d.meals[target] = [...(d.meals[target] || []), ...entries];
-                          });
-                          toast(`Registado no diário: ${m.label}${m.label.toLowerCase() === targetLabel.toLowerCase() ? '' : ` (em ${targetLabel.toLowerCase()})`}${hide ? '' : `, ${Math.round(kcal)} kcal`}.`);
-                        }}
-                      >
-                        Comi esta opção{hide ? '' : ` · ${Math.round(kcal)} kcal`}
-                      </button>
-                    </div>
-                  );
-                })}
-            </div>
+                <span className="small mute">
+                  {st ? `${STATUS_LABEL[st.status]}${st.changes?.length ? `: ${st.changes.join(', ')}` : ''}` : `${m.options.length} ${m.options.length === 1 ? 'opção' : 'opções'} · por fazer`}
+                </span>
+              </span>
+              <span className="mute" aria-hidden="true">›</span>
+            </button>
           );
         })}
       </div>
@@ -123,6 +107,7 @@ export function NutriPlanCard() {
         <button className="link small inline" disabled={busy} onClick={read}>{busy ? 'A ler…' : 'Ler de novo'}</button>
       </p>
       {error && <p className="small warn-t" style={{ margin: '8px 0 0' }}>{error}</p>}
+      {open !== null && plan.meals[open] && <PlanMealSheet idx={open} onClose={() => setOpen(null)} />}
     </section>
   );
 }

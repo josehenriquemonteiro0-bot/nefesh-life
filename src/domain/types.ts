@@ -44,6 +44,8 @@ export interface DayLog {
   d?: number;
   /** treino: 0 nenhum, 1 leve, 2 moderado, 3 intenso */
   t?: number;
+  /** plano do nutricionista vs execução, por índice da refeição do plano */
+  planLog?: Record<string, import('./planAdherence').PlanMealLog>;
   /** treinos feitos no dia */
   workouts?: import('./training').WorkoutLog[];
   /** diário alimentar do dia, por refeição */

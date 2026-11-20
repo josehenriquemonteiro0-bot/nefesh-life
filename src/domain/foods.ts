@@ -169,6 +169,8 @@ export const MEALS: [MealKey, string][] = [
 
 export interface FoodEntry {
   id: string;
+  /** refeição do plano do nutricionista que originou esta entrada (para desfazer) */
+  planRef?: string;
   foodId?: string;
   name: string;
   grams: number;

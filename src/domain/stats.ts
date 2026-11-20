@@ -5,6 +5,7 @@ import { studiesFor } from './science';
 import { BODY_GOAL_LABEL, bodyOf, targetsFor } from './body';
 import { totals } from './foods';
 import { weekProgress } from './training';
+import { weekAdherence, weekChanges } from './planAdherence';
 import { indexOf, planFor, slotsFor } from './plan';
 import { doseText } from './lots';
 import type { AppState, DayLog } from './types';
@@ -151,6 +152,13 @@ export function report(S: AppState, now = new Date()) {
       return w.mvpa || w.strengthDays ? `Atividade esta semana: ${w.mvpa} min moderados a vigorosos · ${w.strengthDays} ${w.strengthDays === 1 ? 'dia' : 'dias'} de força` : null;
     })(),
     S.plans?.nutri ? `Plano alimentar carregado: ${S.plans.nutri.name}${S.plans.nutri.by ? ` (${S.plans.nutri.by})` : ''}` : null,
+    (() => {
+      if (!S.nutriPlan) return null;
+      const w = weekAdherence(S, 7, now);
+      if (w.pct === null) return null;
+      const changes = weekChanges(S, 7, now);
+      return `Adesão ao plano alimentar (7 dias): ${w.pct}% em ${w.loggedDays} ${w.loggedDays === 1 ? 'dia registado' : 'dias registados'}${changes.length ? `\nAlterações ao plano:\n${changes.map((c) => `  - ${c}`).join('\n')}` : ''}`;
+    })(),
     S.plans?.treino ? `Plano de treino carregado: ${S.plans.treino.name}${S.plans.treino.by ? ` (${S.plans.treino.by})` : ''}` : null,
     `Dose atual: ${fmtNum(c.g)} g/dia (${doseText(c.caps, c.format)} · ${fmtNum(c.gPerKg.toFixed(3))} g/kg)${S.proDose ? ` · indicada por ${S.proDose.by}` : ' · dentro do rótulo'}`,
     `Base científica: ${studiesFor(S.ans.goal ?? 'energia').filter((x) => x.level !== 'seguranca').map((x) => x.cite).join('; ')}`,

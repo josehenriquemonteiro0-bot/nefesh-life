@@ -205,7 +205,7 @@ function Diary() {
                 {items.map((e) => (
                   <li key={e.id}>
                     <span>
-                      {e.name}
+                      <span>{e.name}{e.planRef !== undefined && <span className="plan-chip">plano</span>}</span>
                       <span className="small mute">{e.grams ? `${fmtNum(e.grams)} g` : ''}{hide ? '' : `${e.grams ? ' · ' : ''}${e.kcal} kcal`}</span>
                     </span>
                     <button

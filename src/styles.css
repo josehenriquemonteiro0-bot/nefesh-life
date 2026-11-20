@@ -263,3 +263,15 @@ header{padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
 .planmeal{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .planopt{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
 .planopt ul{margin:0 0 10px;padding-left:18px}
+/* plano vs execução */
+.planrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;color:var(--ink);cursor:pointer;min-height:56px}
+.st-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:800;flex:none;color:#00140d}
+.planrow.st-seguido .st-dot{background:var(--neon);border-color:var(--neon)}
+.planrow.st-alterado .st-dot{background:var(--gold);border-color:var(--gold)}
+.planrow.st-saltado .st-dot{background:var(--panel);color:var(--mute)}
+.planrow.st-saltado b{color:var(--mute)}
+.plan-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 12px;border-radius:12px;font-size:14px}
+.plan-status.st-seguido{background:#0b2a21}.plan-status.st-alterado{background:#2a2412}.plan-status.st-saltado{background:var(--panel2)}
+.plan-list{margin:8px 0 12px;padding-left:18px}
+.plan-actions{display:grid;gap:8px}
+.plan-chip{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:6px;background:#1c1530;color:#e0b3f0;vertical-align:middle}
