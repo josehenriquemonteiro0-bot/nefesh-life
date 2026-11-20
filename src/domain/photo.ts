@@ -1,3 +1,4 @@
+import { notePremiumUse } from './analytics';
 import type { FoodEntry, MealKey } from './foods';
 
 /** Endereço do serviço de fotos (Cloudflare Worker). Pode ser trocado no build com VITE_PHOTO_API. */
@@ -66,6 +67,7 @@ export class PhotoError extends Error {
 }
 
 export async function analyzePhoto(image: { data: string; media_type: string }, hint: string): Promise<PhotoResult> {
+  notePremiumUse('fotoPrato');
   let res: Response;
   try {
     res = await fetch(PHOTO_API, {

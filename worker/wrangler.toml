@@ -4,6 +4,8 @@ compatibility_date = "2026-11-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
+# fase de teste: tudo aberto a todos ("false" no lançamento ativa o Premium)
+TEST_MODE = "true"
 # Só a app NEFESH Life pode chamar o serviço a partir do navegador
 ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io"
 MODEL = "claude-opus-5-5"

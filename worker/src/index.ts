@@ -44,6 +44,8 @@ export interface Env {
   MODEL?: string;
   /** segredo opcional que protege a página /stats */
   STATS_KEY?: string;
+  /** "true" na fase de teste (tudo aberto); "false" no lançamento */
+  TEST_MODE?: string;
   /** base de dados da comunidade (D1); opcional até estar criada */
   DB?: social.DB;
 }

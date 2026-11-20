@@ -1,3 +1,4 @@
+import { notePremiumUse } from './domain/analytics';
 import { useEffect, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { Intro } from './components/Intro';
@@ -113,7 +114,10 @@ export function App() {
   const openHealth = () => setHealthOpen(true);
   const [reportOpen, setReportOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
-  const printReport = () => setPrinting(true);
+  const printReport = () => {
+    notePremiumUse('relatorioCompleto');
+    setPrinting(true);
+  };
   useEffect(() => {
     if (!printing) return;
     const done = () => setPrinting(false);

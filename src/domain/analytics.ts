@@ -10,8 +10,30 @@ import { keyDaysAgo, todayKey } from './dates';
 import { PHOTO_API, deviceId } from './photo';
 import { took } from './stats';
 import type { AppState } from './types';
+import { isPremium, type Feature } from './features';
 
 const SENT_KEY = 'nefesh-life-ping';
+const USES_KEY = 'nefesh-life-usos-premium';
+
+/** Conta o uso de uma funcionalidade Premium (para medir interesse na fase de teste). */
+export function notePremiumUse(key: Feature) {
+  try {
+    const all = JSON.parse(localStorage.getItem(USES_KEY) || '{}') as Record<string, number>;
+    all[key] = (all[key] ?? 0) + 1;
+    localStorage.setItem(USES_KEY, JSON.stringify(all));
+  } catch {
+    /* sem armazenamento */
+  }
+}
+function takePremiumUses(): Record<string, number> {
+  try {
+    const all = JSON.parse(localStorage.getItem(USES_KEY) || '{}') as Record<string, number>;
+    localStorage.removeItem(USES_KEY);
+    return all;
+  } catch {
+    return {};
+  }
+}
 
 export interface Ping {
   v: 1;
@@ -33,6 +55,10 @@ export interface Ping {
   installed: boolean;
   platform: 'ios' | 'android' | 'outro';
   evals: number;
+  /** usos de funcionalidades Premium desde o último envio */
+  premiumUses?: Record<string, number>;
+  /** a pessoa tem Premium ativo */
+  premium?: boolean;
 }
 
 export function buildPing(S: AppState, device: string, now = new Date(), env: { installed: boolean; platform: Ping['platform'] } = { installed: false, platform: 'outro' }): Ping {
@@ -56,6 +82,7 @@ export function buildPing(S: AppState, device: string, now = new Date(), env: { 
     installed: env.installed,
     platform: env.platform,
     evals: S.evals.length,
+    premium: isPremium(S),
   };
 }
 
@@ -77,7 +104,7 @@ export async function sendDailyPing(S: AppState) {
     await fetch(`${PHOTO_API}/evento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildPing(S, deviceId(), new Date(), environment())),
+      body: JSON.stringify({ ...buildPing(S, deviceId(), new Date(), environment()), premiumUses: takePremiumUses() }),
       keepalive: true,
     });
   } catch {

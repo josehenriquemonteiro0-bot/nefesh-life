@@ -5,6 +5,7 @@
  * GET  /stats   página com os totais dos últimos 30 dias (protegida pelo segredo STATS_KEY, se existir).
  */
 import { dayKey } from './limits';
+import { SERVER_FEATURES } from './features';
 
 export interface StatsStore {
   get(key: string): Promise<string | null>;
@@ -34,6 +35,13 @@ export function cleanPing(b: Record<string, unknown>) {
     installed: b.installed === true,
     platform: pick(b.platform, ['ios', 'android', 'outro'] as const, 'outro'),
     evals: int(b.evals, 100),
+    premium: b.premium === true,
+    // usos de funcionalidades Premium (só chaves conhecidas)
+    premiumUses: Object.fromEntries(
+      Object.entries((b.premiumUses && typeof b.premiumUses === 'object' ? b.premiumUses : {}) as Record<string, unknown>)
+        .filter(([k]) => Object.prototype.hasOwnProperty.call(SERVER_FEATURES, k) && SERVER_FEATURES[k].tier === 'premium')
+        .map(([k, v]) => [k, int(v, 999)]),
+    ) as Record<string, number>,
   };
 }
 export type CleanPing = ReturnType<typeof cleanPing>;
@@ -96,9 +104,13 @@ export async function summarize(store: StatsStore, days = 30, now = new Date()) 
   const share = (f: (p: CleanPing) => boolean) => (devs.length ? Math.round((devs.filter(f).length / devs.length) * 100) : 0);
   const count = <K extends keyof CleanPing>(k: K) => devs.reduce<Record<string, number>>((m, p) => ({ ...m, [String(p[k])]: (m[String(p[k])] ?? 0) + 1 }), {});
   const accounts = (await listAll(store, 'u:')).length;
+  // interesse em funcionalidades Premium: usos somados nos 30 dias
+  const premiumUses: Record<string, number> = {};
+  for (const { v } of values) for (const [k, n] of Object.entries(v?.premiumUses ?? {})) premiumUses[k] = (premiumUses[k] ?? 0) + n;
   return {
     perDay,
     accounts,
+    premiumUses,
     devices30: devs.length,
     devices7: ids7.size,
     features: {
@@ -150,6 +162,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 <div class="k"><div><b>${s.devices7}</b>ativos nos últimos 7 dias</div><div><b>${s.devices30}</b>ativos nos últimos 30 dias</div><div><b>${s.perDay.reduce((t, d) => t + d.fresh, 0)}</b>novos em 30 dias</div><div><b>${s.perDay.reduce((t, d) => t + d.photos, 0)}</b>fotos analisadas</div><div><b>${s.accounts}</b>contas criadas</div></div>
 <h2>Utilizadores ativos por dia</h2><div class="chart">${bars}</div><p class="m">verde claro: novos · verde escuro: total ativos · da esquerda (há 30 dias) para a direita (hoje)</p>
 <h2>O que as pessoas usam</h2><p class="m">Percentagem dos telemóveis ativos em 30 dias, pelo resumo mais recente de cada um.</p><table>${feat}</table>
+<h2>Interesse em funcionalidades Premium (usos em 30 dias)</h2><table>${Object.keys(s.premiumUses).length ? kv(s.premiumUses) : '<tr><td class="m">Ainda sem usos registados.</td></tr>'}</table>
 <h2>Fase do ritual</h2><table>${kv(s.stage)}</table>
 <h2>Sistema</h2><table>${kv(s.platform)}</table>
 <h2>Formato da Spirulina</h2><table>${kv(s.format)}</table>

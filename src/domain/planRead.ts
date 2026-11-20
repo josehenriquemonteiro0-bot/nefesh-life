@@ -1,3 +1,4 @@
+import { notePremiumUse } from './analytics';
 import { PHOTO_API, PhotoError, deviceId } from './photo';
 import type { FoodEntry, MealKey } from './foods';
 
@@ -43,10 +44,12 @@ export async function preparePlan(file: Blob, name: string): Promise<{ file?: st
 }
 
 export async function readPlan(file: Blob, name: string): Promise<ParsedPlan & { remaining?: number }> {
+  notePremiumUse('lerPlano');
   return readFile(file, name, '/plano');
 }
 
 export async function readWorkoutPlan(file: Blob, name: string): Promise<ParsedWorkoutPlan & { remaining?: number }> {
+  notePremiumUse('lerPlano');
   return readFile(file, name, '/treino');
 }
 

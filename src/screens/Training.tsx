@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { notePremiumUse } from '../domain/analytics';
+import { useEffect, useState } from 'react';
 import { Bar } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
 import { Icon } from '../components/Icon';
@@ -41,6 +42,7 @@ function ExerciseItem({ e, level, done, onToggle }: { e: Exercise; level: Level;
 }
 
 function SessionView({ s, level, onBack }: { s: Session; level: Level; onBack: () => void }) {
+  useEffect(() => notePremiumUse('treinoObjetivo'), [s.id]);
   const { S, todayLog: l, updateToday, toast } = useStore();
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [minutes, setMinutes] = useState<number | undefined>(s.minutes);
