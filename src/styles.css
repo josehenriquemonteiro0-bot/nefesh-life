@@ -666,3 +666,4 @@ ul.plain li.row{gap:8px}
 .consent-more summary::after{content:'›';display:inline-block;font-size:18px;line-height:1;transform:rotate(90deg);transition:transform .2s}
 .consent-more[open] summary::after{transform:rotate(-90deg)}
 .consent-more .privacy{margin-top:10px}
+.challenge,.journey{border:1px solid rgba(201,168,92,.35)}

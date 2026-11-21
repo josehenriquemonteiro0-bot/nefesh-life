@@ -1,3 +1,4 @@
+import { MICRO } from '../domain/firstWeek';
 import { provisionalAreas } from '../domain/onboarding';
 import { Bar, Radar } from '../components/Charts';
 import { DoseSteps, LevelTag, StudyCard } from '../components/Science';
@@ -163,7 +164,8 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
       <BodyCard a={a} onReassess={isNew ? undefined : onReassess} />
       <section className="card">
         <h3>A sua maior oportunidade: {weak[1]}</h3>
-        <p className="small mute" style={{ margin: 0 }}>{ADVICE[weak[0]]}</p>
+        <p className="small" style={{ margin: 0 }}><b>Desafio da semana:</b> {MICRO[weak[0]].title}. {MICRO[weak[0]].text}</p>
+        <p className="small mute" style={{ margin: '6px 0 0' }}>{isNew ? 'Começa hoje: no Início marca cada dia em que fez. No fim da semana, a app mostra se este pilar melhorou.' : ADVICE[weak[0]]}</p>
       </section>
     </>
   );

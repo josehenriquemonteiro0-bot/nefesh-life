@@ -267,7 +267,7 @@ export function App() {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} openSignup={() => openAccount('perfil', 'criar')} />,
+      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} openSignup={() => openAccount('perfil', 'criar')} openScience={openScience} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,

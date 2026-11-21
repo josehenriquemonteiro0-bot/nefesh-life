@@ -121,6 +121,10 @@ export interface AppState {
   laterAsk?: { d: string; n: number; skip?: string[] };
   /** último "agora não" ao pedido de conta */
   accountAsk?: string;
+  /** desafio da semana (micro-ação para o pilar mais fraco) */
+  challenge?: import('./firstWeek').Challenge;
+  /** cartões da primeira semana já fechados (dias) */
+  journeySeen?: number[];
   bottles?: Bottle[];
   /** formato em que a pessoa toma a Spirulina */
   format?: 'caps' | 'po' | 'nibs';

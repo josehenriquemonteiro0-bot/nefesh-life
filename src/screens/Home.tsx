@@ -1,3 +1,4 @@
+import { ChallengeCard, JourneyDayCard } from '../components/FirstWeek';
 import { QUIZ } from '../domain/onboarding';
 import { AccountAskCard, LaterQuestionCard } from '../components/LaterQuestion';
 import { useMemo } from 'react';
@@ -165,7 +166,7 @@ function WeekCard({ go }: { go: Nav }) {
   );
 }
 
-export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth, openSignup }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void; openSignup?: () => void }) {
+export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth, openSignup, openScience }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void; openSignup?: () => void; openScience?: () => void }) {
   const { S, updateToday, todayLog: l, toast } = useStore();
 
   if (!S.ans)
@@ -240,7 +241,9 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         );
       })()}
 
+      <JourneyDayCard go={go} openScience={openScience} startQuiz={startQuiz} />
       <LaterQuestionCard />
+      <ChallengeCard go={go} />
       {openSignup && <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />}
 
       {(() => {

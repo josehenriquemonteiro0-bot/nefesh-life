@@ -6,6 +6,9 @@ export const SHOP_URL = 'https://www.nefeshglobal.shop/produtos';
 export const WHATSAPP_NUMBER = '351926269243';
 /** Abre o WhatsApp da NEFESH com a mensagem já escrita. */
 /** Partilhar um texto no WhatsApp, escolhendo o contacto. */
+/** Vídeo da NEFESH no Instagram mostrado no 5.º dia da primeira semana (vazio = não mostra). */
+export const INSTAGRAM_REEL = 'https://www.instagram.com/reel/DdYy4DwxYOd/';
+
 export const whatsappShare = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
 export const whatsappLink = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
