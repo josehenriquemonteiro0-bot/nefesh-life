@@ -655,3 +655,7 @@ ul.plain li.row{gap:8px}
 .gps-help{max-width:380px;text-align:left;background:rgba(255,255,255,.06);border-radius:14px;padding:10px 14px}
 .gps-help ol{margin:0 0 10px;padding-left:18px}.gps-help li{margin:4px 0}
 .run-overlay>*{flex-shrink:0}.run-overlay{justify-content:flex-start;padding-top:max(32px,env(safe-area-inset-top))}
+.chave-card{border:1px solid rgba(201,168,92,.4);background:linear-gradient(160deg,rgba(201,168,92,.10),rgba(0,0,0,0))}
+.chave-texto{font:600 19px/1.4 Sora,sans-serif;margin:8px 0 6px}
+.chave-lista{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
+.chave-lista li{border-top:1px solid var(--line);padding-top:8px}

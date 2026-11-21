@@ -4,6 +4,7 @@ import { MOODS, MOOD_LABEL, STRESS_LABEL, TECHNIQUES, breathPhase, gratitudeLog,
 import { speak, stopSpeaking, ttsSupported, voiceLang } from '../domain/voice';
 import { useStore } from '../state/store';
 import { MeditationLibrary } from '../components/MeditationLibrary';
+import { ChaveDoDiaCard } from '../components/ChaveDoDiaCard';
 import type { Nav } from '../App';
 
 /** Sessão de respiração guiada: círculo que cresce e encolhe, contagem e voz opcional. */
@@ -113,6 +114,8 @@ export function Mind({ go }: { go: Nav }) {
           <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => go('pros')}>Ver profissionais</button>
         </section>
       )}
+
+      <ChaveDoDiaCard />
 
       <MeditationLibrary />
 
