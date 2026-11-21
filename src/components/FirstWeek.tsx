@@ -88,7 +88,7 @@ export function JourneyDayCard({ go, openScience, startQuiz }: { go: Nav; openSc
         {j.kind === 'ciencia' && openScience && <button className="btn sm" onClick={openScience}>A ciência por trás</button>}
         {j.kind === 'ciencia' && j.video && <a className="btn ghost sm" href={j.video} target="_blank" rel="noreferrer">▶ Ver o vídeo</a>}
         {j.kind === 'comunidade' && <button className="btn sm" onClick={() => go('social')}>Abrir a Comunidade</button>}
-        {j.kind === 'semana' && <button className="btn sm" onClick={startQuiz}>Fazer a reavaliação</button>}
+        {j.kind === 'semana' && !j.done && <button className="btn sm" onClick={startQuiz}>Fazer a reavaliação</button>}
         {j.kind === 'semana' && <button className="link small inline" onClick={() => go('evo')}>Ver evolução</button>}
       </div>
     </div>

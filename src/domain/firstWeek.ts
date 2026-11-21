@@ -7,7 +7,7 @@
 import { AREAS, INSTAGRAM_REEL } from './content';
 import { addDaysKey, daysSince, todayKey } from './dates';
 import { provisionalAreas } from './onboarding';
-import { planFor } from './plan';
+import { indexOf, planFor } from './plan';
 import { tookOn } from './stats';
 import type { AppState, AreaKey } from './types';
 
@@ -97,7 +97,7 @@ export function markChallenge(S: AppState, now = new Date()) {
 /* ───────── jornada dos 7 dias ───────── */
 
 export type JourneyKind = 'vitoria' | 'receita' | 'insight' | 'pilar' | 'ciencia' | 'comunidade' | 'semana';
-export interface JourneyCard { day: number; kind: JourneyKind; title: string; text: string; video?: string }
+export interface JourneyCard { day: number; kind: JourneyKind; title: string; text: string; video?: string; done?: boolean }
 
 /** Primeiro padrão (dia 3): só com uma diferença real; senão, um facto verdadeiro do ritual. */
 export function firstInsight(S: AppState, now = new Date()) {
@@ -139,8 +139,13 @@ export function journeyCard(S: AppState, now = new Date()): JourneyCard | null {
       return { day, kind: 'ciencia', title: '🔬 A ciência por trás do seu plano', text: 'Os estudos sobre a Spirulina e o seu objetivo, explicados de forma simples. E um vídeo da NEFESH no Instagram.', video: INSTAGRAM_REEL || undefined };
     case 6:
       return { day, kind: 'comunidade', title: '👨‍👩‍👧 Juntos é mais fácil', text: 'Convide a família ou amigos para um desafio, ou entre na liga semanal da comunidade.' };
-    default:
+    default: {
+      // já reavaliou (no dia 6 ou depois): mostra o resultado em vez de pedir outra vez
+      const re = S.evals.length >= 2 ? S.evals[S.evals.length - 1] : null;
+      if (re && daysSince(S.planStart, new Date(`${re.date}T12:00:00`)) >= 5)
+        return { day, kind: 'semana', done: true, title: '📊 A sua primeira semana', text: `Reavaliação feita: Índice ${indexOf(S.evals[0].sc)} → ${indexOf(re.sc)}. Veja o antes e depois na Evolução.` };
       return { day, kind: 'semana', title: '📊 A sua primeira semana', text: 'Faça a primeira reavaliação e veja o Índice antes e depois.' };
+    }
   }
 }
 

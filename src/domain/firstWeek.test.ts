@@ -149,3 +149,14 @@ describe('acabamentos', () => {
     expect(commaDecimals('Dormiu 7.6 h e bebeu 2.5 copos.')).toBe('Dormiu 7,6 h e bebeu 2,5 copos.');
   });
 });
+
+describe('dia 7 depois da reavaliação', () => {
+  it('mostra o resultado em vez de pedir outra vez', () => {
+    const S = S0('2026-11-20');
+    expect(journeyCard(S, at('2026-11-26'))!.done).toBeUndefined();
+    S.evals.push({ date: '2026-11-26', sc: { energia: 80, sono: 80, nutricao: 60, hidratacao: 60, movimento: 60 } });
+    const j = journeyCard(S, at('2026-11-26'))!;
+    expect(j.done).toBe(true);
+    expect(j.text).toMatch(/^Reavaliação feita: Índice \d+ → 68\./);
+  });
+});
