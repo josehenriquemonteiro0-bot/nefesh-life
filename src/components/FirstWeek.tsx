@@ -72,12 +72,11 @@ export function JourneyDayCard({ go, openScience, startQuiz }: { go: Nav; openSc
   const close = () => update((d) => { d.journeySeen = [...(d.journeySeen ?? []), j.day]; });
   const w = j.kind === 'semana' ? weeklySummary(S) : null;
   return (
-    <section className="card journey">
+    <div className="today-part journey">
       <div className="row">
-        <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>Dia {j.day} da sua primeira semana</p>
+        <h3 style={{ margin: 0 }}>{j.title}</h3>
         <button className="x" aria-label="Fechar" onClick={close}>×</button>
       </div>
-      <h2 style={{ margin: '4px 0 4px' }}>{j.title}</h2>
       <p className="small" style={{ margin: 0 }}>{j.text}</p>
       {w && (
         <div className="week-grid" style={{ marginTop: 8 }}>
@@ -89,13 +88,12 @@ export function JourneyDayCard({ go, openScience, startQuiz }: { go: Nav; openSc
       )}
       <div className="row" style={{ gap: 10, justifyContent: 'flex-start', marginTop: 10 }}>
         {j.kind === 'receita' && <button className="btn sm" onClick={() => go('recipes')}>Ver receitas</button>}
-        {j.kind === 'pilar' && <button className="btn sm" onClick={close}>Aceito o desafio</button>}
         {j.kind === 'ciencia' && openScience && <button className="btn sm" onClick={openScience}>A ciência por trás</button>}
         {j.kind === 'ciencia' && j.video && <a className="btn ghost sm" href={j.video} target="_blank" rel="noreferrer">▶ Ver o vídeo</a>}
         {j.kind === 'comunidade' && <button className="btn sm" onClick={() => go('social')}>Abrir a Comunidade</button>}
         {j.kind === 'semana' && <button className="btn sm" onClick={startQuiz}>Fazer a reavaliação</button>}
         {j.kind === 'semana' && <button className="link small inline" onClick={() => go('evo')}>Ver evolução</button>}
       </div>
-    </section>
+    </div>
   );
 }

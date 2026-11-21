@@ -99,3 +99,13 @@ describe('evolução na primeira semana', () => {
     expect(homeVisibility(S, at('2026-11-20')).progressive).toBe(false);
   });
 });
+
+describe('português dos insights', () => {
+  it('"No dia em que" no singular', () => {
+    const S = S0();
+    S.logs['2026-11-20'] = { sleepH: 8, e: 5 };
+    S.logs['2026-11-21'] = { sleepH: 5, e: 2 };
+    S.logs['2026-11-22'] = { sleepH: 5, e: 2 };
+    expect(firstInsight(S, at('2026-11-22'))).toMatch(/^No dia em que dormiu/);
+  });
+});

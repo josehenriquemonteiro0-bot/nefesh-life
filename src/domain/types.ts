@@ -119,6 +119,8 @@ export interface AppState {
   evals: Evaluation[];
   /** perguntas do dia: quantas hoje e as adiadas hoje */
   laterAsk?: { d: string; n: number; skip?: string[] };
+  /** última pergunta do dia mostrada (e a que foi para o fim da fila hoje) */
+  laterLast?: { id: string; d: string; demote?: string };
   /** último "agora não" ao pedido de conta */
   accountAsk?: string;
   /** desafio da semana (micro-ação para o pilar mais fraco) */

@@ -59,3 +59,20 @@ describe('chegada rápida', () => {
     expect(askAccount(S, false, at('2026-11-29', 9))).toBe(true);
   });
 });
+
+import { noteLaterShown } from './onboarding';
+
+describe('pergunta do dia não fica presa', () => {
+  it('sem resposta, no dia seguinte passa para a seguinte (e volta mais tarde)', () => {
+    const S = S0();
+    const d3 = at('2026-11-22', 16);
+    const first = nextLaterQuestion(S, d3)!.id;
+    noteLaterShown(S, first, d3);
+    const d4 = at('2026-11-23', 16);
+    const second = nextLaterQuestion(S, d4)!.id;
+    expect(second).not.toBe(first);
+    noteLaterShown(S, second, d4);
+    expect(nextLaterQuestion(S, d4)!.id).toBe(second); // estável durante o dia
+    expect(missingLater(S.ans).map((x) => x.id)).toContain(first); // continua por responder
+  });
+});

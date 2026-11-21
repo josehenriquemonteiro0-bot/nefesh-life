@@ -44,13 +44,26 @@ export function provisionalAreas(a: Answers | null | undefined): AreaKey[] {
 const windowOf = (h: number): When => (h < 11 ? 'manha' : (h >= 11.5 && h < 15) || (h >= 18.5 && h < 22) ? 'refeicao' : 'qualquer');
 
 /** Próxima pergunta do dia (nenhuma no 1.º dia, nem depois de PER_DAY respostas hoje). */
-export function nextLaterQuestion(S: Pick<AppState, 'ans' | 'planStart' | 'sample' | 'laterAsk'>, now = new Date()) {
+/** Pergunta que ficou sem resposta num dia anterior (vai para o fim da fila hoje). */
+const staleLater = (S: Pick<AppState, 'laterLast'>, today: string) => (S.laterLast ? (S.laterLast.d < today ? S.laterLast.id : S.laterLast.demote) : undefined);
+
+/** Regista a pergunta mostrada hoje (para não ficar presa se não for respondida). */
+export function noteLaterShown(S: AppState, id: string, now = new Date()) {
+  const today = todayKey(now);
+  if (S.laterLast?.id === id && S.laterLast.d === today) return;
+  S.laterLast = { id, d: today, demote: staleLater(S, today) };
+}
+
+export function nextLaterQuestion(S: Pick<AppState, 'ans' | 'planStart' | 'sample' | 'laterAsk' | 'laterLast'>, now = new Date()) {
   if (!S.ans || S.sample || !S.planStart || daysSince(S.planStart, now) < 1) return null;
   const today = todayKey(now);
   const asked = S.laterAsk?.d === today ? S.laterAsk : { d: today, n: 0, skip: [] as string[] };
   if (asked.n >= PER_DAY) return null;
-  const left = missingLater(S.ans).filter((x) => !(asked.skip ?? []).includes(x.id));
-  if (!left.length) return null;
+  const open = missingLater(S.ans).filter((x) => !(asked.skip ?? []).includes(x.id));
+  if (!open.length) return null;
+  // a pergunta mostrada num dia anterior e não respondida passa para o fim da fila
+  const stale = staleLater(S, today);
+  const left = [...open.filter((x) => x.id !== stale), ...open.filter((x) => x.id === stale)];
   const w = windowOf(now.getHours() + now.getMinutes() / 60);
   const pick = left.find((x) => x.when === w) ?? left.find((x) => x.when === 'qualquer') ?? left[0];
   return { ...pick, q: laterQuestion(pick.id), left: missingLater(S.ans).length, answeredToday: asked.n };

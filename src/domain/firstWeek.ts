@@ -102,14 +102,13 @@ export function firstInsight(S: AppState, now = new Date()) {
     return a.length && b.length ? { a: a.length, diff: mean(a)! - mean(b)! } : null;
   };
   const water = split((k) => (S.logs[k]?.water ?? 0) >= goal);
-  if (water && water.diff >= 1) return `Nos ${water.a === 1 ? 'dia' : `${water.a} dias`} em que bebeu a meta de água, a sua energia foi maior. Continue a marcar: com mais dias, a app confirma o padrão.`;
+  if (water && water.diff >= 1) return `${water.a === 1 ? 'No dia' : `Nos ${water.a} dias`} em que bebeu a meta de água, a sua energia foi maior. Continue a marcar: com mais dias, a app confirma o padrão.`;
   const sleep = split((k) => (S.logs[k]?.sleepH ?? 0) >= 7);
-  if (sleep && sleep.diff >= 1) return `Nos ${sleep.a === 1 ? 'dia' : `${sleep.a} dias`} em que dormiu 7 horas ou mais, a sua energia foi maior.`;
+  if (sleep && sleep.diff >= 1) return `${sleep.a === 1 ? 'No dia' : `Nos ${sleep.a} dias`} em que dormiu 7 horas ou mais, a sua energia foi maior.`;
   const doses = keys.filter((k) => took(S, S.logs[k], now)).length;
   return doses ? `Já tomou a Spirulina em ${doses} ${doses === 1 ? 'dia' : 'dias'}. Faça o check-in (energia e sono) todos os dias: a partir daqui a app começa a mostrar o que mais mexe consigo.` : 'Faça o check-in (energia e sono) todos os dias: com 3 ou 4 dias, a app começa a mostrar o que mais mexe consigo.';
 }
 
-const AREA_NAME = Object.fromEntries(AREAS) as Record<AreaKey, string>;
 
 /** Cartão do dia da primeira semana (null fora dos dias 1 a 7, ou já fechado). */
 export function journeyCard(S: AppState, now = new Date()): JourneyCard | null {
@@ -126,10 +125,9 @@ export function journeyCard(S: AppState, now = new Date()): JourneyCard | null {
       return { day, kind: 'receita', title: '🥣 Receita com Spirulina', text: 'Experimente hoje uma receita: um batido, uma tosta ou um iogurte com Spirulina, em poucos minutos.' };
     case 3:
       return { day, kind: 'insight', title: '💡 O seu primeiro padrão', text: firstInsight(S, now) };
-    case 4: {
-      const a = S.challenge?.area ?? weakestArea(S);
-      return { day, kind: 'pilar', title: `🎯 Hoje: ${AREA_NAME[a].toLowerCase()}`, text: `É o pilar em que tem mais a ganhar. O desafio desta semana: ${MICRO[a].title.toLowerCase()}. ${MICRO[a].text}` };
-    }
+    case 4:
+      // o desafio da semana já corre desde o 1.º dia: o dia 4 é o da novidade no Início
+      return null;
     case 5:
       return { day, kind: 'ciencia', title: '🔬 A ciência por trás do seu plano', text: 'Os estudos sobre a Spirulina e o seu objetivo, explicados de forma simples. E um vídeo da NEFESH no Instagram.', video: INSTAGRAM_REEL || undefined };
     case 6:

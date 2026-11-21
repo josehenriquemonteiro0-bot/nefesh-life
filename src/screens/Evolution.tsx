@@ -50,7 +50,7 @@ function FirstMilestones({ go }: { go?: (t: 'check') => void }) {
       {ip.yt && <p className="small" style={{ margin: '8px 0 0' }}>⚡ Energia: ontem <b>{ip.yt.y}</b>, hoje <b>{ip.yt.t}</b> {ip.yt.t > ip.yt.y ? '↑' : ip.yt.t < ip.yt.y ? '↓' : '='}</p>}
       {ip.next && (
         <div style={{ marginTop: 10 }}>
-          <p className="small" style={{ margin: '0 0 4px', opacity: 0.85 }}>Faltam {ip.left} {ip.left === 1 ? 'check-in' : 'check-ins'} para o próximo insight</p>
+          <p className="small" style={{ margin: '0 0 4px', opacity: 0.85 }}>{ip.left === 1 ? 'Falta 1 check-in' : `Faltam ${ip.left} check-ins`} para o próximo insight</p>
           <Bar pct={(ip.n / ip.next) * 100} />
         </div>
       )}

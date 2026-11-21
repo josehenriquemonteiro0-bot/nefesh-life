@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { answerLater, askAccount, nextLaterQuestion, skipLater } from '../domain/onboarding';
+import { useEffect, useState } from 'react';
+import { answerLater, askAccount, nextLaterQuestion, noteLaterShown, skipLater } from '../domain/onboarding';
 import { getAuth } from '../domain/account';
 import { todayKey } from '../domain/dates';
 import type { Answers } from '../domain/types';
@@ -14,6 +14,10 @@ export function LaterQuestionCard() {
   const { S, update, toast } = useStore();
   const [m, setM] = useState<Partial<Answers>>({});
   const nx = nextLaterQuestion(S);
+  // regista a pergunta de hoje: se ficar sem resposta, amanhã passa para a seguinte
+  useEffect(() => {
+    if (nx) update((d) => noteLaterShown(d, nx.id));
+  }, [nx?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!nx) return null;
   const { q } = nx;
   const save = (patch: Partial<Answers>) => {
@@ -58,15 +62,15 @@ export function LaterQuestionCard() {
     );
   }
   return (
-    <section className="card later-q">
+    <div className="today-part later-q">
       <div className="row">
         <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>💬 Pergunta do dia</p>
-        <span className="small mute">faltam {nx.left}</span>
+        <span className="small mute">{nx.left === 1 ? 'falta 1' : `faltam ${nx.left}`}</span>
       </div>
-      <h2 style={{ margin: '6px 0 10px' }}>{q.t}</h2>
+      <h3 style={{ margin: '6px 0 10px' }}>{q.t}</h3>
       {body}
       <button className="link small inline" style={{ marginTop: 8 }} onClick={() => update((d) => skipLater(d, q.id))}>Agora não</button>
-    </section>
+    </div>
   );
 }
 
@@ -75,16 +79,13 @@ export function AccountAskCard({ openSignup, streak }: { openSignup: () => void;
   const { S, update } = useStore();
   if (!askAccount(S, !!getAuth())) return null;
   return (
-    <section className="card next-action">
-      <div className="na-text">
-        <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>🔒 Guarde o seu progresso</p>
-        <h2 style={{ margin: '2px 0 2px' }}>{streak >= 2 ? `Proteja a sua sequência de ${streak} dias` : 'Proteja o seu plano'}</h2>
-        <p className="small mute" style={{ margin: 0 }}>Com uma conta, não perde nada se trocar ou perder o telemóvel. Demora 30 segundos.</p>
-      </div>
-      <div className="na-actions" style={{ display: 'grid', gap: 6 }}>
+    <div className="today-part">
+      <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>🔒 {streak >= 2 ? `Proteja a sua sequência de ${streak} dias` : 'Proteja o seu plano'}</p>
+      <p className="small mute" style={{ margin: '4px 0 8px' }}>Com uma conta, não perde nada se trocar ou perder o telemóvel. Demora 30 segundos.</p>
+      <div className="row" style={{ gap: 10, justifyContent: 'flex-start' }}>
         <button className="btn sm" onClick={openSignup}>Criar conta</button>
         <button className="link small inline" onClick={() => update((d) => { d.accountAsk = todayKey(); })}>Agora não</button>
       </div>
-    </section>
+    </div>
   );
 }

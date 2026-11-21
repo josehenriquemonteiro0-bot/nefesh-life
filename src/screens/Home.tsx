@@ -1,5 +1,7 @@
 import { testDays } from '../testDate';
-import { CARD_LABEL, homeVisibility, insightProgress } from '../domain/firstWeek';
+import { CARD_LABEL, homeVisibility, insightProgress, journeyCard } from '../domain/firstWeek';
+import { askAccount, nextLaterQuestion } from '../domain/onboarding';
+import { getAuth } from '../domain/account';
 import { ChallengeCard, JourneyDayCard } from '../components/FirstWeek';
 import { QUIZ } from '../domain/onboarding';
 import { AccountAskCard, LaterQuestionCard } from '../components/LaterQuestion';
@@ -232,22 +234,35 @@ export function HabitsCard() {
   );
 }
 
-/** Espaço de novidade do Início progressivo: "Novo: …" no dia, "Amanhã abre: …" na véspera; e um insight novo. */
-function NoveltyCard({ vis, go }: { vis: ReturnType<typeof homeVisibility>; go: Nav }) {
+/** "Hoje": o cartão do dia, a novidade, a pergunta do dia e o pedido de conta, num só lugar. */
+function TodayCard({ vis, go, openScience, startQuiz, openSignup }: { vis: ReturnType<typeof homeVisibility>; go: Nav; openScience?: () => void; startQuiz: () => void; openSignup?: () => void }) {
   const { S } = useStore();
   const ip = insightProgress(S);
   const newInsight = ip.level >= 2 && ip.level > (S.insightSeen ?? 0) && !!(ip.insight || ip.level >= 10);
-  if (!vis.novo && !vis.amanha && !newInsight) return null;
+  const j = journeyCard(S);
+  const q = nextLaterQuestion(S);
+  const acct = !!openSignup && askAccount(S, !!getAuth());
+  const nov = newInsight || !!vis.novo || !!vis.amanha;
+  if (!j && !q && !acct && !nov) return null;
+  const day = S.planStart ? daysSince(S.planStart) + 1 : 0;
   return (
-    <section className="card novelty">
-      {newInsight && (
-        <div className="row" style={{ gap: 8 }}>
-          <p className="small" style={{ margin: 0 }}>💡 <b>O seu novo insight está pronto.</b></p>
-          <button className="btn sm" onClick={() => go('evo')}>Ver</button>
+    <section className="card today">
+      <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>Hoje{day >= 1 && day <= 14 ? ` · dia ${day}` : ''}</p>
+      {nov && (
+        <div className="today-part">
+          {newInsight && (
+            <div className="row" style={{ gap: 8 }}>
+              <p className="small" style={{ margin: 0 }}>💡 <b>O seu novo insight está pronto.</b></p>
+              <button className="btn sm" onClick={() => go('evo')}>Ver</button>
+            </div>
+          )}
+          {vis.novo && <p className="small" style={{ margin: newInsight ? '8px 0 0' : 0 }}>✨ <b>Novo no Início:</b> {CARD_LABEL[vis.novo]}</p>}
+          {vis.amanha && <p className="small mute" style={{ margin: newInsight || vis.novo ? '6px 0 0' : 0 }}>Amanhã abre: {CARD_LABEL[vis.amanha]}</p>}
         </div>
       )}
-      {vis.novo && <p className="small" style={{ margin: newInsight ? '8px 0 0' : 0 }}>✨ <b>Novo no Início:</b> {CARD_LABEL[vis.novo]}</p>}
-      {vis.amanha && <p className="small mute" style={{ margin: newInsight || vis.novo ? '6px 0 0' : 0 }}>Amanhã abre: {CARD_LABEL[vis.amanha]}</p>}
+      <JourneyDayCard go={go} openScience={openScience} startQuiz={startQuiz} />
+      <LaterQuestionCard />
+      {openSignup && <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />}
     </section>
   );
 }
@@ -322,7 +337,31 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
               <h2 style={{ margin: '2px 0 2px' }}>{na.title}</h2>
               <p className="small mute" style={{ margin: 0 }}>{na.detail}</p>
             </div>
-            {label && <div className="na-actions"><button className="btn sm" onClick={run}>{label}</button></div>}
+            {label && na.kind !== 'dose' && <div className="na-actions"><button className="btn sm" onClick={run}>{label}</button></div>}
+            <div className="na-spirulina">
+              <div className="row">
+                <p className="small" style={{ margin: 0, opacity: 0.85 }}>Spirulina de hoje · <b>{done}/{sl.length}</b> · {dt(totalCaps)}</p>
+                {ev && <span className="small mute">Índice {indexOf(ev.sc)}</span>}
+              </div>
+              <div className="slots" data-tour="tomas">
+          {sl.map((s, i) => (
+            <div className="slot" key={s.l}>
+              <div>
+                <h3>{s.l}</h3>
+                <p className="small mute" style={{ margin: 0 }}>{dt(s.n)}{i === 0 && S.reminder ? ` · lembrete às ${S.reminder}` : ''}</p>
+              </div>
+              <button className={`tick ${doses[i] ? 'on' : ''}`} onClick={() => toggleDose(i)} aria-pressed={!!doses[i]} aria-label={`Marcar toma: ${s.l}`}>
+                <Icon name="ok" color="#00140d" width={3} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="small" style={{ margin: '8px 0 0', opacity: 0.75 }}>
+          Aderência à Spirulina: <b>{adherence(S, 14)}%</b> dos últimos 14 dias
+          {inAdaptation(S) ? ' · semana de adaptação: está a tomar metade da dose.' : ''}
+        </p>
+            </div>
+
             <button className="btn ghost full talk talk-big" onClick={() => { requestListen(); go('coach'); }} aria-label="Toca para falar com o NEFESH Voice Assistant">
               <Icon name="mic" /> Toca para falar
             </button>
@@ -330,11 +369,8 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         );
       })()}
 
-      <JourneyDayCard go={go} openScience={openScience} startQuiz={startQuiz} />
-      <NoveltyCard vis={vis} go={go} />
-      <LaterQuestionCard />
+      <TodayCard vis={vis} go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
       <ChallengeCard go={go} />
-      {openSignup && <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />}
 
       {(() => {
         // relatório semanal pronto (domingo à noite e segunda-feira), até ser aberto
@@ -367,37 +403,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </section>
       )}
 
-      <section className="card hero">
-        <div className="row">
-          <div>
-            <p className="small" style={{ margin: 0, opacity: 0.8 }}>Spirulina de hoje</p>
-            <h2 style={{ margin: '2px 0 0' }}>{done}/{sl.length} {sl.length === 1 ? 'toma' : 'tomas'} · {dt(totalCaps)}</h2>
-          </div>
-          {ev && (
-            <div style={{ textAlign: 'right' }}>
-              <p className="small" style={{ margin: 0, opacity: 0.8 }}>Índice</p>
-              <b className="idx-mini">{indexOf(ev.sc)}</b>
-            </div>
-          )}
-        </div>
-        <div className="slots" data-tour="tomas">
-          {sl.map((s, i) => (
-            <div className="slot" key={s.l}>
-              <div>
-                <h3>{s.l}</h3>
-                <p className="small mute" style={{ margin: 0 }}>{dt(s.n)}{i === 0 ? ` · lembrete às ${S.reminder}` : ''}</p>
-              </div>
-              <button className={`tick ${doses[i] ? 'on' : ''}`} onClick={() => toggleDose(i)} aria-pressed={!!doses[i]} aria-label={`Marcar toma: ${s.l}`}>
-                <Icon name="ok" color="#00140d" width={3} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <p className="small" style={{ margin: '12px 0 0', opacity: 0.85 }}>
-          Aderência à Spirulina: <b>{adherence(S, 14)}%</b> dos últimos 14 dias
-          {inAdaptation(S) ? ' · semana de adaptação: está a tomar metade da dose.' : ''}
-        </p>
-      </section>
+
 
       <SpirulinaCheck />
 
