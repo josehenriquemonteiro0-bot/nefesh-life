@@ -196,6 +196,9 @@ export type HomeCard = 'agua' | 'comunidade' | 'passos' | 'habitos' | 'pros';
 export const CARD_LABEL: Record<HomeCard, string> = { agua: 'Hidratação', comunidade: 'Comunidade', passos: 'Passos', habitos: 'Hábitos de hoje', pros: 'Profissionais' };
 const ALL_CARDS: HomeCard[] = ['agua', 'comunidade', 'passos', 'habitos', 'pros'];
 
+/** Início progressivo desligado: depois do teste, todos veem o Início completo desde o 1.º dia (true volta a ligar). */
+export const HOME_PROGRESSIVE = false;
+
 /** Calendário: dia 4 o pilar mais fraco (hidratação, ou passos se for o movimento), 6 comunidade, 8 o outro, 10 hábitos, 14 profissionais. */
 export function unlockPlan(S: Pick<AppState, 'evals' | 'ans'>): [number, HomeCard][] {
   const first: HomeCard = weakestArea(S) === 'movimento' ? 'passos' : 'agua';
@@ -207,9 +210,9 @@ export function unlockPlan(S: Pick<AppState, 'evals' | 'ans'>): [number, HomeCar
  * (homeProgressive), até ao 14.º dia; "Mostrar tudo no Início" no Perfil desliga.
  * A hidratação aparece logo se o desafio da semana for a água.
  */
-export function homeVisibility(S: AppState, now = new Date()) {
+export function homeVisibility(S: AppState, now = new Date(), enabled = HOME_PROGRESSIVE) {
   const all = { show: new Set<HomeCard>(ALL_CARDS), novo: null as HomeCard | null, amanha: null as HomeCard | null, progressive: false };
-  if (!S.ans || S.sample || S.homeAll || !S.homeProgressive || !S.planStart) return all;
+  if (!enabled || !S.ans || S.sample || S.homeAll || !S.homeProgressive || !S.planStart) return all;
   const day = daysSince(S.planStart, now) + 1;
   const plan = unlockPlan(S);
   if (day > plan[plan.length - 1][0]) return all;

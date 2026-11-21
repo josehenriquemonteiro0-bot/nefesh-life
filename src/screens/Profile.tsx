@@ -1,3 +1,4 @@
+import { HOME_PROGRESSIVE } from '../domain/firstWeek';
 import { TEST_DAYS_KEY, isTestCopy, testDays } from '../testDate';
 import { useState } from 'react';
 import { Bar } from '../components/Charts';
@@ -248,7 +249,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <input type="checkbox" checked={showWomen(S)} onChange={(e) => update((d) => { d.women = { ...(d.women ?? {}), mode: e.target.checked ? (d.women?.mode && d.women.mode !== 'nao' ? d.women.mode : 'ciclo') : 'nao', show: e.target.checked }; })} />
           <span className="small">Mostrar "Ciclo" (saúde da mulher: ciclo menstrual, gravidez e menopausa).</span>
         </label>
-        {S.homeProgressive && (
+        {S.homeProgressive && HOME_PROGRESSIVE && (
           <label className="check">
             <input type="checkbox" checked={!!S.homeAll} onChange={(e) => update((d) => { d.homeAll = e.target.checked; })} />
             <span className="small">Mostrar tudo no Início (nas primeiras semanas, os cartões vão aparecendo aos poucos).</span>

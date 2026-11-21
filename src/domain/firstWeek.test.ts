@@ -83,20 +83,26 @@ describe('evolução na primeira semana', () => {
     expect(energyInsight(S, at('2026-11-21'))).toBeNull();
   });
 
-  it('início progressivo: só para quem começou com esta versão; abre por dias', () => {
+  it('desligado por omissão: todos veem tudo', () => {
     const S = S0('2026-11-20');
-    expect(homeVisibility(S, at('2026-11-21')).progressive).toBe(false);
     S.homeProgressive = true;
-    const d1 = homeVisibility(S, at('2026-11-20'));
-    expect([...d1.show]).toEqual([]);
-    expect(homeVisibility(S, at('2026-11-22')).amanha).toBe('passos'); // movimento é o mais fraco
-    expect(homeVisibility(S, at('2026-11-23'))).toMatchObject({ novo: 'passos' });
-    expect([...homeVisibility(S, at('2026-11-29')).show].sort()).toEqual(['agua', 'comunidade', 'passos', 'habitos'].sort());
-    expect(homeVisibility(S, at('2026-12-04')).progressive).toBe(false);
-    S.challenge = { area: 'hidratacao', start: '2026-11-20', done: [] };
-    expect(homeVisibility(S, at('2026-11-20')).show.has('agua')).toBe(true);
-    S.homeAll = true;
     expect(homeVisibility(S, at('2026-11-20')).progressive).toBe(false);
+  });
+
+  it('início progressivo (quando ligado): só para quem começou com esta versão; abre por dias', () => {
+    const S = S0('2026-11-20');
+    expect(homeVisibility(S, at('2026-11-21'), true).progressive).toBe(false);
+    S.homeProgressive = true;
+    const d1 = homeVisibility(S, at('2026-11-20'), true);
+    expect([...d1.show]).toEqual([]);
+    expect(homeVisibility(S, at('2026-11-22'), true).amanha).toBe('passos'); // movimento é o mais fraco
+    expect(homeVisibility(S, at('2026-11-23'), true)).toMatchObject({ novo: 'passos' });
+    expect([...homeVisibility(S, at('2026-11-29'), true).show].sort()).toEqual(['agua', 'comunidade', 'passos', 'habitos'].sort());
+    expect(homeVisibility(S, at('2026-12-04'), true).progressive).toBe(false);
+    S.challenge = { area: 'hidratacao', start: '2026-11-20', done: [] };
+    expect(homeVisibility(S, at('2026-11-20'), true).show.has('agua')).toBe(true);
+    S.homeAll = true;
+    expect(homeVisibility(S, at('2026-11-20'), true).progressive).toBe(false);
   });
 });
 
