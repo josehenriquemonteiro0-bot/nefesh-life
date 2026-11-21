@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { MICRO, insightProgress } from '../domain/firstWeek';
 import { Bar, Columns, LineChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { STEP_GOAL } from '../domain/content';
-import { fmtNum, keyDaysAgo, shortDate } from '../domain/dates';
+import { fmtNum, keyDaysAgo, shortDate, todayKey } from '../domain/dates';
 import { indexOf, planFor } from '../domain/plan';
 import { adherence, badges, bestStreak, changeSinceStart, streak } from '../domain/stats';
 import { useStore } from '../state/store';
@@ -10,6 +11,54 @@ import { weekAdherence, weekChanges } from '../domain/planAdherence';
 import { compareEvals, nextReassessment, spirulinaInsight } from '../domain/progress';
 import { WeeklyReport } from '../components/WeeklyReport';
 import { Timeline } from '../components/Timeline';
+
+/** Marcos da primeira semana (antes do resumo dos 10 check-ins). */
+function FirstMilestones({ go }: { go?: (t: 'check') => void }) {
+  const { S, update } = useStore();
+  const ip = insightProgress(S);
+  const ev = S.evals[0];
+  // o insight novo passa a visto ao abrir a Evolução
+  useEffect(() => {
+    if (ip.level > (S.insightSeen ?? 0)) update((d) => { d.insightSeen = ip.level; });
+  }, [ip.level]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      {ip.n === 0 && ev ? (
+        <>
+          <h2 style={{ margin: '6px 0 4px', fontSize: 22 }}>O seu ponto de partida</h2>
+          <p className="small" style={{ margin: 0, opacity: 0.9 }}>
+            Índice NEFESH <b className="neon">{indexOf(ev.sc)}</b>
+            {S.challenge ? <> · desafio da semana: <b>{MICRO[S.challenge.area].title.toLowerCase()}</b></> : null}. Faça o check-in hoje: é a partir daqui que medimos a sua evolução.
+          </p>
+        </>
+      ) : ip.insight ? (
+        <>
+          <h2 style={{ margin: '6px 0 4px', fontSize: 22 }}>💡 O seu primeiro insight</h2>
+          <p style={{ margin: 0 }}>{ip.insight.text}</p>
+        </>
+      ) : ip.n >= 2 ? (
+        <>
+          <h2 style={{ margin: '6px 0 4px', fontSize: 22 }}>{ip.n} check-ins feitos</h2>
+          <p className="small" style={{ margin: 0, opacity: 0.9 }}>Mais 2 check-ins e mostramos o que mais mexe com a sua energia.</p>
+        </>
+      ) : (
+        <>
+          <h2 style={{ margin: '6px 0 4px', fontSize: 22 }}>O seu ponto de partida{ev ? `: Índice ${indexOf(ev.sc)}` : ''}</h2>
+          <p className="small" style={{ margin: 0, opacity: 0.9 }}>Primeiro check-in feito. Amanhã comparamos a sua energia com a de hoje.</p>
+        </>
+      )}
+      {ip.yt && <p className="small" style={{ margin: '8px 0 0' }}>⚡ Energia: ontem <b>{ip.yt.y}</b>, hoje <b>{ip.yt.t}</b> {ip.yt.t > ip.yt.y ? '↑' : ip.yt.t < ip.yt.y ? '↓' : '='}</p>}
+      {ip.next && (
+        <div style={{ marginTop: 10 }}>
+          <p className="small" style={{ margin: '0 0 4px', opacity: 0.85 }}>Faltam {ip.left} {ip.left === 1 ? 'check-in' : 'check-ins'} para o próximo insight</p>
+          <Bar pct={(ip.n / ip.next) * 100} />
+        </div>
+      )}
+      {go && !S.logs[todayKey()]?.e && <button className="btn sm" style={{ marginTop: 10 }} onClick={() => go('check')}>Check-in de hoje</button>}
+      <p className="small mute" style={{ margin: '8px 0 0' }}>É uma observação sobre si, não uma prova.</p>
+    </>
+  );
+}
 
 /** A Spirulina e você: como se sentiu nos dias com e sem o ritual. */
 export function SpirulinaInsight() {
@@ -113,7 +162,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
             </p>
           </>
         ) : (
-          <h2 style={{ margin: '6px 0 0' }}>Faça check-in durante 10 dias para ver o seu primeiro resumo.</h2>
+          <FirstMilestones go={go} />
         )}
       </section>
 

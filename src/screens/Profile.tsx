@@ -1,3 +1,4 @@
+import { TEST_DAYS_KEY, isTestCopy, testDays } from '../testDate';
 import { useState } from 'react';
 import { Bar } from '../components/Charts';
 import { Icon } from '../components/Icon';
@@ -247,7 +248,26 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <input type="checkbox" checked={showWomen(S)} onChange={(e) => update((d) => { d.women = { ...(d.women ?? {}), mode: e.target.checked ? (d.women?.mode && d.women.mode !== 'nao' ? d.women.mode : 'ciclo') : 'nao', show: e.target.checked }; })} />
           <span className="small">Mostrar "Ciclo" (saúde da mulher: ciclo menstrual, gravidez e menopausa).</span>
         </label>
+        {S.homeProgressive && (
+          <label className="check">
+            <input type="checkbox" checked={!!S.homeAll} onChange={(e) => update((d) => { d.homeAll = e.target.checked; })} />
+            <span className="small">Mostrar tudo no Início (nas primeiras semanas, os cartões vão aparecendo aos poucos).</span>
+          </label>
+        )}
       </section>
+
+      {isTestCopy() && (
+        <section className="card">
+          <h2 style={{ marginTop: 0 }}>🧪 Modo de teste</h2>
+          <p className="small mute" style={{ marginTop: 0 }}>Só na cópia de teste: avança a data da app para ver os próximos dias (pergunta do dia, cartões que abrem, insights). {testDays() ? <b>Agora: +{testDays()} {testDays() === 1 ? 'dia' : 'dias'}.</b> : 'Agora: hoje.'}</p>
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+            {[1, 3].map((n) => (
+              <button key={n} className="btn ghost sm" onClick={() => { localStorage.setItem(TEST_DAYS_KEY, String(testDays() + n)); location.reload(); }}>+{n} {n === 1 ? 'dia' : 'dias'}</button>
+            ))}
+            {testDays() > 0 && <button className="btn sm" onClick={() => { localStorage.removeItem(TEST_DAYS_KEY); location.reload(); }}>Voltar a hoje</button>}
+          </div>
+        </section>
+      )}
 
       <DataCard startQuiz={startQuiz} />
 

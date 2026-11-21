@@ -61,3 +61,41 @@ describe('jornada dos 7 dias', () => {
     expect(firstInsight(T, at('2026-11-22'))).not.toMatch(/energia foi maior/);
   });
 });
+
+import { energyInsight, homeVisibility, insightProgress } from './firstWeek';
+
+describe('evolução na primeira semana', () => {
+  it('marcos: ontem e hoje, faltam N check-ins, insight com o fator que mais difere', () => {
+    const S = S0();
+    S.challenge = { area: 'hidratacao', start: '2026-11-20', done: ['2026-11-21'] };
+    S.logs['2026-11-20'] = { e: 2, water: 3, sleepH: 6 };
+    expect(insightProgress(S, at('2026-11-20'))).toMatchObject({ n: 1, next: 2, left: 1, level: 0, insight: null });
+    S.logs['2026-11-21'] = { e: 4, water: 9, sleepH: 6.5 };
+    const p = insightProgress(S, at('2026-11-21'));
+    expect(p).toMatchObject({ n: 2, next: 4, left: 2, level: 2, yt: { y: 2, t: 4 } });
+    expect(p.insight!.text).toBe('No dia em que bebeu 9 copos de água, a sua energia foi 4. Nos outros, 2.');
+  });
+
+  it('sem diferença no fator bom, não inventa', () => {
+    const S = S0();
+    S.logs['2026-11-20'] = { e: 4, water: 2 };
+    S.logs['2026-11-21'] = { e: 2, water: 8 };
+    expect(energyInsight(S, at('2026-11-21'))).toBeNull();
+  });
+
+  it('início progressivo: só para quem começou com esta versão; abre por dias', () => {
+    const S = S0('2026-11-20');
+    expect(homeVisibility(S, at('2026-11-21')).progressive).toBe(false);
+    S.homeProgressive = true;
+    const d1 = homeVisibility(S, at('2026-11-20'));
+    expect([...d1.show]).toEqual([]);
+    expect(homeVisibility(S, at('2026-11-22')).amanha).toBe('passos'); // movimento é o mais fraco
+    expect(homeVisibility(S, at('2026-11-23'))).toMatchObject({ novo: 'passos' });
+    expect([...homeVisibility(S, at('2026-11-29')).show].sort()).toEqual(['agua', 'comunidade', 'passos', 'habitos'].sort());
+    expect(homeVisibility(S, at('2026-12-04')).progressive).toBe(false);
+    S.challenge = { area: 'hidratacao', start: '2026-11-20', done: [] };
+    expect(homeVisibility(S, at('2026-11-20')).show.has('agua')).toBe(true);
+    S.homeAll = true;
+    expect(homeVisibility(S, at('2026-11-20')).progressive).toBe(false);
+  });
+});

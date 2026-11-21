@@ -19,6 +19,8 @@ import { useStore } from '../state/store';
 import { shareMoment } from '../domain/social';
 import { PhaseHint } from '../components/Cycle';
 import { DeloadCard, FeelChips } from '../components/Progress';
+import { ActivityCard } from './Home';
+import { homeVisibility } from '../domain/firstWeek';
 import { homeDose, recordProgress, type Feel } from '../domain/progression';
 import { todayKey } from '../domain/dates';
 import { OutdoorCard } from '../components/RunTracker';
@@ -272,7 +274,7 @@ function PersonalNote() {
   );
 }
 
-export function Training() {
+export function Training({ openHealth }: { openHealth?: () => void } = {}) {
   const { S, todayLog, update } = useStore();
   const hasProFile = !!S.plans?.treino;
   const hasPro = !!(S.trainPlan && S.plans?.treino?.name === S.trainPlan.name);
@@ -310,6 +312,7 @@ export function Training() {
 
       <PhaseHint kind="train" />
       <DeloadCard />
+      {!homeVisibility(S).show.has('passos') && <ActivityCard openHealth={openHealth ?? (() => {})} />}
       <WeekSummary />
       <OtherActivity />
       <OutdoorCard />

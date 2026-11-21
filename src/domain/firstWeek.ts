@@ -138,3 +138,84 @@ export function journeyCard(S: AppState, now = new Date()): JourneyCard | null {
       return { day, kind: 'semana', title: '📊 A sua primeira semana', text: 'Veja o resumo dos seus primeiros 7 dias e faça a primeira reavaliação: o Índice antes e depois.' };
   }
 }
+
+/* ───────── Evolução na primeira semana: marcos e primeiro insight ───────── */
+
+/** Check-ins que desbloqueiam cada insight; aos 10 aparece o resumo completo. */
+export const INSIGHT_STEPS = [2, 4, 7, 10];
+
+/** Dias com check-in (energia) desde o início do plano, no máximo os últimos 30. */
+export function checkinDays(S: AppState, now = new Date()) {
+  const out: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    const k = addDaysKey(todayKey(now), -i);
+    if (S.planStart && k < S.planStart) break;
+    if (S.logs[k]?.e) out.push(k);
+  }
+  return out.reverse();
+}
+
+/**
+ * O dia de maior energia contra o de menor: o fator com mais diferença (desafio feito,
+ * copos de água, horas de sono, Spirulina tomada), só quando o dia bom tem o valor "bom".
+ */
+export function energyInsight(S: AppState, now = new Date()) {
+  const days = checkinDays(S, now);
+  if (days.length < 2) return null;
+  const e = (k: string) => S.logs[k]!.e!;
+  const hi = days.reduce((a, b) => (e(b) > e(a) ? b : a));
+  const lo = days.reduce((a, b) => (e(b) < e(a) ? b : a));
+  if (e(hi) === e(lo)) return null;
+  const L = (k: string) => S.logs[k] ?? {};
+  const cand: { score: number; text: string }[] = [];
+  const ch = S.challenge;
+  if (ch && ch.done.includes(hi) && !ch.done.includes(lo)) cand.push({ score: 1, text: 'fez o desafio da semana' });
+  if (took(S, S.logs[hi], now) && !took(S, S.logs[lo], now)) cand.push({ score: 1, text: 'tomou a Spirulina' });
+  const w = (L(hi).water ?? 0) - (L(lo).water ?? 0);
+  if (w >= 2) cand.push({ score: w / 4, text: `bebeu ${L(hi).water} copos de água` });
+  const s = (L(hi).sleepH ?? 0) - (L(lo).sleepH ?? 0);
+  if (typeof L(hi).sleepH === 'number' && typeof L(lo).sleepH === 'number' && s >= 1) cand.push({ score: s / 2, text: `dormiu ${String(L(hi).sleepH).replace('.', ',')} horas` });
+  if (!cand.length) return null;
+  const best = cand.sort((a, b) => b.score - a.score)[0];
+  const others = days.filter((k) => k !== hi).map(e);
+  const y = Math.round((others.reduce((a, b) => a + b, 0) / others.length) * 10) / 10;
+  return { text: `No dia em que ${best.text}, a sua energia foi ${e(hi)}. Nos outros, ${String(y).replace('.', ',')}.` };
+}
+
+/** Estado dos marcos: check-ins, próximo insight, nível já atingido e ontem/hoje. */
+export function insightProgress(S: AppState, now = new Date()) {
+  const n = checkinDays(S, now).length;
+  const next = INSIGHT_STEPS.find((x) => x > n) ?? null;
+  const level = INSIGHT_STEPS.filter((x) => x <= n).pop() ?? 0;
+  const today = todayKey(now), yesterday = addDaysKey(today, -1);
+  const yt = S.logs[yesterday]?.e && S.logs[today]?.e && (!S.planStart || yesterday >= S.planStart) ? { y: S.logs[yesterday]!.e!, t: S.logs[today]!.e! } : null;
+  return { n, next, left: next ? next - n : 0, level, yt, insight: n >= 2 ? energyInsight(S, now) : null };
+}
+
+/* ───────── Início progressivo ───────── */
+
+export type HomeCard = 'agua' | 'comunidade' | 'passos' | 'habitos' | 'pros';
+export const CARD_LABEL: Record<HomeCard, string> = { agua: 'Hidratação', comunidade: 'Comunidade', passos: 'Passos', habitos: 'Hábitos de hoje', pros: 'Profissionais' };
+const ALL_CARDS: HomeCard[] = ['agua', 'comunidade', 'passos', 'habitos', 'pros'];
+
+/** Calendário: dia 4 o pilar mais fraco (hidratação, ou passos se for o movimento), 6 comunidade, 8 o outro, 10 hábitos, 14 profissionais. */
+export function unlockPlan(S: Pick<AppState, 'evals' | 'ans'>): [number, HomeCard][] {
+  const first: HomeCard = weakestArea(S) === 'movimento' ? 'passos' : 'agua';
+  return [[4, first], [6, 'comunidade'], [8, first === 'agua' ? 'passos' : 'agua'], [10, 'habitos'], [14, 'pros']];
+}
+
+/**
+ * Cartões visíveis no Início. Progressivo só para quem começou com esta versão
+ * (homeProgressive), até ao 14.º dia; "Mostrar tudo no Início" no Perfil desliga.
+ * A hidratação aparece logo se o desafio da semana for a água.
+ */
+export function homeVisibility(S: AppState, now = new Date()) {
+  const all = { show: new Set<HomeCard>(ALL_CARDS), novo: null as HomeCard | null, amanha: null as HomeCard | null, progressive: false };
+  if (!S.ans || S.sample || S.homeAll || !S.homeProgressive || !S.planStart) return all;
+  const day = daysSince(S.planStart, now) + 1;
+  const plan = unlockPlan(S);
+  if (day > plan[plan.length - 1][0]) return all;
+  const show = new Set<HomeCard>(plan.filter(([d]) => d <= day).map(([, c]) => c));
+  if (S.challenge?.area === 'hidratacao') show.add('agua');
+  return { show, novo: plan.find(([d]) => d === day)?.[1] ?? null, amanha: plan.find(([d]) => d === day + 1)?.[1] ?? null, progressive: true };
+}

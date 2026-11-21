@@ -125,6 +125,11 @@ export interface AppState {
   challenge?: import('./firstWeek').Challenge;
   /** cartões da primeira semana já fechados (dias) */
   journeySeen?: number[];
+  /** Início progressivo (só para quem começou com esta versão) e o interruptor do Perfil */
+  homeProgressive?: boolean;
+  homeAll?: boolean;
+  /** último insight da Evolução já visto (n.º de check-ins) */
+  insightSeen?: number;
   bottles?: Bottle[];
   /** formato em que a pessoa toma a Spirulina */
   format?: 'caps' | 'po' | 'nibs';

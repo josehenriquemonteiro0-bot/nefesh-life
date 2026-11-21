@@ -1,3 +1,4 @@
+import './testDate';
 import { PHOTO_API } from './domain/photo';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

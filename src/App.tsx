@@ -242,7 +242,7 @@ export function App() {
     const first = S.sample || !S.ans;
     if (first) {
       const fresh = blankState();
-      replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications, consent: S.consent });
+      replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications, consent: S.consent, homeProgressive: true });
     } else {
       update((d) => {
         d.ans = ans;
@@ -272,7 +272,7 @@ export function App() {
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
       nutri: <Nutrition />,
-      treino: <Training />,
+      treino: <Training openHealth={openHealth} />,
       sono: <Sleep />,
       ciclo: <Women go={go} />,
       mente: <Mind go={go} />,

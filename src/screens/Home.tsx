@@ -1,3 +1,5 @@
+import { testDays } from '../testDate';
+import { CARD_LABEL, homeVisibility, insightProgress } from '../domain/firstWeek';
 import { ChallengeCard, JourneyDayCard } from '../components/FirstWeek';
 import { QUIZ } from '../domain/onboarding';
 import { AccountAskCard, LaterQuestionCard } from '../components/LaterQuestion';
@@ -38,7 +40,7 @@ export function SampleBanner({ onReset }: { onReset: () => void }) {
   );
 }
 
-function ActivityCard({ openHealth }: { openHealth: () => void }) {
+export function ActivityCard({ openHealth }: { openHealth: () => void }) {
   const { S, todayLog: l, updateToday } = useStore();
   const steps = l.steps ?? 0;
   const p = Math.min(1, steps / STEP_GOAL);
@@ -109,7 +111,7 @@ function StatusStrip({ go }: { go: Nav }) {
 }
 
 /** Acompanhamento por profissionais de saúde parceiros. */
-function ProsCard({ go }: { go: Nav }) {
+export function ProsCard({ go }: { go: Nav }) {
   const { S } = useStore();
   return (
     <section className="card">
@@ -166,6 +168,90 @@ function WeekCard({ go }: { go: Nav }) {
   );
 }
 
+/** Hidratação: copos de hoje (também em Nutrição). */
+export function WaterCard() {
+  const { S, todayLog: l, updateToday, toast } = useStore();
+  const goalW = planFor(S).water;
+  const w = l.water || 0;
+  const setWater = (n: number) => {
+    updateToday((t) => { t.water = Math.max(0, n); });
+    if (n === goalW && w < goalW) toast('Meta de água cumprida.');
+  };
+  return (
+    <section className="card" data-tour="agua">
+        <div className="row">
+          <h2 style={{ margin: 0 }}>Hidratação</h2>
+          <span className="small mute">{litres(w)} de {litres(goalW)} L</span>
+        </div>
+        <div className="water-row">
+          <Glass on={w > 0} />
+          <div style={{ flex: 1 }}>
+            <Bar pct={(w / goalW) * 100} variant="water" />
+            <p className="small mute" style={{ margin: '4px 0 0' }}>
+              {w} de {goalW} copos · {w >= goalW ? 'meta cumprida hoje' : `faltam ${goalW - w}`}
+            </p>
+          </div>
+        </div>
+        <div className="row">
+          <p className="small mute" style={{ margin: 0 }}>Copos de 250 ml · meta de 35 ml por kg.</p>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn ghost sm" onClick={() => setWater(w - 1)} aria-label="Retirar um copo">−</button>
+            <button className="btn sm" onClick={() => setWater(w + 1)}>+ 1 copo</button>
+          </div>
+        </div>
+      </section>
+  );
+}
+
+/** Hábitos de hoje (também em Mente). */
+export function HabitsCard() {
+  const { S, todayLog: l, updateToday, toast } = useStore();
+  return (
+      <section className="card">
+        <h2>Hábitos de hoje</h2>
+        <div className="habits">
+          {HABITS.map(([k, t, icon]) => {
+            const on = habitOn(S, l, k);
+            return (
+              <button
+                key={k}
+                className={`habit ${on ? 'on' : ''}`}
+                aria-pressed={on}
+                onClick={() => {
+                  if (k === 'sono' && l.sleepH !== undefined) return toast('Este hábito marca-se pelas horas de sono do check-in.');
+                  updateToday((d) => { d.hab = { ...d.hab, [k]: !d.hab?.[k] }; });
+                }}
+              >
+                <Icon name={icon} />
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+  );
+}
+
+/** Espaço de novidade do Início progressivo: "Novo: …" no dia, "Amanhã abre: …" na véspera; e um insight novo. */
+function NoveltyCard({ vis, go }: { vis: ReturnType<typeof homeVisibility>; go: Nav }) {
+  const { S } = useStore();
+  const ip = insightProgress(S);
+  const newInsight = ip.level >= 2 && ip.level > (S.insightSeen ?? 0) && !!(ip.insight || ip.level >= 10);
+  if (!vis.novo && !vis.amanha && !newInsight) return null;
+  return (
+    <section className="card novelty">
+      {newInsight && (
+        <div className="row" style={{ gap: 8 }}>
+          <p className="small" style={{ margin: 0 }}>💡 <b>O seu novo insight está pronto.</b></p>
+          <button className="btn sm" onClick={() => go('evo')}>Ver</button>
+        </div>
+      )}
+      {vis.novo && <p className="small" style={{ margin: newInsight ? '8px 0 0' : 0 }}>✨ <b>Novo no Início:</b> {CARD_LABEL[vis.novo]}</p>}
+      {vis.amanha && <p className="small mute" style={{ margin: newInsight || vis.novo ? '6px 0 0' : 0 }}>Amanhã abre: {CARD_LABEL[vis.amanha]}</p>}
+    </section>
+  );
+}
+
 export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth, openSignup, openScience }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void; openSignup?: () => void; openScience?: () => void }) {
   const { S, updateToday, todayLog: l, toast } = useStore();
 
@@ -201,6 +287,8 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   const totalCaps = sl.reduce((t, s) => t + s.n, 0);
   const low = st.days <= 10;
   const re = nextReassessment(S);
+  const vis = homeVisibility(S);
+  const firstDays = vis.progressive && day <= 7;
 
   const { toggle: toggleDose } = useDoseToggle();
 
@@ -212,9 +300,10 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   return (
     <>
       <SampleBanner onReset={onReset} />
+      {testDays() > 0 && <p className="small warn" style={{ margin: '0 0 6px' }}>🧪 Modo de teste: a data está avançada {testDays()} {testDays() === 1 ? 'dia' : 'dias'} (Perfil → Voltar a hoje).</p>}
       <p className="mute small" style={{ margin: 0 }}>{longToday()} · dia {day} do ritual</p>
       <h1>{greeting()}{S.ans.name ? `, ${S.ans.name}` : ''}</h1>
-      <StatusStrip go={go} />
+      {vis.show.has('comunidade') && <StatusStrip go={go} />}
 
       {(() => {
         const na = nextAction(S, l);
@@ -242,6 +331,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       })()}
 
       <JourneyDayCard go={go} openScience={openScience} startQuiz={startQuiz} />
+      <NoveltyCard vis={vis} go={go} />
       <LaterQuestionCard />
       <ChallengeCard go={go} />
       {openSignup && <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />}
@@ -327,28 +417,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </section>
       )}
 
-      <section className="card" data-tour="agua">
-        <div className="row">
-          <h2 style={{ margin: 0 }}>Hidratação</h2>
-          <span className="small mute">{litres(w)} de {litres(goalW)} L</span>
-        </div>
-        <div className="water-row">
-          <Glass on={w > 0} />
-          <div style={{ flex: 1 }}>
-            <Bar pct={(w / goalW) * 100} variant="water" />
-            <p className="small mute" style={{ margin: '4px 0 0' }}>
-              {w} de {goalW} copos · {w >= goalW ? 'meta cumprida hoje' : `faltam ${goalW - w}`}
-            </p>
-          </div>
-        </div>
-        <div className="row">
-          <p className="small mute" style={{ margin: 0 }}>Copos de 250 ml · meta de 35 ml por kg.</p>
-          <div className="row" style={{ gap: 6 }}>
-            <button className="btn ghost sm" onClick={() => setWater(w - 1)} aria-label="Retirar um copo">−</button>
-            <button className="btn sm" onClick={() => setWater(w + 1)}>+ 1 copo</button>
-          </div>
-        </div>
-      </section>
+      {vis.show.has('agua') && <WaterCard />}
 
       {!l.e && (
         <section className="card" data-tour="checkin">
@@ -362,40 +431,19 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </section>
       )}
 
-      <ActivityCard openHealth={openHealth} />
+      {vis.show.has('passos') && <ActivityCard openHealth={openHealth} />}
 
-      <section className="card">
-        <h2>Hábitos de hoje</h2>
-        <div className="habits">
-          {HABITS.map(([k, t, icon]) => {
-            const on = habitOn(S, l, k);
-            return (
-              <button
-                key={k}
-                className={`habit ${on ? 'on' : ''}`}
-                aria-pressed={on}
-                onClick={() => {
-                  if (k === 'sono' && l.sleepH !== undefined) return toast('Este hábito marca-se pelas horas de sono do check-in.');
-                  updateToday((d) => { d.hab = { ...d.hab, [k]: !d.hab?.[k] }; });
-                }}
-              >
-                <Icon name={icon} />
-                {t}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {vis.show.has('habitos') && <HabitsCard />}
 
-      <ProsCard go={go} />
+      {vis.show.has('pros') && <ProsCard go={go} />}
 
-      <WeekCard go={go} />
+      {firstDays ? null : <WeekCard go={go} />}
 
 
-      <section className="card tip">
+      {!firstDays && <section className="card tip">
         <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>
         <p style={{ margin: 0 }}>{tip}</p>
-      </section>
+      </section>}
 
     </>
   );

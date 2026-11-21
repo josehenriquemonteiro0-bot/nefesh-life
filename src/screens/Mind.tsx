@@ -5,6 +5,8 @@ import { speak, stopSpeaking, ttsSupported, voiceLang } from '../domain/voice';
 import { useStore } from '../state/store';
 import { MeditationLibrary } from '../components/MeditationLibrary';
 import { ChaveDoDiaCard } from '../components/ChaveDoDiaCard';
+import { HabitsCard } from './Home';
+import { homeVisibility } from '../domain/firstWeek';
 import type { Nav } from '../App';
 
 /** Sessão de respiração guiada: círculo que cresce e encolhe, contagem e voz opcional. */
@@ -88,6 +90,7 @@ export function Mind({ go }: { go: Nav }) {
       {running && <BreathSession tech={techniqueOf(tech)} minutes={min} onEnd={finish} />}
       <h1>Mente</h1>
       <ChaveDoDiaCard />
+      {!homeVisibility(S).show.has('habitos') && <HabitsCard />}
       <section className="card hero">
         <p className="small" style={{ margin: 0, opacity: 0.8 }}>{longToday()}</p>
         <h2 style={{ margin: '4px 0 8px' }}>Como está o seu humor?</h2>
