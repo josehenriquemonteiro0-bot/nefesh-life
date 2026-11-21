@@ -9,7 +9,6 @@ import { workoutKcal } from '../domain/progress';
 import { PlanUpload } from '../components/PlanUpload';
 import { PhaseHint } from '../components/Cycle';
 import { WaterCard } from './Home';
-import { homeVisibility } from '../domain/firstWeek';
 import { NutriPlanCard } from '../components/NutriPlan';
 import { fmtNum, keyDaysAgo, longToday, todayKey } from '../domain/dates';
 import { FOODS, MEALS, editEntry, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
@@ -311,7 +310,6 @@ function Diary() {
 }
 
 export function Nutrition({ initial = 'diario' }: { initial?: 'diario' | 'receitas' }) {
-  const { S } = useStore();
   const [sub, setSub] = useState(initial);
   return (
     <>
@@ -321,7 +319,7 @@ export function Nutrition({ initial = 'diario' }: { initial?: 'diario' | 'receit
         <button className={sub === 'receitas' ? 'on' : ''} aria-pressed={sub === 'receitas'} onClick={() => setSub('receitas')}>Receitas</button>
       </div>
       {sub === 'diario' && <PhaseHint kind="food" />}
-      {sub === 'diario' && !homeVisibility(S).show.has('agua') && <WaterCard />}
+      {sub === 'diario' && <WaterCard />}
       {sub === 'diario' ? <Diary /> : <Recipes />}
     </>
   );

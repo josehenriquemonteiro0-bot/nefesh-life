@@ -49,7 +49,7 @@ export function nextAction(S: AppState, l: DayLog, now = new Date()): NextAction
   const goal = planFor(S).water;
   const expected = Math.floor((goal * Math.min(1, Math.max(0, (h - 8) / 14))));
   const w = l.water ?? 0;
-  if (w < expected) return { kind: 'agua', title: `Beber água: faltam ${goal - w} copos`, detail: `Mais ${expected - w} ${expected - w === 1 ? 'copo' : 'copos'} e fica em dia.`, when: 'agora' };
+  if (w < expected) return { kind: 'agua', title: 'Beber água', detail: `Mais ${expected - w} ${expected - w === 1 ? 'copo' : 'copos'} e fica em dia.`, when: 'agora' };
   // 2b. o desafio da semana, à hora em que faz sentido
   const ch = challengeState(S, now);
   const chOpen = ch && !ch.ended && !ch.doneToday ? ch : null;

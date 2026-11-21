@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { AREAS, TIPS } from '../domain/content';
 import { daysSince, keyDaysAgo, todayKey } from '../domain/dates';
-import { MICRO, CARD_LABEL, challengeState, homeVisibility, insightProgress, journeyCard, markChallenge, newChallenge } from '../domain/firstWeek';
+import { CARD_LABEL, challengeState, homeVisibility, insightProgress, journeyCard, markChallenge, newChallenge } from '../domain/firstWeek';
 import { askAccount, nextLaterQuestion } from '../domain/onboarding';
 import { getAuth } from '../domain/account';
 import { nextAction } from '../domain/nextAction';
@@ -38,7 +38,7 @@ function Arc({ r, p, color }: { r: number; p: number; color: string }) {
 export function DayPanel({ go }: { go: Nav }) {
   const { S, todayLog: l, update, updateToday, toast } = useStore();
   const sl = slotsFor(S);
-  const done = (l.doses ?? []).filter(Boolean).length;
+  const done = (l.doses ?? []).slice(0, sl.length).filter(Boolean).length;
   const goalW = planFor(S).water;
   const w = l.water ?? 0;
   const ch = challengeState(S);
@@ -48,8 +48,8 @@ export function DayPanel({ go }: { go: Nav }) {
   const p = { spirulina: sl.length ? done / sl.length : 0, agua: goalW ? w / goalW : 0, desafio: ch && !ch.ended ? (chDone ? 1 : 0) : 0 };
   const val = {
     spirulina: `${done}/${sl.length}`,
-    agua: `${w}/${goalW} copos`,
-    desafio: !ch || ch.ended ? '—' : chDone ? 'feito ✓' : 'por fazer',
+    agua: `${w}/${goalW}`,
+    desafio: !ch || ch.ended ? '—' : chDone ? 'feito ✓' : 'a fazer',
   };
   return (
     <section className="card day-panel" data-tour="tomas">
@@ -68,17 +68,15 @@ export function DayPanel({ go }: { go: Nav }) {
         {RINGS.map((r) => (
           <div key={r.key} className="lg-row">
             <i style={{ background: r.color }} />
-            <span className="small">{r.label}</span>
-            <b className="small">{val[r.key]}</b>
+            <span className="lg-txt"><span className="small mute">{r.label}</span><b className="small">{val[r.key]}</b></span>
             {r.key === 'agua' && <button className="mini-add" aria-label="Mais um copo de água" onClick={() => { updateToday((t) => { t.water = (t.water ?? 0) + 1; }); if (w + 1 === goalW) toast('Meta de água cumprida. 💧'); }}>+1</button>}
             {r.key === 'desafio' && ch && !ch.ended && <button className="mini-add" aria-label={chDone ? 'Desmarcar o desafio de hoje' : 'Marcar o desafio de hoje'} onClick={() => update((d) => markChallenge(d))}>{chDone ? '↺' : '✓'}</button>}
           </div>
         ))}
         <p className="small mute lg-foot">
-          🔥 {streak} {streak === 1 ? 'dia' : 'dias'} seguidos
+          🔥 {streak} {streak === 1 ? 'dia seguido' : 'dias seguidos'}
           {last && <> · Índice {first && first !== last ? `${indexOf(first.sc)} → ` : ''}<b className="ink">{indexOf(last.sc)}</b></>}
         </p>
-        {ch && !ch.ended && <p className="small mute lg-ch">🎯 {MICRO[ch.c.area].title}</p>}
       </div>
     </section>
   );

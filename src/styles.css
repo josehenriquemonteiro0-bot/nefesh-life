@@ -676,12 +676,15 @@ ul.plain li.row{gap:8px}
 /* Início: painel do dia, A seguir, carrossel, energia e atalhos */
 .ink{color:var(--ink)}
 .day-panel{display:flex;gap:14px;align-items:center;background:radial-gradient(120% 130% at 0% 0%,rgba(0,254,138,.12),transparent 60%),var(--panel);border:1px solid rgba(0,254,138,.25)}
-.rings{position:relative;width:132px;flex:0 0 132px}
+.rings{position:relative;width:min(132px,34vw);flex:0 0 min(132px,34vw)}
 .rings svg{width:100%;display:block}
 .rings-center{position:absolute;inset:0;margin:auto;width:58px;height:58px;border-radius:50%;background:transparent;border:0;color:var(--ink);display:grid;place-content:center;cursor:pointer;padding:0}
 .rings-center b{font:700 24px/1 Sora,sans-serif}.rings-center span{font-size:10px;opacity:.7;letter-spacing:.04em}
 .legend{flex:1;min-width:0;display:grid;gap:7px}
-.lg-row{display:grid;grid-template-columns:10px 1fr auto auto;align-items:center;gap:7px}
+.lg-row{display:flex;align-items:center;gap:8px;min-height:30px}
+.lg-row i{flex:0 0 10px}
+.lg-txt{flex:1 1 auto;min-width:0;display:grid;line-height:1.25}
+.lg-txt>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lg-row i{width:10px;height:10px;border-radius:50%}
 .mini-add{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:999px;padding:0 10px;font:700 12px Manrope,sans-serif;min-height:28px;cursor:pointer}
 .lg-foot,.lg-ch{margin:2px 0 0}

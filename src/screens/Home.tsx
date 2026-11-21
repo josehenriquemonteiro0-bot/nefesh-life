@@ -247,7 +247,6 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
 
       {/* cartões que vão abrindo (Início progressivo) */}
       {vis.show.has('comunidade') && <StatusStrip go={go} />}
-      {vis.show.has('agua') && <WaterCard />}
       {vis.show.has('passos') && <ActivityCard openHealth={openHealth} />}
       {vis.show.has('habitos') && <HabitsCard />}
       {vis.show.has('pros') && <ProsCard go={go} />}
