@@ -660,3 +660,9 @@ ul.plain li.row{gap:8px}
 .chave-lista{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
 .chave-lista li{border-top:1px solid var(--line);padding-top:8px}
 .chave-ref{color:var(--mute);text-decoration:underline;text-underline-offset:3px}
+.consent-more{margin-top:8px}
+.consent-more summary{cursor:pointer;list-style:none;color:var(--neon);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.consent-more summary::-webkit-details-marker{display:none}
+.consent-more summary::after{content:'›';display:inline-block;font-size:18px;line-height:1;transform:rotate(90deg);transition:transform .2s}
+.consent-more[open] summary::after{transform:rotate(-90deg)}
+.consent-more .privacy{margin-top:10px}

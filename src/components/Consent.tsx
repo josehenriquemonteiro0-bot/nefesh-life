@@ -30,8 +30,15 @@ export function Consent({ onAccept, onCancel }: { onAccept: () => void; onCancel
   return (
     <>
       <h1>Antes de começar</h1>
-      <p className="mute">A avaliação pede alguma informação de saúde. Queremos que saiba exatamente o que acontece com ela.</p>
-      <section className="card"><PrivacyText /></section>
+      <section className="card consent-short">
+        <p className="small" style={{ margin: 0 }}>
+          A avaliação pede alguma informação de saúde. Fica guardada neste telemóvel (e na sua conta, se criar uma), só é partilhada quando escolher, e pode ver, exportar ou apagar tudo no Perfil.
+        </p>
+        <details className="consent-more">
+          <summary>Ler o aviso completo</summary>
+          <PrivacyText />
+        </details>
+      </section>
       <label className="check">
         <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />
         <span>Li e aceito que a NEFESH Life guarde estes dados para criar e personalizar o meu plano. <span className="mute">(necessário)</span></span>
