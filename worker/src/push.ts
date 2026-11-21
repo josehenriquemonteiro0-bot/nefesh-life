@@ -272,7 +272,14 @@ export async function runSchedule(db: DB, store: KeyStore, now = new Date(), fet
     }
     if (r.date !== t.date || m < minutes(r.time)) continue;
     await db.prepare('UPDATE reminders SET sent = 1 WHERE endpoint = ? AND id = ?').bind(r.endpoint, r.id).run();
-    await sendPush(db, store, r.endpoint, { title: `⏰ ${r.time} · ${r.text}`, body: 'Lembrete que combinou com o NEFESH Voice Assistant.', tag: `nefesh-lembrete-${r.id}` }, fetcher);
+    const cycle = r.id.startsWith('ciclo');
+    await sendPush(
+      db, store, r.endpoint,
+      cycle
+        ? { title: r.text, body: 'Toque para ver na NEFESH.', tag: `nefesh-ciclo-${r.id}` }
+        : { title: `⏰ ${r.time} · ${r.text}`, body: 'Lembrete que combinou com o NEFESH Voice Assistant.', tag: `nefesh-lembrete-${r.id}` },
+      fetcher,
+    );
     sent++;
   }
   // domingo às 20h: o relatório semanal está pronto (uma vez por telemóvel e por domingo)

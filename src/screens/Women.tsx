@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bar } from '../components/Charts';
-import { fmtNum, longToday, shortDate, todayKey } from '../domain/dates';
-import {
-  CYCLE_SYMPTOMS, MENO_SYMPTOMS, PHASE_LABEL, PHASE_TIP, PREG_SYMPTOMS, TRIMESTER_TIP, byPhase, cycleDay, menoSleep, periodStarts, pregnancy, topSymptoms, type Phase, type WomenMode,
-} from '../domain/women';
+import { CycleCalendar, CycleDay, CycleHero, CycleHistory, CycleInsights, CyclePrint, CycleSettings } from '../components/Cycle';
+import { fmtNum, shortDate, todayKey } from '../domain/dates';
+import { MENO_SYMPTOMS, PREG_SYMPTOMS, TRIMESTER_TIP, menoSleep, predict, pregnancy, topSymptoms, type WomenMode } from '../domain/women';
+import { requestListen } from '../domain/voice';
+import type { Nav } from '../App';
 import { useStore } from '../state/store';
 
 const MODES: [WomenMode, string, string][] = [
@@ -38,78 +39,39 @@ function Symptoms({ list }: { list: string[] }) {
   );
 }
 
-function CycleView() {
-  const { S, todayLog: l, updateToday, update } = useStore();
-  const c = cycleDay(S);
-  const phases = byPhase(S);
-  const starts = periodStarts(S);
-  const onPeriod = !!l.cycle?.p;
+function CycleView({ go }: { go: Nav }) {
+  const { S, update } = useStore();
+  const [sel, setSel] = useState(todayKey());
+  const [printing, setPrinting] = useState(false);
   const [first, setFirst] = useState('');
+  useEffect(() => {
+    if (!printing) return;
+    const done = () => setPrinting(false);
+    window.addEventListener('afterprint', done);
+    const t = setTimeout(() => window.print(), 300);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
+  }, [printing]);
+  const known = !!predict(S);
   return (
     <>
-      <section className="card hero">
-        <p className="small" style={{ margin: 0, opacity: 0.8 }}>{longToday()}</p>
-        {c ? (
-          <>
-            <h2 style={{ margin: '4px 0 2px' }}>Dia {c.day} do ciclo · {PHASE_LABEL[c.phase]}</h2>
-            <p className="small" style={{ margin: '0 0 8px', opacity: 0.85 }}>
-              Próxima menstruação prevista: <b>{shortDate(c.next)}</b> ({c.inDays <= 0 ? 'a qualquer momento' : `daqui a ${c.inDays} ${c.inDays === 1 ? 'dia' : 'dias'}`}) · ciclo de ~{c.len} dias
-            </p>
-            <Bar pct={(c.day / c.len) * 100} />
-            <p className="small" style={{ margin: '8px 0 0' }}>{PHASE_TIP[c.phase]}</p>
-          </>
-        ) : (
-          <>
-            <h2 style={{ margin: '4px 0 6px' }}>Quando começou a última menstruação?</h2>
-            <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
-              <input className="field sm" type="date" max={todayKey()} value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Início da última menstruação" />
-              <button className="btn sm" disabled={!first} onClick={() => update((d) => { d.women = { ...(d.women ?? { mode: 'ciclo' }), lastStart: first }; })}>Guardar</button>
-            </div>
-          </>
-        )}
-        <button
-          className={`btn ${onPeriod ? 'ghost' : ''} sm`}
-          style={{ marginTop: 12 }}
-          onClick={() => updateToday((d) => { d.cycle = { ...(d.cycle ?? {}), p: !onPeriod }; })}
-        >
-          {onPeriod ? '✓ Com menstruação hoje (tocar para tirar)' : '🩸 Estou com menstruação hoje'}
-        </button>
-        {onPeriod && (
-          <div className="chips" role="group" aria-label="Fluxo" style={{ marginTop: 8 }}>
-            {([1, 2, 3] as const).map((f) => (
-              <button key={f} className={`chip sm ${l.cycle?.flow === f ? 'on' : ''}`} aria-pressed={l.cycle?.flow === f} onClick={() => updateToday((d) => { d.cycle = { ...(d.cycle ?? {}), flow: f }; })}>
-                {['', 'Fluxo leve', 'Moderado', 'Intenso'][f]}
-              </button>
-            ))}
+      {printing && <CyclePrint />}
+      {known ? (
+        <CycleHero onAsk={() => { requestListen(); go('coach'); }} />
+      ) : (
+        <section className="card hero">
+          <h2 style={{ margin: '4px 0 6px' }}>Quando começou a última menstruação?</h2>
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
+            <input className="field sm" type="date" max={todayKey()} value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Início da última menstruação" />
+            <button className="btn sm" disabled={!first} onClick={() => update((d) => { d.women = { ...(d.women ?? { mode: 'ciclo' }), lastStart: first }; })}>Guardar</button>
           </div>
-        )}
-      </section>
-
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>Como se sente hoje?</h2>
-        <Symptoms list={CYCLE_SYMPTOMS} />
-      </section>
-
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>Energia e sono ao longo do ciclo</h2>
-        {phases && phases.some((p) => p.energy !== null) ? (
-          <table className="mydata small">
-            <tbody>
-              <tr><td></td><td><b>Energia</b> (1–5)</td><td><b>Sono</b></td></tr>
-              {phases.map((p) => (
-                <tr key={p.phase} className={c?.phase === p.phase ? 'now' : ''}>
-                  <td>{PHASE_LABEL[p.phase as Phase]}</td>
-                  <td>{p.energy !== null ? fmtNum(p.energy) : '—'}</td>
-                  <td>{p.sleep !== null ? `${fmtNum(p.sleep)} h` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="small mute" style={{ margin: 0 }}>Marque os dias de menstruação e faça o check-in: ao fim de um ou dois ciclos, a app mostra como a sua energia e o sono mudam em cada fase.</p>
-        )}
-        {starts.length > 0 && <p className="small mute" style={{ margin: '8px 0 0' }}>Últimos inícios: {starts.slice(-4).map(shortDate).join(' · ')}</p>}
-      </section>
+          <p className="small" style={{ margin: '8px 0 0', opacity: 0.85 }}>Ou marque os dias no calendário em baixo.</p>
+        </section>
+      )}
+      <CycleCalendar selected={sel} onSelect={setSel} />
+      <CycleDay k={sel} />
+      <CycleInsights />
+      <CycleHistory onPrint={() => setPrinting(true)} />
+      <CycleSettings />
     </>
   );
 }
@@ -182,7 +144,7 @@ function MenopauseView() {
 }
 
 /** Saúde da mulher: ciclo, gravidez e menopausa. */
-export function Women() {
+export function Women({ go }: { go: Nav }) {
   const { S, update } = useStore();
   const mode = S.women?.mode ?? 'ciclo';
   return (
@@ -195,9 +157,9 @@ export function Women() {
           </button>
         ))}
       </div>
-      {mode === 'gravidez' ? <PregnancyView /> : mode === 'menopausa' ? <MenopauseView /> : <CycleView />}
+      {mode === 'gravidez' ? <PregnancyView /> : mode === 'menopausa' ? <MenopauseView /> : <CycleView go={go} />}
       <p className="small mute">
-        Estes dados ficam só no seu telemóvel e na sua conta, e nunca aparecem na comunidade. As datas são estimativas gerais: não servem como método contracetivo nem substituem a consulta. Dores fortes, sangramentos fora do habitual ou sintomas que preocupam: fale com o seu médico.
+        Estes dados ficam no seu telemóvel (e na sua conta, se tiver uma) e nunca aparecem na comunidade nem são partilhados. As datas são estimativas gerais: não servem como método contracetivo nem substituem a consulta. Dores fortes, sangramentos fora do habitual ou sintomas que preocupam: fale com o seu médico.
         {' '}
         <button className="link small inline" onClick={() => update((d) => { d.women = { ...(d.women ?? { mode: 'ciclo' }), mode: 'nao', show: false }; })}>Esconder este separador</button>
       </p>

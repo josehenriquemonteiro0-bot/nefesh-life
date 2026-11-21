@@ -32,6 +32,7 @@ import { showWomen } from './domain/women';
 import { Coach } from './screens/Coach';
 import { Profile } from './screens/Profile';
 import { PrintReport } from './components/PrintReport';
+import { cycleReminders } from './domain/women';
 import { bodySnapshot } from './domain/progress';
 import { sendDailyPing } from './domain/analytics';
 import { AccountScreen, ConflictSheet } from './components/Account';
@@ -168,7 +169,8 @@ export function App() {
     if (S.notifications && !S.sample && pushSupported()) pushMedTimes(medTimes ? medTimes.split(',') : []);
   }, [medTimes, S.notifications, authToken]);
   // lembretes combinados com o assistente (data, hora e texto)
-  const remKey = JSON.stringify((S.reminders ?? []).filter((r) => r.date >= todayKey()));
+  // e os avisos do ciclo (texto discreto, salvo se a pessoa pedir detalhes)
+  const remKey = JSON.stringify([...(S.reminders ?? []).filter((r) => r.date >= todayKey()), ...cycleReminders(S)]);
   useEffect(() => {
     if (S.notifications && !S.sample && pushSupported()) pushReminders(JSON.parse(remKey));
   }, [remKey, S.notifications, authToken]);
@@ -271,7 +273,7 @@ export function App() {
       nutri: <Nutrition />,
       treino: <Training />,
       sono: <Sleep />,
-      ciclo: <Women />,
+      ciclo: <Women go={go} />,
       mente: <Mind go={go} />,
       corpo: <Body />,
       cuidados: <Care />,

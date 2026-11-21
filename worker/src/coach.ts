@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { FOODS } from '../../src/domain/foods';
 import { GYM } from '../../src/domain/gymData';
 import { MEDITATIONS } from '../../src/domain/meditations';
+import { CYCLE_EVENTS, CYCLE_SYMPTOMS, MUCUS } from '../../src/domain/cycleData';
 import { check, count, type CounterStore, type Limits } from './limits';
 import { dailyQuota } from './features';
 
@@ -19,7 +20,7 @@ export function coachLimits(env: { TEST_MODE?: string }): Limits {
   return { device: Number.isFinite(q) ? q : 40, ip: Number.isFinite(q) ? q * 4 : 120, global: 3000 };
 }
 
-const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos', 'humor', 'stress', 'gratidao', 'respiracao', 'memoria', 'nota', 'lembrete', 'consulta', 'desafio', 'abrir', 'resumo', 'peso', 'meditar'] as const;
+const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos', 'humor', 'stress', 'gratidao', 'respiracao', 'memoria', 'nota', 'lembrete', 'consulta', 'desafio', 'abrir', 'resumo', 'peso', 'meditar', 'ciclo'] as const;
 /** Ecrãs da app que o assistente pode abrir (procura por voz). */
 export const SCREENS = ['plano', 'nutricao', 'receitas', 'treino', 'sono', 'mente', 'corpo', 'cuidados', 'ciclo', 'evolucao', 'comunidade', 'desafios', 'profissionais', 'perfil', 'checkin'] as const;
 export const CHALLENGES = ['ritual', 'agua', 'treino', 'checkin', 'passos', 'ritual_agua', 'ritual_treino', 'ritual_checkin', 'ritual_refeicoes', 'reset21'] as const;
@@ -36,13 +37,13 @@ export const COACH_SCHEMA = {
         type: 'object',
         properties: {
           type: { type: 'string', enum: ACTION_TYPES },
-          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); humor e stress: 1 a 5; peso: kg (ex.: 68.5); respiracao: minutos da pausa sugerida (2 a 5); gratidao: 1; spirulina e refeicao: 1' },
+          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); humor e stress: 1 a 5; peso: kg (ex.: 68.5); respiracao: minutos da pausa sugerida (2 a 5); ciclo menstruacao: fluxo 1 leve, 2 moderado, 3 intenso, 4 muito intenso (0 se não disser); ciclo dor: 0 a 10; gratidao: 1; spirulina e refeicao: 1' },
           option: { type: 'number', description: 'plano_refeicao: número da opção do plano que comeu (0 se só houver uma ou se não disser); plano_treino: minutos do treino (0 se não disser); 0 nos outros' },
           status: { type: 'string', enum: ['seguido', 'alterado', 'saltado', ''], description: 'só para plano_refeicao e plano_treino: seguido = como no plano; alterado = com mudanças; saltado = não fez; "" nos outros' },
-          note: { type: 'string', description: 'plano_refeicao alterado: as mudanças (ex.: "sem arroz"); gratidao: a frase de gratidão; memoria: o facto a lembrar, curto e na 3.ª pessoa (ex.: "É vegetariana"); nota: o relato da pessoa resumido numa frase; lembrete: o texto do lembrete (ex.: "Hora de deitar"); meditar: o id da meditação da biblioteca; consulta: especialidade e com quem (ex.: "Cardiologia, Dr. Silva"); "" nos outros' },
+          note: { type: 'string', description: 'plano_refeicao alterado: as mudanças (ex.: "sem arroz"); gratidao: a frase de gratidão; memoria: o facto a lembrar, curto e na 3.ª pessoa (ex.: "É vegetariana"); nota: o relato da pessoa resumido numa frase; lembrete: o texto do lembrete (ex.: "Hora de deitar"); meditar: o id da meditação da biblioteca; ciclo sintomas: os sintomas separados por vírgulas, com os nomes da lista do ciclo; ciclo muco: seco, pegajoso, cremoso, aquoso ou clara; consulta: especialidade e com quem (ex.: "Cardiologia, Dr. Silva"); "" nos outros' },
           meal: { type: 'string', enum: ['pa', 'almoco', 'lanche', 'jantar', ''], description: 'só para refeicao: pa = pequeno-almoço; "" se não for refeição' },
           intensity: { type: 'string', enum: ['leve', 'moderado', 'intenso', ''], description: 'só para treino' },
-          date: { type: 'string', description: 'lembrete e consulta: data AAAA-MM-DD (usa a data de hoje do contexto para "hoje"/"amanhã"); "" nos outros' },
+          date: { type: 'string', description: 'ciclo: dia do registo AAAA-MM-DD se não for hoje (ex.: "comecei ontem"), senão ""; lembrete e consulta: data AAAA-MM-DD (usa a data de hoje do contexto para "hoje"/"amanhã"); "" nos outros' },
           time: { type: 'string', description: 'lembrete e consulta: hora HH:MM (24 h); "" se não houver' },
           challenge: { type: 'string', enum: [...CHALLENGES, ''], description: 'só para desafio: o tipo (caminhada/passos = passos; água = agua; treino = treino; Spirulina todos os dias = ritual; 21 Day Reset = reset21)' },
           level: { type: 'string', enum: ['leve', 'firme', ''], description: 'só para desafio: leve se a pessoa quiser algo mais fácil; senão firme' },
@@ -64,7 +65,7 @@ export const COACH_SCHEMA = {
               additionalProperties: false,
             },
           },
-          title: { type: 'string', description: 'treino: nome curto (ex.: "Peito e tríceps", "Corrida"); "" nos outros' },
+          title: { type: 'string', description: `treino: nome curto (ex.: "Peito e tríceps", "Corrida"); ciclo: o que registar, um de ${CYCLE_EVENTS.join(', ')}; "" nos outros` },
           replace: { type: 'boolean', description: 'true quando corrige um registo anterior do Coach (substitui-o); false quando acrescenta' },
           items: {
             type: 'array',
@@ -126,6 +127,7 @@ Regras de registo:
   · desafio: criar um desafio com amigos (challenge, value = dias 7, 21, 30 ou 90, level, friends com as alcunhas nomeadas). Se a pessoa não tiver amigos na app, sugere o 21 Day Reset, que se pode começar a solo.
 - Procura ("onde vejo as minhas análises?", "quero uma receita com Spirulina", "preciso de um nutricionista"): responde em poucas palavras e usa abrir com o screen certo (análises e medicação = cuidados; receitas = receitas; profissionais = profissionais; relatório e timeline = evolucao).
 - Peso ("hoje pesei 68,5"): peso com value em kg.
+- Ciclo menstrual: "fiquei menstruada hoje, fluxo forte, com cólicas" → ciclo com title menstruacao (value 3) e ciclo com title sintomas (note "Cólicas"); "a menstruação acabou" → fim; "só umas manchas" → borra; "dor 7" → dor com value 7; "comecei ontem" → date de ontem; relações, testes de ovulação e de gravidez pelo title. Sintomas do ciclo: ${CYCLE_SYMPTOMS.join(', ')}. Muco: ${MUCUS.map(([k]) => k).join(', ')}. Perguntas ("quando vem a próxima?", "estou fértil?", "porque estou tão cansada?") respondes com o resumo do ciclo do contexto, dizendo que são estimativas. Nunca digas que um dia é "seguro" para não engravidar: a app não é método contracetivo. Dor que obriga a parar, fluxo muito intenso ou atraso com relações sem proteção: sugere com calma o médico ou um teste de gravidez.
 - Meditação ("guia-me numa meditação", "não consigo dormir", "estou ansioso", "preciso de focar"): meditar com o id da sessão certa da biblioteca abaixo em note; a app mostra o botão para começar. Para uma pausa rápida de respiração continua a usar respiracao.
 - Resumo do dia ("como está o meu dia?", "o que me falta hoje?"): usa resumo; a app junta o resumo com os dados de hoje.
 - Acrescentar ("também comi uma maçã"): envia só o que é novo, com replace = false.

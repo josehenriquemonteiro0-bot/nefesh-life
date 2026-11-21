@@ -6,7 +6,7 @@
  * o modelo só escolhe os alimentos e as quantidades.
  */
 import { GOAL_LABEL, QUESTIONS, TRAINING } from './content';
-import { daysSince, fmtNum, keyDaysAgo, todayKey } from './dates';
+import { daysSince, fmtNum, keyDaysAgo, shortDate, todayKey } from './dates';
 import { foodById, entryOf, MEALS, totals, type FoodEntry, type MealKey } from './foods';
 import { planFor, slotsFor } from './plan';
 import { doseText } from './lots';
@@ -20,12 +20,13 @@ import { asksContext } from './prompts';
 import { logLoads } from './gym';
 import { coachPlanMeal, coachPlanWorkout } from './planMeal';
 import { womenContext } from './women';
+import { CYCLE_SYMPTOMS, FLOW_LABEL, MUCUS } from './cycleData';
 import { notePremiumUse } from './analytics';
 import type { AppState, DayLog } from './types';
 
 export type CoachActionType =
   | 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos'
-  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso' | 'meditar';
+  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso' | 'meditar' | 'ciclo';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -298,6 +299,11 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         }
         break;
       }
+      case 'ciclo': {
+        const msg = applyCycle(S, a, now);
+        if (msg) done.push(`🌸 ${msg}`);
+        break;
+      }
       case 'respiracao':
       case 'meditar':
       case 'lembrete':
@@ -326,6 +332,76 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
     }
   }
   return done;
+}
+
+/** Registo do ciclo ditado ao assistente (hoje ou um dia passado). */
+function applyCycle(S: AppState, a: CoachAction, now: Date): string | null {
+  const today = todayKey(now);
+  const k = a.date && /^\d{4}-\d{2}-\d{2}$/.test(a.date) && a.date <= today && a.date >= keyDaysAgo(60, now) ? a.date : today;
+  const l: DayLog = (S.logs[k] = S.logs[k] || {});
+  const c = { ...(l.cycle ?? {}) };
+  const when = k === today ? '' : ` (${shortDate(k)})`;
+  let msg: string | null = null;
+  switch (a.title) {
+    case 'menstruacao': {
+      c.p = true;
+      delete c.spot;
+      const f = Math.round(a.value);
+      if (f >= 1 && f <= 4) c.flow = f as 1 | 2 | 3 | 4;
+      msg = `Menstruação${c.flow ? `, fluxo ${FLOW_LABEL[c.flow].toLowerCase()}` : ''}${when}`;
+      break;
+    }
+    case 'fim':
+      delete c.p;
+      delete c.flow;
+      msg = `Fim da menstruação${when}`;
+      break;
+    case 'borra':
+      c.spot = true;
+      msg = `Borra / escape${when}`;
+      break;
+    case 'sintomas': {
+      const said = (a.note ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const found = CYCLE_SYMPTOMS.filter((s) => said.includes(s.toLowerCase()));
+      if (!found.length) return null;
+      c.sy = [...new Set([...(c.sy ?? []), ...found])];
+      msg = `Sintomas${when}: ${found.join(', ')}`;
+      break;
+    }
+    case 'dor': {
+      const v = Math.max(0, Math.min(10, Math.round(a.value)));
+      if (v) c.pain = v;
+      else delete c.pain;
+      msg = `Dor${when}: ${v} em 10`;
+      break;
+    }
+    case 'muco': {
+      const m = MUCUS.find(([key]) => key === (a.note ?? '').trim().toLowerCase());
+      if (!m) return null;
+      c.mucus = m[0];
+      msg = `Muco${when}: ${m[1].toLowerCase()}`;
+      break;
+    }
+    case 'relacao_protegida':
+    case 'relacao_desprotegida':
+      c.sex = a.title === 'relacao_protegida' ? 'p' : 'u';
+      msg = `Relação ${c.sex === 'p' ? 'com' : 'sem'} proteção${when}`;
+      break;
+    case 'teste_ovulacao_pos':
+    case 'teste_ovulacao_neg':
+      c.ovt = a.title.endsWith('pos') ? '+' : '-';
+      msg = `Teste de ovulação ${c.ovt === '+' ? 'positivo' : 'negativo'}${when}`;
+      break;
+    case 'teste_gravidez_pos':
+    case 'teste_gravidez_neg':
+      c.pt = a.title.endsWith('pos') ? '+' : '-';
+      msg = `Teste de gravidez ${c.pt === '+' ? 'positivo' : 'negativo'}${when}`;
+      break;
+    default:
+      return null;
+  }
+  l.cycle = c;
+  return msg;
 }
 
 // histórico da conversa (só neste telemóvel)

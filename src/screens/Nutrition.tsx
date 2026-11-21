@@ -7,6 +7,7 @@ import type { ScannedFood } from '../domain/barcode';
 import { targetsFor } from '../domain/body';
 import { workoutKcal } from '../domain/progress';
 import { PlanUpload } from '../components/PlanUpload';
+import { PhaseHint } from '../components/Cycle';
 import { NutriPlanCard } from '../components/NutriPlan';
 import { fmtNum, keyDaysAgo, longToday, todayKey } from '../domain/dates';
 import { FOODS, MEALS, editEntry, entryOf, searchFoods, totals, type Food, type FoodEntry, type MealKey } from '../domain/foods';
@@ -316,6 +317,7 @@ export function Nutrition({ initial = 'diario' }: { initial?: 'diario' | 'receit
         <button className={sub === 'diario' ? 'on' : ''} aria-pressed={sub === 'diario'} onClick={() => setSub('diario')}>Diário</button>
         <button className={sub === 'receitas' ? 'on' : ''} aria-pressed={sub === 'receitas'} onClick={() => setSub('receitas')}>Receitas</button>
       </div>
+      {sub === 'diario' && <PhaseHint kind="food" />}
       {sub === 'diario' ? <Diary /> : <Recipes />}
     </>
   );

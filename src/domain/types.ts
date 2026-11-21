@@ -78,7 +78,11 @@ export interface DayLog {
   /** minutos de meditação guiada */
   medit?: number;
   /** ciclo menstrual / menopausa / gravidez: menstruação, fluxo (1–3) e sintomas */
-  cycle?: { p?: boolean; flow?: 1 | 2 | 3; sy?: string[] };
+  /** ciclo: menstruação (fluxo 1 leve … 4 muito intenso), borra, sintomas, dor 0–10, muco, relação (p protegida, u sem proteção), libido, testes de ovulação e gravidez, produtos */
+  cycle?: {
+    p?: boolean; flow?: 1 | 2 | 3 | 4; sy?: string[]; spot?: boolean; pain?: number; mucus?: import('./cycleData').Mucus;
+    sex?: 'p' | 'u'; libido?: 1 | 2 | 3; ovt?: '+' | '-'; pt?: '+' | '-'; prod?: string[];
+  };
   /** origem de cada valor medível (sem entrada = escrito pela pessoa) */
   src?: Partial<Record<SourcedField, DataSource>>;
 }
@@ -181,7 +185,12 @@ export interface AppState {
   /** fotos de progresso (só neste telemóvel, na base de ficheiros local) */
   progressPhotos?: { id: string; date: string; pose: 'frente' | 'lado' | 'costas' }[];
   /** saúde da mulher: modo, ciclo e menstruação habituais, data prevista do parto */
-  women?: { mode: 'ciclo' | 'gravidez' | 'menopausa' | 'nao'; cycleLen?: number; periodLen?: number; lastStart?: string; due?: string; show?: boolean };
+  women?: {
+    mode: 'ciclo' | 'gravidez' | 'menopausa' | 'nao'; cycleLen?: number; periodLen?: number; lastStart?: string; due?: string; show?: boolean;
+    method?: import('./cycleData').Method; goal?: import('./cycleData').CycleGoal;
+    /** avisos do ciclo: menstruação a chegar, janela fértil, atraso; plain = texto com detalhes (por defeito, discreto) */
+    notif?: { period?: boolean; fertile?: boolean; late?: boolean; plain?: boolean; time?: string };
+  };
   /**
    * Consentimentos opcionais (RGPD/LGPD), com a data de cada escolha. O consentimento para
    * personalizar a app (necessário) é o `consent`.

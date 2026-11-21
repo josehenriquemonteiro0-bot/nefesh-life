@@ -610,3 +610,28 @@ ul.plain li.row{gap:8px}
 .med-caption{max-width:340px;min-height:66px;font:500 17px/1.45 Sora,sans-serif;opacity:.92;margin:0}
 .med-vol{display:grid;gap:4px;justify-items:center;opacity:.85}
 .med-vol input{width:200px;accent-color:var(--neon)}
+
+/* ciclo: calendário, estatísticas e barras */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:10px 0 6px}
+.cal-h{text-align:center;font-size:11px;color:var(--mute)}
+.cal-d{position:relative;aspect-ratio:1;border-radius:50%;border:1px solid transparent;background:transparent;color:inherit;font:600 13px/1 inherit;cursor:pointer;padding:0}
+.cal-d.fut{cursor:default;opacity:.85}
+.cal-d.per{background:#e0486b;color:#fff}
+.cal-d.spot{box-shadow:inset 0 0 0 2px rgba(224,72,107,.55)}
+.cal-d.pred{border:1.5px dashed #e0486b}
+.cal-d.fert{background:rgba(0,254,138,.14)}
+.cal-d.ovu{background:rgba(0,254,138,.32);box-shadow:inset 0 0 0 2px var(--neon)}
+.cal-d.today{outline:2px solid var(--gold,#d8b36a);outline-offset:1px}
+.cal-d.sel{outline:2px solid var(--neon);outline-offset:1px}
+.cal-d i{position:absolute;bottom:3px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:currentColor;opacity:.8}
+.cal-legend{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0}
+.cal-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.cal-legend i.per{background:#e0486b}.cal-legend i.pred{border:1.5px dashed #e0486b}
+.cal-legend i.fert{background:rgba(0,254,138,.3)}.cal-legend i.ovu{background:rgba(0,254,138,.5);box-shadow:inset 0 0 0 2px var(--neon)}
+.cyc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center}
+.cyc-stats div{display:grid;gap:2px}.cyc-stats b{font-size:20px}
+.cyc-bars{display:flex;align-items:flex-end;gap:4px;height:90px;padding-top:14px}
+.cyc-bars span{flex:1;position:relative;background:rgba(224,72,107,.55);border-radius:4px 4px 0 0;min-height:6px}
+.cyc-bars span.out{background:#ffb36b}
+.cyc-bars small{position:absolute;top:-14px;left:0;right:0;text-align:center;font-size:10px;color:var(--mute)}
+.phase-hint{border:1px solid rgba(224,72,107,.35);background:rgba(224,72,107,.06)}

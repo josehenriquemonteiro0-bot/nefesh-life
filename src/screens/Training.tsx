@@ -17,6 +17,7 @@ import { Columns } from '../components/Charts';
 import { HEALTH_WORKOUT_ID } from '../domain/healthSync';
 import { useStore } from '../state/store';
 import { shareMoment } from '../domain/social';
+import { PhaseHint } from '../components/Cycle';
 
 const KIND_ICON = { forca: 'flame', caminhada: 'steps', intervalos: 'evo', mobilidade: 'wind', descanso: 'moon' } as const;
 const INTENSITY: Record<Session['kind'], number> = { forca: 2, intervalos: 3, caminhada: 1, mobilidade: 1, descanso: 0 };
@@ -287,6 +288,7 @@ export function Training() {
         ))}
       </div>
 
+      <PhaseHint kind="train" />
       <WeekSummary />
       <OtherActivity />
       <p />
