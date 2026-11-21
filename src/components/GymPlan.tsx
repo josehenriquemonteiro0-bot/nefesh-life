@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { DAYS, weekdayIndex, type WorkoutLog } from '../domain/training';
-import { GYM, gymWeek, logLoads, setsFor, type GymLevel, type GymSession } from '../domain/gym';
+import { GYM, gymWeek, loadKg, logLoads, setsFor, type GymLevel, type GymSession } from '../domain/gym';
+import { inDeload, nextLoad, recordProgress, type Feel } from '../domain/progression';
+import { FeelChips } from './Progress';
 import { shortDate, todayKey } from '../domain/dates';
 import { useStore } from '../state/store';
 import { shareMoment } from '../domain/social';
@@ -12,7 +14,19 @@ import { Icon } from './Icon';
 function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; onBack: () => void }) {
   const { S, update, updateToday, todayLog: l, toast } = useStore();
   const [done, setDone] = useState<Record<string, boolean>>({});
-  const [loads, setLoads] = useState<Record<string, string>>(() => ({ ...(S.gymLoads ?? {}) }));
+  // próxima carga sugerida pela progressão (a partir da última registada)
+  const [sug] = useState(() => Object.fromEntries(s.exercises.map((id) => [id, nextLoad(S, id, loadKg(S.gymLoads?.[id] ?? ''))])));
+  const [loads, setLoads] = useState<Record<string, string>>(() => {
+    const out = { ...(S.gymLoads ?? {}) };
+    for (const [id, n] of Object.entries(sug)) if (n && id !== 'prancha') out[id] = String(n.kg).replace('.', ',');
+    return out;
+  });
+  const [feels, setFeels] = useState<Record<string, Feel | undefined>>({});
+  const deload = inDeload(S);
+  const sets = (id: string) => {
+    const t = setsFor(id, level, S.ans);
+    return deload ? t.replace(/^(\d+)/, (n) => String(Math.max(1, Number(n) - 1))) : t;
+  };
   const [minutes, setMinutes] = useState<number | undefined>(s.minutes || 30);
   const already = (l.workouts || []).some((w) => w.sessionId === s.id);
 
@@ -25,7 +39,9 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
     });
     // guarda as cargas para a próxima vez
     const used = Object.fromEntries(Object.entries(loads).filter(([id, v]) => v.trim() && s.exercises.includes(id)));
+    const rated = s.exercises.filter((id) => feels[id]).map((id) => ({ id, feel: feels[id]!, kg: loadKg(loads[id] ?? '') }));
     update((d) => {
+      if (rated.length) d.prog = recordProgress(d.prog, rated, todayKey());
       d.gymLoads = { ...(d.gymLoads ?? {}), ...used };
       // histórico das cargas, para ver a evolução
       d.gymLoadLog = logLoads(d.gymLoadLog, used, todayKey());
@@ -48,7 +64,7 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
       {s.exercises.length > 0 && (
         <section className="card">
           <h2 style={{ marginTop: 0 }}>Exercícios</h2>
-          <p className="small mute">Escolha uma carga com que consiga fazer todas as repetições com boa técnica, deixando 2 de reserva. Quando ficar fácil, aumente um pouco.</p>
+          <p className="small mute">Escolha uma carga com que consiga fazer todas as repetições com boa técnica, deixando 2 de reserva. No fim de cada exercício diga como correu: a app ajusta a carga da próxima vez.</p>
           <div className="exlist">
             {s.exercises.map((id) => {
               const e = GYM[id];
@@ -58,7 +74,7 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
                     <input type="checkbox" checked={!!done[id]} onChange={() => setDone({ ...done, [id]: !done[id] })} aria-label={`Feito: ${e.name}`} />
                     <span style={{ flex: 1 }}>
                       <b>{e.name}</b>
-                      <span className="small mute" style={{ display: 'block' }}>{setsFor(id, level, S.ans)} · {e.area}</span>
+                      <span className="small mute" style={{ display: 'block' }}>{sets(id)} · {e.area}</span>
                     </span>
                     <label className="hin" style={{ width: 86 }}>
                       <span>carga</span>
@@ -70,6 +86,8 @@ function GymSessionView({ s, level, onBack }: { s: GymSession; level: GymLevel; 
                     const last = hist[hist.length - 1];
                     return last ? <p className="small neon" style={{ margin: '6px 0 0' }}>Da última vez ({shortDate(last.d)}): {last.v}{/kg/i.test(last.v) ? '' : ' kg'}</p> : null;
                   })()}
+                  {sug[id]?.why && <p className="small gold" style={{ margin: '4px 0 0' }}>↗ {sug[id]!.why}</p>}
+                  <FeelChips label={e.name} value={feels[id]} onPick={(f) => { setFeels({ ...feels, [id]: f }); if (f) setDone({ ...done, [id]: true }); }} />
                   <p className="small mute" style={{ margin: '6px 0 0' }}>{e.tip}</p>
                   <ExerciseHelp name={e.name} />
                 </div>

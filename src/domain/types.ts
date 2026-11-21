@@ -146,6 +146,14 @@ export interface AppState {
   exNames?: Record<string, string>;
   /** histórico das cargas no ginásio, por exercício (mais antigo primeiro) */
   gymLoadLog?: Record<string, { d: string; v: string }[]>;
+  /** progressão automática por exercício (ginásio pelo id; em casa "casa:id") */
+  prog?: import('./progression').Prog;
+  /** semana leve (menos uma série, sem subir cargas) */
+  trainDeload?: { from: string; to: string };
+  /** corridas, caminhadas e voltas de bicicleta com GPS (o percurso fica na base de ficheiros local) */
+  runs?: import('./gps').RunSummary[];
+  /** plano de corrida que se ajusta (do sofá aos 5 km, 10 km) */
+  runPlan?: import('./runPlans').RunPlanState;
   /** false quando a pessoa desliga as notificações da comunidade */
   communityPush?: boolean;
   /** tutorial guiado já visto */

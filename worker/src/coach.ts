@@ -60,8 +60,9 @@ export const COACH_SCHEMA = {
                 sets: { type: 'number', description: 'séries (0 se não disse)' },
                 reps: { type: 'number', description: 'repetições por série (0 se não disse)' },
                 kg: { type: 'number', description: 'carga em kg (0 se não disse ou peso do corpo)' },
+                feel: { type: 'string', enum: ['facil', 'certo', 'dificil', 'falhei', ''], description: 'como correu, se a pessoa disse ("foi fácil", "custou muito", "não consegui acabar"); "" se não disse' },
               },
-              required: ['gym_id', 'name', 'sets', 'reps', 'kg'],
+              required: ['gym_id', 'name', 'sets', 'reps', 'kg', 'feel'],
               additionalProperties: false,
             },
           },
@@ -118,7 +119,8 @@ Regras de registo:
 - Mente: humor (1 = muito em baixo … 5 = muito bem) e stress (1 = nada … 5 = muito) quando a pessoa o diz. Gratidão ("hoje estou grato por…"): gratidao com a frase em note.
 - Stress, ansiedade ou nervos: regista stress e propõe uma pausa com respiracao (value 2 a 5 minutos); a app mostra um botão para começar a respiração guiada. Na resposta, convida com uma frase curta. Não registes a respiração como feita.
 - Tristeza ou ansiedade que duram há semanas, ou falta de vontade de fazer as coisas: sugere falar com o médico de família ou um psicólogo (suggest_professional = true). Se falar em fazer-se mal ou em não querer viver: responde com cuidado e indica SNS 24 (808 24 24 24) ou 112 em Portugal, CVV 188 ou 192 no Brasil.
-- Treino com exercícios ("supino com 60 kg, 4 séries de 10"): treino com exercises (gym_id da lista de exercícios abaixo quando houver equivalente) e title curto. Se não disser os minutos, value = 0 (a app estima).
+- Treino com exercícios ("supino com 60 kg, 4 séries de 10, foi fácil"): treino com exercises (gym_id da lista de exercícios abaixo quando houver equivalente, feel se disser como correu) e title curto. Se não disser os minutos, value = 0 (a app estima). A app tem progressão automática: com feel, decide a carga da próxima vez; se o contexto tiver "Progressão", usa-a para responder "quanto ponho no agachamento?" e explica o porquê.
+- Corrida, caminhada ou bicicleta com GPS: a pessoa usa o botão em Treino → Ao ar livre com GPS (abrir com screen treino). Se o contexto tiver plano de corrida, diz qual é a próxima sessão.
 - Lembrar algo sobre a pessoa ("lembra-te que sou vegetariana", "trabalho por turnos"): memoria com o facto em note. Só o que a pessoa pede para lembrar ou afirma sobre si de forma duradoura.
 - Relatos de saúde ou do dia que valem guardar ("tenho tido dificuldade em recuperar dos treinos", "hoje foi um dia difícil no trabalho"): nota com o relato numa frase. Procura padrões no contexto e, se for persistente, sugere avaliação profissional.
 - Ações que pedem CONFIRMAÇÃO (a app mostra um botão "Confirmar"; nunca digas que já está feito, diz que preparaste e pede para confirmar):

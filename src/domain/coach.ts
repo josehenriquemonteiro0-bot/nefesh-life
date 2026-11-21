@@ -17,9 +17,12 @@ import { mealForHour, PHOTO_API, deviceId } from './photo';
 import { applyDose } from './doses';
 import { memoryContext } from './patterns';
 import { asksContext } from './prompts';
-import { logLoads } from './gym';
+import { GYM, logLoads } from './gym';
 import { coachPlanMeal, coachPlanWorkout } from './planMeal';
 import { womenContext } from './women';
+import { progContext, recordProgress, type Feel } from './progression';
+import { RUN_PLANS, currentSession, planDone, planSegments, sessionText } from './runPlans';
+import { fmtKm, fmtTime } from './gps';
 import { CYCLE_SYMPTOMS, FLOW_LABEL, MUCUS } from './cycleData';
 import { notePremiumUse } from './analytics';
 import type { AppState, DayLog } from './types';
@@ -50,7 +53,7 @@ export interface CoachAction {
   /** abrir um ecrã */
   screen?: string;
   /** treino detalhado */
-  exercises?: { gym_id: string; name: string; sets: number; reps: number; kg: number }[];
+  exercises?: { gym_id: string; name: string; sets: number; reps: number; kg: number; feel?: Feel | '' }[];
 }
 
 /** Ações que só acontecem depois de a pessoa confirmar. */
@@ -125,6 +128,19 @@ export function buildContext(S: AppState, now = new Date(), extra: { friends?: s
     if (meds.length) lines.push(`Medicação e suplementos (não alteres doses nem horários; perante dúvidas, o médico ou o farmacêutico): ${meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''} às ${m.times.join(', ')}`).join('; ')}.`);
     const wc = womenContext(S, now);
     if (wc) lines.push(wc);
+    const names = { ...Object.fromEntries(Object.entries(GYM).map(([id, e]) => [id, e.name])), ...(S.exNames ?? {}) };
+    const pg = progContext(S, names, todayKey(now));
+    if (pg.length) lines.push(`Progressão (carga ou dose da próxima vez): ${pg.join('; ')}.`);
+    if (S.runPlan) {
+      const rp = S.runPlan;
+      if (planDone(rp)) lines.push(`Plano de corrida ${RUN_PLANS[rp.id].title}: concluído.`);
+      else {
+        const c = currentSession(rp, now);
+        lines.push(`Plano de corrida ${RUN_PLANS[rp.id].title}: próxima sessão semana ${c.week}, sessão ${c.session} (${sessionText(planSegments({ ...rp, ...c }))}).`);
+      }
+    }
+    const lastRun = (S.runs ?? [])[(S.runs ?? []).length - 1];
+    if (lastRun) lines.push(`Último treino com GPS (${lastRun.date}): ${lastRun.kind}, ${fmtKm(lastRun.dist)} km em ${fmtTime(lastRun.moving)}.`);
     const tg = targetsFor(S);
     lines.push(`Metas diárias (${tg.source === 'pro' ? `do profissional ${tg.by ?? ''}`.trim() : 'referência da app'}): ${tg.kcal} kcal, ${tg.protein} g de proteína; água ${c.water} copos.`);
   }
@@ -243,6 +259,8 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
           if (v) loads[key] = v;
           if (!e.gym_id) S.exNames = { ...(S.exNames ?? {}), [key]: e.name.trim() };
         }
+        const rated = ex.filter((e) => e.feel && e.gym_id).map((e) => ({ id: e.gym_id, feel: e.feel as Feel, kg: e.kg || null }));
+        if (rated.length) S.prog = recordProgress(S.prog, rated, todayKey(now));
         if (Object.keys(loads).length) {
           S.gymLoadLog = logLoads(S.gymLoadLog, loads, todayKey(now));
           S.gymLoads = { ...(S.gymLoads ?? {}), ...Object.fromEntries(Object.entries(loads).filter(([k]) => !k.startsWith('livre:'))) };

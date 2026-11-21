@@ -18,22 +18,28 @@ import { HEALTH_WORKOUT_ID } from '../domain/healthSync';
 import { useStore } from '../state/store';
 import { shareMoment } from '../domain/social';
 import { PhaseHint } from '../components/Cycle';
+import { DeloadCard, FeelChips } from '../components/Progress';
+import { homeDose, recordProgress, type Feel } from '../domain/progression';
+import { todayKey } from '../domain/dates';
+import { OutdoorCard } from '../components/RunTracker';
 
 const KIND_ICON = { forca: 'flame', caminhada: 'steps', intervalos: 'evo', mobilidade: 'wind', descanso: 'moon' } as const;
 const INTENSITY: Record<Session['kind'], number> = { forca: 2, intervalos: 3, caminhada: 1, mobilidade: 1, descanso: 0 };
 
-function ExerciseItem({ e, level, done, onToggle }: { e: Exercise; level: Level; done?: boolean; onToggle?: () => void }) {
+function ExerciseItem({ e, level, done, onToggle, adj, feel, onFeel }: { e: Exercise; level: Level; done?: boolean; onToggle?: () => void; adj?: { dose: string; name: string; note: string }; feel?: Feel; onFeel?: (f: Feel | undefined) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`ex ${done ? 'done' : ''}`}>
       <div className="row" style={{ flexWrap: 'nowrap', gap: 10 }}>
         {onToggle && <input type="checkbox" checked={!!done} onChange={onToggle} aria-label={`Feito: ${e.name}`} />}
         <button className="ex-head" onClick={() => setOpen(!open)} aria-expanded={open}>
-          <b>{e.name}</b>
-          <span className="small mute">{e.dose[level]} · {e.area}</span>
+          <b>{adj?.name ?? e.name}</b>
+          <span className="small mute">{adj?.dose ?? e.dose[level]} · {e.area}</span>
         </button>
         <span className="mute" aria-hidden="true">{open ? '−' : '+'}</span>
       </div>
+      {adj?.note && <p className="small gold" style={{ margin: '4px 0 0' }}>↗ {adj.note}</p>}
+      {onFeel && <FeelChips label={e.name} value={feel} onPick={onFeel} />}
       {open && (
         <div className="ex-body">
           <ExerciseAnim id={e.id} />
@@ -49,11 +55,16 @@ function ExerciseItem({ e, level, done, onToggle }: { e: Exercise; level: Level;
 function SessionView({ s, level, onBack }: { s: Session; level: Level; onBack: () => void }) {
   useEffect(() => notePremiumUse('treinoObjetivo'), [s.id]);
   const { S, todayLog: l, updateToday, toast } = useStore();
+  const { update } = useStore();
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [feels, setFeels] = useState<Record<string, Feel | undefined>>({});
   const [minutes, setMinutes] = useState<number | undefined>(s.minutes);
   const already = (l.workouts || []).some((w) => w.sessionId === s.id);
+  const progressive = s.kind === 'forca' || s.kind === 'intervalos';
 
   const finish = () => {
+    const rated = s.exercises.filter((id) => feels[id]).map((id) => ({ id: `casa:${id}`, feel: feels[id]! }));
+    if (rated.length) update((d) => { d.prog = recordProgress(d.prog, rated, todayKey()); });
     const m = Math.max(1, Math.round(minutes ?? s.minutes));
     const mvpa = s.kind === 'mobilidade' ? 0 : s.kind === 'intervalos' ? Math.round(m * 1.5) : m;
     const w: WorkoutLog = { sessionId: s.id, title: s.title, minutes: m, mvpa, strength: s.kind === 'forca' };
@@ -79,10 +90,19 @@ function SessionView({ s, level, onBack }: { s: Session; level: Level; onBack: (
       {s.exercises.length > 0 && (
         <section className="card">
           <div className="row"><h2 style={{ margin: 0 }}>Circuito</h2>{s.rounds && s.rounds > 1 && <span className="small mute">{s.rounds} voltas</span>}</div>
-          <p className="small mute">Toque num exercício para ver como se faz. Comece com 5 minutos de aquecimento: marcha no lugar e rodar os braços.</p>
+          <p className="small mute">Toque num exercício para ver como se faz. Comece com 5 minutos de aquecimento: marcha no lugar e rodar os braços.{progressive ? ' No fim de cada exercício diga como correu: a app ajusta a dose da próxima vez.' : ''}</p>
           <div className="exlist">
             {s.exercises.map((id) => (
-              <ExerciseItem key={id} e={exerciseById(id)} level={level} done={done[id]} onToggle={() => setDone({ ...done, [id]: !done[id] })} />
+              <ExerciseItem
+                key={id}
+                e={exerciseById(id)}
+                level={level}
+                done={done[id]}
+                onToggle={() => setDone({ ...done, [id]: !done[id] })}
+                adj={progressive ? homeDose(S, id, exerciseById(id).dose[level], exerciseById(id).name) : undefined}
+                feel={feels[id]}
+                onFeel={progressive ? (f) => { setFeels({ ...feels, [id]: f }); if (f) setDone({ ...done, [id]: true }); } : undefined}
+              />
             ))}
           </div>
         </section>
@@ -289,8 +309,10 @@ export function Training() {
       </div>
 
       <PhaseHint kind="train" />
+      <DeloadCard />
       <WeekSummary />
       <OtherActivity />
+      <OutdoorCard />
       <p />
 
       {tab === 'ginasio' ? (

@@ -35,3 +35,10 @@ export const greeting = (now = new Date()) => {
   const h = now.getHours();
   return h < 12 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
 };
+
+/** Soma n dias a uma chave de dia (AAAA-MM-DD). */
+export const addDaysKey = (k: string, n: number) => {
+  const d = parseKey(k);
+  d.setDate(d.getDate() + n);
+  return dayKey(d);
+};

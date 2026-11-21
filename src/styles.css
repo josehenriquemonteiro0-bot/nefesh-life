@@ -635,3 +635,20 @@ ul.plain li.row{gap:8px}
 .cyc-bars span.out{background:#ffb36b}
 .cyc-bars small{position:absolute;top:-14px;left:0;right:0;text-align:center;font-size:10px;color:var(--mute)}
 .phase-hint{border:1px solid rgba(224,72,107,.35);background:rgba(224,72,107,.06)}
+
+/* GPS: registo, percurso e planos de corrida */
+.run-overlay{gap:12px;overflow:auto}
+.run-big{display:flex;align-items:baseline;gap:6px}
+.run-big b{font:700 64px/1 Sora,sans-serif;color:var(--neon)}
+.run-big span{font-size:18px;opacity:.8}
+.run-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%;max-width:380px;text-align:center}
+.run-grid div{display:grid;gap:2px}.run-grid b{font:700 22px Sora,sans-serif}.run-grid span{font-size:12px;opacity:.75}
+.run-seg{margin:0;padding:8px 14px;border-radius:999px;font-weight:700;background:rgba(255,255,255,.08)}
+.run-seg.corre{background:rgba(0,254,138,.18);color:var(--neon)}
+.run-seg.caminha{background:rgba(94,200,242,.18);color:var(--water)}
+.run-route{width:100%;max-width:340px;height:auto;background:rgba(255,255,255,.04);border-radius:14px}
+.plan-dots{display:flex;gap:4px;margin-top:6px}
+.plan-dots i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.plan-dots i.done{background:var(--neon)}.plan-dots i.now{background:var(--gold)}
+.chips.feel{margin-top:6px}
+.run-kinds button{white-space:nowrap;font-size:14px;padding:0 4px}
