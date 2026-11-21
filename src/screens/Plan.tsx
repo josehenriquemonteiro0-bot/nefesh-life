@@ -1,3 +1,4 @@
+import { liveScores } from '../domain/liveIndex';
 import { MICRO } from '../domain/firstWeek';
 import { provisionalAreas } from '../domain/onboarding';
 import { Bar, Radar } from '../components/Charts';
@@ -114,7 +115,9 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
 
   const c = calcPlan(a, { format: S.format, pro: S.proDose, followLabel: S.followLabel });
   const dt = (units: number) => doseText(units, c.format);
-  const sc = scores(a);
+  // o mesmo número em todo o lado: na reavaliação, o que fica guardado; no plano, o Índice de hoje
+  const firstEval = !S.ans || S.sample;
+  const sc = isNew && firstEval ? scores(a) : liveScores(S, new Date(), a);
   const ix = indexOf(sc);
   const prevEv = isNew ? S.evals[S.evals.length - 1] : S.evals[S.evals.length - 2];
   const prev = prevEv && (!S.sample || !isNew) ? prevEv.sc : null;
@@ -140,7 +143,7 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
       {isNew && <p className="mute small" style={{ margin: 0 }}>O seu resultado{a.name ? ` · ${a.name}` : ''}</p>}
       <section className="card hero" style={{ marginTop: 10 }}>
         <div className="idx">
-          <p className="small" style={{ margin: 0, opacity: 0.8 }}>Índice NEFESH de bem-estar</p>
+          <p className="small" style={{ margin: 0, opacity: 0.8 }}>{isNew ? (firstEval ? 'Índice NEFESH de bem-estar' : 'Índice NEFESH desta reavaliação') : 'Índice NEFESH de hoje'}</p>
           <div className="n">{ix}<small>/100</small></div>
           {delta !== null && (
             <p className="small" style={{ margin: 0 }}>

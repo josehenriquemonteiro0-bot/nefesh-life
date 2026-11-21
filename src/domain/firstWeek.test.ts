@@ -26,7 +26,8 @@ describe('desafio da semana', () => {
     S.logs['2026-11-15'] = { workouts: [{ sessionId: 'x', title: 'x', minutes: 20, mvpa: 20, strength: false }] };
     S.logs['2026-11-22'] = { workouts: [{ sessionId: 'x', title: 'x', minutes: 30, mvpa: 30, strength: false }] };
     S.logs['2026-11-24'] = { workouts: [{ sessionId: 'x', title: 'x', minutes: 30, mvpa: 30, strength: false }] };
-    expect(challengeState(S, at('2026-11-27'))!.result).toEqual({ before: 20, after: 60, better: true, days: 2 });
+    // os 2 dias do desafio contam 10 min de caminhada cada
+    expect(challengeState(S, at('2026-11-27'))!.result).toEqual({ before: 20, after: 80, better: true, days: 2 });
   });
 
   it('nos vegetais, o visto também marca o hábito', () => {
@@ -129,5 +130,22 @@ describe('insights que variam', () => {
     const b = energyInsight(S, at('2026-11-16', 20))!.id;
     expect(new Set([a, b]).size).toBe(2);
     expect(energyInsight(S, at('2026-11-15', 20))!.text).toMatch(/^Nos dias em que/);
+  });
+});
+
+import { commaDecimals } from './dates';
+
+describe('acabamentos', () => {
+  it('a caminhada do desafio conta 10 min de atividade (e sai se desmarcar)', () => {
+    const S = S0();
+    S.challenge = { area: 'movimento', start: '2026-11-20', done: [] };
+    markChallenge(S, at('2026-11-21'));
+    expect(S.logs['2026-11-21'].workouts).toEqual([expect.objectContaining({ sessionId: 'desafio', minutes: 10, mvpa: 10 })]);
+    expect(areaMetric(S, 'movimento', '2026-11-20')).toBe(10);
+    markChallenge(S, at('2026-11-21'));
+    expect(S.logs['2026-11-21'].workouts).toEqual([]);
+  });
+  it('decimais com vírgula nas respostas da IA', () => {
+    expect(commaDecimals('Dormiu 7.6 h e bebeu 2.5 copos.')).toBe('Dormiu 7,6 h e bebeu 2,5 copos.');
   });
 });

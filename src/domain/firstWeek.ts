@@ -81,9 +81,16 @@ export function markChallenge(S: AppState, now = new Date()) {
   const today = todayKey(now);
   const on = !S.challenge.done.includes(today);
   S.challenge = { ...S.challenge, done: on ? [...S.challenge.done, today] : S.challenge.done.filter((d) => d !== today) };
-  if (S.challenge.area === 'nutricao') {
-    const l = (S.logs[today] = S.logs[today] ?? {});
-    l.hab = { ...(l.hab ?? {}), veg: on };
+  const l = (S.logs[today] = S.logs[today] ?? {});
+  if (S.challenge.area === 'nutricao') l.hab = { ...(l.hab ?? {}), veg: on };
+  // a caminhada do desafio conta como atividade (10 min); a pausa da tarde, como respiração (5 min)
+  if (S.challenge.area === 'movimento') {
+    const rest = (l.workouts ?? []).filter((w) => w.sessionId !== 'desafio');
+    l.workouts = on ? [...rest, { sessionId: 'desafio', title: 'Caminhada (desafio da semana)', minutes: 10, mvpa: 10, strength: false }] : rest;
+  }
+  if (S.challenge.area === 'energia') {
+    l.breath = Math.max(0, Math.round(((l.breath ?? 0) + (on ? 5 : -5)) * 10) / 10) || undefined;
+    if (on) l.hab = { ...(l.hab ?? {}), resp: true };
   }
 }
 

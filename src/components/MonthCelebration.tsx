@@ -31,7 +31,7 @@ export function MonthCelebration() {
         nick: S.ans?.name ?? '',
         link: `${location.origin}${import.meta.env.BASE_URL}`,
       });
-      await shareImage(blob, `Fiz 30 dias de ritual com a Spirulina NEFESH 🌿 ${m.spirulina} dias de Spirulina e uma sequência de ${m.best} dias.`, 'nefesh-30-dias.png');
+      await shareImage(blob, `Fiz 30 dias de ritual com a Spirulina NEFESH 🌿 ${m.spirulina} ${m.spirulina === 1 ? 'dia' : 'dias'} de Spirulina e uma sequência de ${m.best} ${m.best === 1 ? 'dia' : 'dias'}.`, 'nefesh-30-dias.png');
     } finally {
       setBusy(false);
     }

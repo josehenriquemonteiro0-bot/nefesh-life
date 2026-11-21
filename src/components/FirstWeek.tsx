@@ -9,6 +9,7 @@ import { useStore } from '../state/store';
 import type { Nav } from '../App';
 
 const AREA_NAME = Object.fromEntries(AREAS) as Record<AreaKey, string>;
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const fmtMetric = (a: AreaKey, v: number) =>
   a === 'sono' ? `${fmtNum(v)} h` : a === 'movimento' ? `${v} min` : a === 'energia' ? `${fmtNum(v)}/5` : `${v} de 7 dias`;
 
@@ -33,9 +34,9 @@ export function ChallengeCard({ go }: { go: Nav }) {
           Fez o desafio em <b>{r.days} de 7 dias</b>.{' '}
           {r.after !== null && (r.before !== null
             ? r.better
-              ? <>O seu {m.metric} melhorou: <b className="neon">{fmtMetric(c.area, r.before)} → {fmtMetric(c.area, r.after)}</b>. 🎉</>
-              : <>O seu {m.metric}: {fmtMetric(c.area, r.before)} → {fmtMetric(c.area, r.after)}. Ainda não mexeu: vale a pena mais uma semana.</>
-            : <>O seu {m.metric} esta semana: <b>{fmtMetric(c.area, r.after)}</b>.</>)}
+              ? <>{cap(m.metric)}: <b className="neon">{fmtMetric(c.area, r.before)} → {fmtMetric(c.area, r.after)}</b>. Melhorou! 🎉</>
+              : <>{cap(m.metric)}: {fmtMetric(c.area, r.before)} → {fmtMetric(c.area, r.after)}. {r.days >= 4 ? 'Cumpriu o desafio: os resultados às vezes demoram mais de uma semana a aparecer.' : 'Com mais dias de desafio, a diferença aparece: vale a pena mais uma semana.'}</>
+            : <>{cap(m.metric)} esta semana: <b>{fmtMetric(c.area, r.after)}</b>.</>)}
         </p>
         <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 10 }}>
           <button className="btn sm" onClick={() => update((d) => { d.challenge = newChallenge(d, undefined, c.area); })}>Próximo desafio</button>

@@ -1,3 +1,4 @@
+import { liveIndex } from '../domain/liveIndex';
 import { useEffect, useState } from 'react';
 import { MICRO, insightProgress } from '../domain/firstWeek';
 import { Bar, Columns, LineChart } from '../components/Charts';
@@ -92,7 +93,7 @@ export function SpirulinaInsight() {
         </p>
       )}
       {r.index && (
-        <p className="small" style={{ margin: '10px 0 0' }}>Índice NEFESH: {r.index.from} → <b>{r.index.to}</b> desde a primeira avaliação.</p>
+        <p className="small" style={{ margin: '10px 0 0' }}>Índice NEFESH: {r.index.from} na primeira avaliação → {r.index.to} na última reavaliação ({shortDate(S.evals[S.evals.length - 1].date)}) · hoje <b>{liveIndex(S)}</b>.</p>
       )}
       <p className="small mute" style={{ margin: '8px 0 0' }}>É uma observação sobre si, não uma prova científica: o sono, o stress e a alimentação também contam.</p>
     </section>
@@ -118,7 +119,7 @@ export function Comparison() {
     <section className="card">
       <div className="row"><h2 style={{ margin: 0 }}>Antes e depois</h2><span className="small mute">{c.days} dias</span></div>
       <table className="cmp">
-        <thead><tr><th /><th>{shortDate(c.first.date)}</th><th>{shortDate(c.last.date)}</th><th>diferença</th></tr></thead>
+        <thead><tr><th /><th>1.ª avaliação<br />{shortDate(c.first.date)}</th><th>última reavaliação<br />{shortDate(c.last.date)}</th><th>diferença</th></tr></thead>
         <tbody>
           {rows.map(([k, a, b, d]) => (
             <tr key={k}><td>{k}</td><td>{a}</td><td><b>{b}</b></td><td className={d ? (d > 0 ? 'up' : 'down') : ''}>{d === null ? '—' : d === 0 ? '=' : sign(d)}</td></tr>
@@ -169,7 +170,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
       <SpirulinaInsight />
 
       <div className="stats">
-        <div className="stat"><b>{streak(S)}</b><span>dias de ritual</span></div>
+        <div className="stat"><b>{streak(S)}</b><span>{streak(S) === 1 ? 'dia seguido' : 'dias seguidos'} (sequência atual)</span></div>
         <div className="stat"><b>{adherence(S, 30)}%</b><span>adesão 30 dias</span></div>
         <div className="stat"><b>{got}/{bs.length}</b><span>conquistas</span></div>
       </div>
@@ -239,7 +240,8 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
       <Comparison />
 
       <section className="card">
-        <h2>Índice NEFESH</h2>
+        <div className="row"><h2 style={{ margin: 0 }}>Índice NEFESH</h2><span className="small mute">hoje: <b className="ink">{liveIndex(S)}</b></span></div>
+        <p className="small mute" style={{ margin: '4px 0 8px' }}>Cada avaliação e reavaliação. O Índice de hoje junta a última avaliação aos seus hábitos dos últimos 14 dias.</p>
         <div className="evals">
           {S.evals.length ? (
             S.evals.map((e) => (

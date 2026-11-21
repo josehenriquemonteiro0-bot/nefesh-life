@@ -14,7 +14,7 @@ function base(day = 0): AppState {
 
 describe('reavaliação aos 7, 15 e 30 dias', () => {
   it('marca os momentos certos', () => {
-    expect(nextReassessment(base(3), NOW)).toMatchObject({ target: 7, due: false, inDays: 4 });
+    expect(nextReassessment(base(3), NOW)).toMatchObject({ target: 7, due: false, inDays: 3 }); // dia 4 do ritual
     expect(nextReassessment(base(7), NOW)).toMatchObject({ target: 7, due: true });
     // passou o dia 15 sem nenhuma reavaliação: pede a dos 15 dias, não a dos 7
     expect(nextReassessment(base(17), NOW)).toMatchObject({ target: 15, due: true });
@@ -22,7 +22,14 @@ describe('reavaliação aos 7, 15 e 30 dias', () => {
     S.evals.push({ date: keyDaysAgo(8, NOW), sc }); // reavaliou ao dia 8
     expect(nextReassessment(S, NOW)).toMatchObject({ target: 15, due: true });
     S.evals.push({ date: keyDaysAgo(0, NOW), sc });
-    expect(nextReassessment(S, NOW)).toMatchObject({ target: 30, due: false, inDays: 14 });
+    expect(nextReassessment(S, NOW)).toMatchObject({ target: 30, due: false, inDays: 13 });
+  });
+  it('reavaliar no próprio dia do marco (ou até 2 dias antes) fecha esse marco; no dia 15 não diz "daqui a 1 dia"', () => {
+    const S = base(6); // dia 7 do ritual
+    expect(nextReassessment(S, NOW)).toMatchObject({ target: 7, due: true });
+    S.evals.push({ date: keyDaysAgo(0, NOW), sc });
+    expect(nextReassessment(S, NOW)).toMatchObject({ target: 15, due: false });
+    expect(nextReassessment(base(14), NOW)).toMatchObject({ target: 15, due: true, inDays: 0 }); // dia 15
   });
   it('compara o antes e o depois', () => {
     const S = base(30);

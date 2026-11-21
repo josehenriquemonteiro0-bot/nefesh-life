@@ -5,7 +5,7 @@ import { REPORT_AREAS, reportSummary, weeklyReport } from '../domain/weekReport'
 import { canAccess } from '../domain/features';
 import { PHOTO_API, deviceId } from '../domain/photo';
 import { notePremiumUse } from '../domain/analytics';
-import { addDaysKey, shortDate, todayKey } from '../domain/dates';
+import { addDaysKey, commaDecimals, shortDate, todayKey } from '../domain/dates';
 import { speak, stopSpeaking, ttsSupported, voiceLang } from '../domain/voice';
 import { useStore } from '../state/store';
 
@@ -105,7 +105,7 @@ export function WeeklyReport() {
             {!full ? (
               <p className="small mute" style={{ margin: 0 }}>No Premium, a IA analisa a sua semana e liga os pontos entre o sono, a energia, o treino e a Spirulina.</p>
             ) : note ? (
-              <p className="small" style={{ margin: 0 }}>{note}</p>
+              <p className="small" style={{ margin: 0 }}>{commaDecimals(note)}</p>
             ) : loading ? (
               <p className="small mute" style={{ margin: 0 }}>A analisar a sua semana…</p>
             ) : failed ? (

@@ -15,16 +15,17 @@ export const CHECKPOINTS = [7, 15, 30] as const;
 /** Próximo marco de reavaliação (7, 15, 30 e depois a cada 30 dias) e se já chegou. */
 export function nextReassessment(S: AppState, now = new Date()) {
   if (!S.planStart) return null;
-  const day = daysSince(S.planStart, now);
+  // dias contados como no Início (o dia do início é o dia 1)
+  const day = daysSince(S.planStart, now) + 1;
   const lastEval = S.evals[S.evals.length - 1];
-  const sinceLast = lastEval ? daysSince(lastEval.date, now) : day;
+  const evalDay = lastEval ? day - daysSince(lastEval.date, now) : 1;
   const marks = [...CHECKPOINTS, ...Array.from({ length: 12 }, (_, i) => 60 + i * 30)];
-  const evalDay = day - sinceLast;
-  // o marco mais recente já atingido e ainda sem avaliação; senão, o próximo
-  // uma reavaliação por fazer deixa de ser pedida ao fim de 5 dias (até ao marco seguinte)
-  const passed = marks.filter((m) => m <= day && m > evalDay && day - m <= 4);
-  const target = passed.length ? passed[passed.length - 1] : marks.find((m) => m > day) ?? marks[marks.length - 1];
-  return { day, target, due: day >= target, inDays: Math.max(0, target - day) };
+  // uma reavaliação feita até 2 dias antes do marco conta para ele; a que ficou por fazer
+  // deixa de ser pedida ao fim de 5 dias (até ao marco seguinte)
+  const open = (m: number) => m > evalDay + 2;
+  const passed = marks.filter((m) => open(m) && m <= day && day - m <= 4);
+  const target = passed.length ? passed[passed.length - 1] : marks.find((m) => open(m) && m > day) ?? marks[marks.length - 1];
+  return { day, target, due: passed.length > 0, inDays: Math.max(0, target - day) };
 }
 
 /** Fotografia do corpo guardada em cada avaliação, para comparar antes e depois. */

@@ -817,7 +817,7 @@ export function Community({ openAccount }: { openAccount: () => void }) {
           </div>
           <div className="hero-stats">
             <div><b>{st.me?.points ?? week}</b><span>pontos na semana</span></div>
-            <div><b>🔥 {streak}</b><span>dias de ritual</span></div>
+            <div><b>🔥 {streak}</b><span>{streak === 1 ? 'dia de ritual' : 'dias de ritual'}</span></div>
           </div>
         </div>
         <Bar pct={lvl.pct} />

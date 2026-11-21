@@ -64,7 +64,7 @@ export function DayPanel({ go }: { go: Nav }) {
         </svg>
         <button className="rings-center" onClick={() => go('quiz')} aria-label="Ver o plano e o Índice">
           <b>{trend.now}</b>
-          <span>Índice</span>
+          <span>Índice hoje</span>
         </button>
       </div>
       <div className="legend">
@@ -78,7 +78,7 @@ export function DayPanel({ go }: { go: Nav }) {
         ))}
         <p className="small mute lg-foot">
           🔥 {streak === 0 && bestStreak(S) > 0 ? 'recomece hoje' : `${streak} ${streak === 1 ? 'dia seguido' : 'dias seguidos'}`}
-          {trend.from !== null && <> · Índice {trend.from !== trend.now ? `${trend.from} → ` : ''}<b className="ink">{trend.now}</b></>}
+          {trend.from !== null && trend.from !== trend.now && <> · Índice: início {trend.from}, hoje <b className="ink">{trend.now}</b></>}
         </p>
       </div>
     </section>
@@ -204,7 +204,7 @@ export function TodayCarousel({ go, openScience, startQuiz, openSignup }: { go: 
     </>
   ) });
   slides.push({ k: 'dica', el: <><p className="small gold sl-h">Sabia que…</p><p style={{ margin: 0 }}>{tip}</p></> });
-  const PRI = ['recomecar', 'insight', 'reavaliar', 'reposicao', 'pergunta', 'jornada', 'desafio', 'novo', 'relatorio', 'conta', 'receita', 'dica'];
+  const PRI = ['recomecar', 'insight', 'desafio', 'reavaliar', 'reposicao', 'pergunta', 'jornada', 'novo', 'relatorio', 'conta', 'receita', 'dica'];
   slides.sort((a, b) => PRI.indexOf(a.k) - PRI.indexOf(b.k));
   let asks = 0;
   const shown = slides.filter((x) => (x.ask ? ++asks <= 2 : true)).slice(0, 5);

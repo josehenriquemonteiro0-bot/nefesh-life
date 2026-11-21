@@ -24,6 +24,8 @@ export const daysSince = (k: string, now = new Date()) =>
   Math.round((parseKey(todayKey(now)).getTime() - parseKey(k).getTime()) / 864e5);
 
 export const fmtNum = (n: number | string) => String(n).replace('.', ',');
+/** Decimais com vírgula num texto (ex.: respostas da IA): "7.6 h" → "7,6 h". */
+export const commaDecimals = (t: string) => t.replace(/(\d)\.(\d)/g, '$1,$2');
 
 export const shortDate = (k: string) =>
   parseKey(k).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });

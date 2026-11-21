@@ -75,6 +75,8 @@ export function reportWeek(now = new Date()) {
   });
 }
 
+const nDias = (n: number) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
+
 /** Prioridade para a próxima semana: a área mais fraca, com uma ação concreta. */
 const PRIORITY: Record<ReportArea, (r: WeekReport, S: AppState) => string> = {
   spirulina: (r) =>
@@ -90,7 +92,7 @@ const PRIORITY: Record<ReportArea, (r: WeekReport, S: AppState) => string> = {
   sono: (r) =>
     `Dormir 7 horas: a média foi ${r.facts.sleepAvg !== null ? fmtNum(r.facts.sleepAvg) : '—'} h. Escolha uma hora fixa para se deitar e desligue os ecrãs 30 minutos antes.`,
   habitos: (r, S) =>
-    `Água e check-in: atingiu a meta de água em ${r.facts.waterDays} dias. Beba 1 copo ao acordar e a cada refeição (${S.ans ? planFor(S).water : 8} copos de ${GLASS_ML} ml).`,
+    `Água e check-in: atingiu a meta de água em ${nDias(r.facts.waterDays)}. Beba 1 copo ao acordar e a cada refeição (${S.ans ? planFor(S).water : 8} copos de ${GLASS_ML} ml).`,
 };
 
 export function weeklyReport(S: AppState, now = new Date()): WeekReport {
@@ -210,10 +212,10 @@ export function reportSummary(S: AppState, r: WeekReport) {
     `Objetivo: ${S.ans?.goal ? GOAL_LABEL[S.ans.goal] : 'bem-estar geral'}.`,
     `Semana de ${r.days[0]} a ${r.days[6]}. Índice de consistência: ${r.index ?? '—'}/100.`,
     `Spirulina ${s('spirulina')}: ritual em ${f.spirulinaDays} de 7 dias.`,
-    `Movimento ${s('movimento')}: ${f.mvpa} min de atividade, força em ${f.strengthDays} dias${f.stepsAvg !== null ? `, média de ${f.stepsAvg} passos` : ''}.`,
-    `Nutrição ${s('nutricao')}: ${f.mealDays} dias com refeições registadas${f.proteinPct !== null ? `, proteína a ${f.proteinPct}% da meta (proporcional às refeições registadas)` : ''}${f.kcalAvg !== null && !S.hideCalories ? `, média de ${f.kcalAvg} kcal nos dias com o dia todo registado` : ''}.`,
+    `Movimento ${s('movimento')}: ${f.mvpa} min de atividade, força em ${nDias(f.strengthDays)}${f.stepsAvg !== null ? `, média de ${f.stepsAvg} passos` : ''}.`,
+    `Nutrição ${s('nutricao')}: ${nDias(f.mealDays)} com refeições registadas${f.proteinPct !== null ? `, proteína a ${f.proteinPct}% da meta (proporcional às refeições registadas)` : ''}${f.kcalAvg !== null && !S.hideCalories ? `, média de ${f.kcalAvg} kcal nos dias com o dia todo registado` : ''}.`,
     `Sono ${s('sono')}: ${f.sleepNights} noites registadas${f.sleepAvg !== null ? `, média de ${f.sleepAvg} h` : ''}.`,
-    `Hábitos ${s('habitos')}: água na meta em ${f.waterDays} dias (${f.waterLogged} com registo), ${f.checkins} check-ins.`,
+    `Hábitos ${s('habitos')}: água na meta em ${nDias(f.waterDays)} (${f.waterLogged} com registo), ${f.checkins} check-ins.`,
     `Energia média (1–5): ${f.energyAvg ?? '—'} esta semana; ${f.energyPrev ?? '—'} na semana anterior.`,
     r.priority ? `Prioridade escolhida pela app: ${r.priority.text}` : 'Sem prioridade: semana muito consistente.',
   ].join('\n');

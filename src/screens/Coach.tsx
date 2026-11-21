@@ -7,7 +7,7 @@ import { SCREEN_TAB, daySummary } from '../domain/assistant';
 import { asksNow } from '../domain/prompts';
 import { useSocial } from '../domain/social';
 import { MemoryPanel, ProposalCard } from '../components/AssistantParts';
-import { todayKey } from '../domain/dates';
+import { commaDecimals, todayKey } from '../domain/dates';
 import { dailyQuota, TEST_MODE } from '../domain/features';
 import { ritualJustDone } from '../state/doses';
 import { useStore } from '../state/store';
@@ -130,7 +130,7 @@ export function Coach({ go }: { go: Nav }) {
       const next: CoachMsg[] = [
         ...withUser,
         {
-          role: 'assistant', text: r.reply, at: new Date().toISOString(), applied,
+          role: 'assistant', text: commaDecimals(r.reply), at: new Date().toISOString(), applied,
           undo: applied.length ? { day: key, log: before, extra } : undefined,
           pro: r.suggest_professional, breath: r.actions.find((a) => a.type === 'respiracao')?.value, meditate: r.actions.find((a) => a.type === 'meditar')?.note?.trim(),
           proposals: proposals.length ? proposals : undefined, proposalStatus: proposals.length ? 'pendente' : undefined, open: open.length ? open : undefined,
