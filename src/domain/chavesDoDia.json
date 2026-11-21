@@ -1,0 +1,508 @@
+{
+  "versao": 1,
+  "secao": "mente",
+  "descricao": "Chaves do Dia: frase de reflexão + referência bíblica. Sem assinatura.",
+  "total": 46,
+  "chaves": [
+    {
+      "id": "chave-001",
+      "texto": "Aquilo que pode parecer nada, nas mãos de Deus pode ser tudo.",
+      "referencia": "2 Reis 4:1-7",
+      "referencia_origem": "nota",
+      "temas": [
+        "fé",
+        "provisão"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-002",
+      "texto": "O tamanho do espaço que você dá pra Deus determina o tamanho do agir Dele.",
+      "referencia": "2 Reis 4:1-7",
+      "referencia_origem": "nota",
+      "temas": [
+        "fé",
+        "entrega"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-003",
+      "texto": "As nossas necessidades são o berço da nossa fé.",
+      "referencia": "2 Reis 4:2",
+      "referencia_origem": "nota",
+      "temas": [
+        "fé",
+        "provisão"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-004",
+      "texto": "Nunca despreze aquilo que você tem: o seu pouco é o pouco necessário para o romper.",
+      "referencia": "2 Reis 4:2",
+      "referencia_origem": "nota",
+      "temas": [
+        "provisão",
+        "gratidão"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-005",
+      "texto": "O Deus poderoso ama trabalhar através de instrumentos simples, como eu e você.",
+      "referencia": "1 Coríntios 1:27",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "identidade",
+        "propósito"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-006",
+      "texto": "Tem coisas que você semeou no passado que vão te dar autoridade para colher no presente.",
+      "referencia": "Gálatas 6:9",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "perseverança",
+        "colheita"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-007",
+      "texto": "Quando você entende as janelas do tempo de Deus na sua vida, fica mais perto de passar pela porta certa.",
+      "referencia": "Eclesiastes 3:1",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "tempo",
+        "direção"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-008",
+      "texto": "O homem mais influente de uma sala é aquele que tem a palavra de Deus.",
+      "referencia": "Josué 1:8",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "influência",
+        "palavra"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-009",
+      "texto": "Viva uma vida em que as pessoas olhem para você e digam: só por Deus isso foi possível.",
+      "referencia": "Efésios 3:20",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "propósito",
+        "testemunho"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-010",
+      "texto": "Apenas a bondade de Deus cura a maldade do mundo.",
+      "referencia": "Salmos 34:8",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "bondade"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-011",
+      "texto": "Pessoas curadas curam feridos.",
+      "referencia": "2 Coríntios 1:4",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "cura",
+        "relacionamentos"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-012",
+      "texto": "Seja bondoso consigo: a bondade com o outro está na mesma proporção da bondade que você tem por si.",
+      "referencia": "Marcos 12:31",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "bondade",
+        "autocuidado"
+      ],
+      "origem_interna": "Zion"
+    },
+    {
+      "id": "chave-013",
+      "texto": "A obstinação pela missão está na clareza da nossa visão.",
+      "referencia": "Lamentações 3:21",
+      "referencia_origem": "nota",
+      "temas": [
+        "visão",
+        "propósito"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-014",
+      "texto": "Lute com tudo o que tem e não aceite menos do que fazer tudo o que estiver ao seu alcance.",
+      "referencia": "Eclesiastes 9:10",
+      "referencia_origem": "nota",
+      "temas": [
+        "disciplina",
+        "missão"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-015",
+      "texto": "Estabeleça um plano, mas esteja atento e pronto para agir se as circunstâncias mudarem.",
+      "referencia": "Eclesiastes 9:10",
+      "referencia_origem": "nota",
+      "temas": [
+        "planejamento",
+        "sabedoria"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-016",
+      "texto": "Sempre haverá distrações. Foque no que importa!",
+      "referencia": "Salmos 119:37",
+      "referencia_origem": "nota",
+      "temas": [
+        "foco"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-017",
+      "texto": "Se os seus olhos não estiverem no seu objetivo, pequenas coisas vão roubar o seu tempo.",
+      "referencia": "Salmos 119:37",
+      "referencia_origem": "nota",
+      "temas": [
+        "foco",
+        "tempo"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-018",
+      "texto": "Quando se tem uma visão clara do que se vai alcançar, uma chama interior nos mantém firmes no propósito.",
+      "referencia": "Salmos 16:8",
+      "referencia_origem": "nota",
+      "temas": [
+        "visão",
+        "perseverança"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-019",
+      "texto": "Trazer à memória as pequenas vitórias do percurso é combustível para a chama da convicção.",
+      "referencia": "Salmos 16:8",
+      "referencia_origem": "nota",
+      "temas": [
+        "gratidão",
+        "perseverança"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-020",
+      "texto": "Sempre estaremos em uma missão. A questão é escolher uma que de fato vale a pena.",
+      "referencia": "1 Samuel 15:20",
+      "referencia_origem": "nota",
+      "temas": [
+        "missão",
+        "decisão"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-021",
+      "texto": "Aproveite a jornada: entre os espinhos dos arbustos, há sombra.",
+      "referencia": "Salmos 37:7",
+      "referencia_origem": "nota",
+      "temas": [
+        "descanso",
+        "jornada"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-022",
+      "texto": "Descansar numa pausa imposta pelas circunstâncias é mais eficaz do que apenas lamentar.",
+      "referencia": "Salmos 37:7",
+      "referencia_origem": "nota",
+      "temas": [
+        "descanso",
+        "paciência"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-023",
+      "texto": "Cerque-se de pessoas que te façam chegar mais rápido.",
+      "referencia": "Hebreus 10:24",
+      "referencia_origem": "nota",
+      "temas": [
+        "relacionamentos"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-024",
+      "texto": "Observe as pegadas e siga o caminho daqueles que vão à sua frente na missão.",
+      "referencia": "Hebreus 10:24",
+      "referencia_origem": "nota",
+      "temas": [
+        "relacionamentos",
+        "mentoria"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-025",
+      "texto": "Amigos fazem a chama do seu coração se manter acesa em todo o tempo.",
+      "referencia": "1 Coríntios 15:58",
+      "referencia_origem": "nota",
+      "temas": [
+        "amizade",
+        "perseverança"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-026",
+      "texto": "Sozinho fazemos boas coisas, mas um legado não se constrói sozinho.",
+      "referencia": "Eclesiastes 4:10",
+      "referencia_origem": "nota",
+      "temas": [
+        "legado",
+        "equipe"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-027",
+      "texto": "Quando se sabe pelo que se está vivendo, ou você está em missão, ou está se preparando.",
+      "referencia": "Provérbios 23:12",
+      "referencia_origem": "nota",
+      "temas": [
+        "propósito",
+        "preparação"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-028",
+      "texto": "A constância só é alcançada por meio da disciplina.",
+      "referencia": "Provérbios 23:12",
+      "referencia_origem": "nota",
+      "temas": [
+        "disciplina"
+      ],
+      "origem_interna": "Lições 22/07"
+    },
+    {
+      "id": "chave-029",
+      "texto": "Há chaves que precisamos virar e portas que precisamos passar para acessar aquilo que o Senhor nos preparou.",
+      "referencia": "Mateus 16:19",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "ação"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-030",
+      "texto": "Uma ação contínua gera uma multiplicação jamais vista: 1 semente, 100 frutos.",
+      "referencia": "Mateus 13:8",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "semeadura",
+        "constância"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-031",
+      "texto": "A sabedoria é absorvida em todas as situações em que paramos para refletir com os olhos espirituais.",
+      "referencia": "Tiago 1:5",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "sabedoria",
+        "reflexão"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-032",
+      "texto": "A aceleração acontece quando os meus passos não se baseiam nos meus recursos, mas numa palavra do céu.",
+      "referencia": "2 Coríntios 5:7",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "direção"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-033",
+      "texto": "O tamanho da aceleração dos tempos é do tamanho do seu passo de fé.",
+      "referencia": "2 Coríntios 5:7",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "ação"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-034",
+      "texto": "Cresça em fé para se acostumar a dar passos que não se limitam ao tamanho dos seus recursos.",
+      "referencia": "Hebreus 11:8",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "coragem"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-035",
+      "texto": "Os meus recursos estão no favor do Senhor.",
+      "referencia": "Filipenses 4:19",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "provisão"
+      ],
+      "origem_interna": "Há chaves que precisamos virar"
+    },
+    {
+      "id": "chave-036",
+      "texto": "Só se prospera e se faz uma voz de influência na Babilônia quando nos mantemos fiéis, íntegros e constantes no Senhor.",
+      "referencia": "Daniel 6",
+      "referencia_origem": "nota",
+      "temas": [
+        "fidelidade",
+        "influência"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-037",
+      "texto": "A excelência do céu sobre a nossa vida deve ser a marca que nos distingue.",
+      "referencia": "Daniel 6:3",
+      "referencia_origem": "nota",
+      "temas": [
+        "excelência",
+        "identidade"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-038",
+      "texto": "O secreto não é apenas um hábito: é o lugar onde encontramos prazer e fortalecemos a nossa identidade.",
+      "referencia": "Daniel 6:10",
+      "referencia_origem": "nota",
+      "temas": [
+        "oração",
+        "identidade"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-039",
+      "texto": "Que seja impossível olhar para você e não reconhecer a grandeza do Deus que você serve.",
+      "referencia": "Daniel 6:16-22",
+      "referencia_origem": "nota",
+      "temas": [
+        "testemunho",
+        "fidelidade"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-040",
+      "texto": "A passividade não deve ter espaço na nossa vida: diante de qualquer desafio, aja com fé e ousadia.",
+      "referencia": "Provérbios 22:13",
+      "referencia_origem": "nota",
+      "temas": [
+        "coragem",
+        "ação"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-041",
+      "texto": "Não se permita viver uma vida de reação. Seja aquele que toma a frente e lidera as ações.",
+      "referencia": "Provérbios 22:13",
+      "referencia_origem": "nota",
+      "temas": [
+        "liderança",
+        "ação"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-042",
+      "texto": "Ore e seja constante em fortalecer o seu homem interior: seja intencional no pensar, falar e agir.",
+      "referencia": "Efésios 3:16",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "oração",
+        "intencionalidade"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-043",
+      "texto": "Um coração apaixonado pela sua nação se coloca diante do Senhor em intercessão constante.",
+      "referencia": "Daniel 9",
+      "referencia_origem": "nota",
+      "temas": [
+        "intercessão"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-044",
+      "texto": "Há muita coisa liberada sobre as nossas vidas, mas são as nossas ações que nos farão ter acesso a todas elas.",
+      "referencia": "Daniel 10:12-14",
+      "referencia_origem": "nota",
+      "temas": [
+        "ação",
+        "fé"
+      ],
+      "origem_interna": "SEMANA 26/52"
+    },
+    {
+      "id": "chave-045",
+      "texto": "Deus é fiel. Deus é bom. Deus é suficiente.",
+      "referencia": "1 Coríntios 1:9",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "gratidão"
+      ],
+      "origem_interna": "post no Instagram (mai/2026)"
+    },
+    {
+      "id": "chave-046",
+      "texto": "Uma das coisas mais belas da vida é encontrar beleza no dia comum e transformar o ordinário em extraordinário.",
+      "referencia": "Zacarias 4:10",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "gratidão",
+        "propósito"
+      ],
+      "origem_interna": "post no Instagram (mai/2026)"
+    }
+  ]
+}
