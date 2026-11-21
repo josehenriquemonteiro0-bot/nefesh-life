@@ -31,8 +31,22 @@ describe('próxima ação: medicação', () => {
     const S = { ...blankState(), ans: { goal: 'energia' as const, peso: 70 }, planStart: '2026-11-01', care: { meds: [{ id: 'm', name: 'Levotiroxina', kind: 'medicamento' as const, times: ['09:00'], active: true }] } };
     const at = new Date('2026-11-20T09:30:00');
     const l = { doses: [true, true], water: 9 };
-    expect(nextAction(S, l, at)).toMatchObject({ kind: 'med', med: 'm@09:00', title: 'Levotiroxina (09:00)' });
+    expect(nextAction(S, l, at)).toMatchObject({ kind: 'med', med: 'm@09:00', title: 'Levotiroxina', when: '09:00' });
     expect(nextAction(S, { ...l, meds: { 'm@09:00': true } }, at).kind).not.toBe('med');
     expect(nextAction(S, l, new Date('2026-11-20T13:30:00')).kind).not.toBe('med'); // mais de 3 h depois
+  });
+});
+
+describe('próxima ação: água e desafio da semana', () => {
+  it('"Mais N copos e fica em dia" e o desafio à hora certa, com hora sugerida', async () => {
+    const { blankState } = await import('./sample');
+    const S = { ...blankState(), ans: { goal: 'energia' as const, peso: 70 }, planStart: '2026-11-20', challenge: { area: 'movimento' as const, start: '2026-11-20', done: [] as string[] } };
+    const water = nextAction(S, { doses: [true, true], water: 1 }, new Date('2026-11-21T15:00:00'));
+    expect(water).toMatchObject({ kind: 'agua', when: 'agora' });
+    expect(water.detail).toMatch(/^Mais \d+ copos? e fica em dia\.$/);
+    const ch = nextAction(S, { doses: [true, true], water: 10 }, new Date('2026-11-21T13:30:00'));
+    expect(ch).toMatchObject({ kind: 'desafio', title: '10 minutos de caminhada depois do almoço', when: '13:30, depois do almoço' });
+    S.challenge.done = ['2026-11-21'];
+    expect(nextAction(S, { doses: [true, true], water: 10 }, new Date('2026-11-21T13:30:00')).kind).not.toBe('desafio');
   });
 });

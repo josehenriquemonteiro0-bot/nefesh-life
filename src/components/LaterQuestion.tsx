@@ -29,7 +29,7 @@ export function LaterQuestionCard() {
   if (q.kind === 'options')
     body = (
       <div className="chips">
-        {q.o.map(([k, t]) => <button key={k} className="chip" onClick={() => save({ [q.id]: k } as Partial<Answers>)}>{t}</button>)}
+        {q.o.map(([k, t]) => <button key={k} className="chip sm" onClick={() => save({ [q.id]: k } as Partial<Answers>)}>{t}</button>)}
       </div>
     );
   else if (q.kind === 'scale')

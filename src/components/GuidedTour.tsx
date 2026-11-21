@@ -13,8 +13,8 @@ interface Step {
 }
 
 export const TOUR: Step[] = [
-  { tab: 'home', target: 'proxima', title: 'A seguir', text: 'A app diz-lhe a coisa mais útil a fazer agora: a toma, a água, a refeição ou o check-in. Um toque e está feito. Ou toque em "Toca para falar" e diga o que fez.' },
-  { tab: 'home', target: 'tomas', title: 'A sua toma de Spirulina', text: 'Toque no círculo quando tomar. É o centro do seu ritual: entra sozinha no diário e conta para a sua sequência.' },
+  { tab: 'home', target: 'proxima', title: 'A seguir', text: 'A app diz-lhe a coisa mais útil a fazer agora, com a hora: a toma, a água, o desafio, a refeição ou o check-in. Um toque e está feito.' },
+  { tab: 'home', target: 'tomas', title: 'A sua toma de Spirulina', text: 'Os anéis do dia: Spirulina, água e o desafio da semana, com o seu Índice ao centro. Cada toma entra sozinha no diário e conta para a sua sequência.' },
   { tab: 'home', target: 'strip', title: 'Sequência, pontos e liga', text: '🔥 dias seguidos de ritual, ⭐ pontos de hoje e 🏆 o seu lugar na liga. Toque para abrir a Comunidade.' },
   { tab: 'home', target: 'agua', title: 'Água', text: 'Um toque em "+ 1 copo" sempre que beber. A meta é calculada para o seu peso.' },
   { tab: 'home', target: 'checkin', title: 'Check-in de 30 segundos', text: 'Diga como se sente: energia, sono e disposição. Com isto, a app mostra-lhe o efeito do ritual em si.' },
@@ -30,9 +30,9 @@ export const TOUR: Step[] = [
 
 /** Tutorial curto da primeira utilização: só o essencial (o completo fica no Perfil). */
 export const SHORT_TOUR: Step[] = [
-  { tab: 'home', target: 'tomas', title: 'Tomei', text: 'Toque no círculo quando tomar a Spirulina. É o centro do seu ritual e conta para a sua sequência.' },
-  { tab: 'home', target: 'proxima', title: 'Toca para falar', text: 'Diga o que fez, como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz"). O assistente regista por si.' },
-  { tab: 'home', target: 'checkin', title: 'Check-in de 30 segundos', text: 'Como se sente hoje: energia, sono e disposição. É assim que a app lhe mostra o efeito do ritual. O tutorial completo está no Perfil.' },
+  { tab: 'home', target: 'proxima', title: 'Tomei', text: 'O "A seguir" mostra uma só coisa a fazer, com a hora. Quando tomar a Spirulina, toque em "Tomei": os anéis de cima enchem-se.' },
+  { tab: 'home', target: 'nav-coach', title: 'Toca para falar', text: 'O botão do centro: diga o que fez, como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz"). O assistente regista por si.' },
+  { tab: 'home', target: 'checkin', title: 'Check-in de 30 segundos', text: 'Como se sente hoje: a energia de cada dia aparece aqui. É assim que a app lhe mostra o efeito do ritual. O tutorial completo está no Perfil.' },
 ];
 
 const PAD = 8;

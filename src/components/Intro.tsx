@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SLIDES } from '../domain/content';
 import { Icon } from './Icon';
 
@@ -22,6 +22,11 @@ export function Intro({ mode, hasPlan, name, day, onDone }: { mode: 'welcome' | 
   const [step, setStep] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  // a abertura fica parada: a página por baixo não rola enquanto está aberta
+  useEffect(() => {
+    document.documentElement.classList.add('no-scroll');
+    return () => document.documentElement.classList.remove('no-scroll');
+  }, []);
   const finish = (a: IntroAction) => {
     setLeaving(true);
     window.setTimeout(() => onDone(a), 450);

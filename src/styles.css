@@ -672,3 +672,43 @@ ul.plain li.row{gap:8px}
 .today{border:1px solid rgba(201,168,92,.35)}
 .today .today-part{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .today .today-part h3{font-size:17px}
+
+/* Início: painel do dia, A seguir, carrossel, energia e atalhos */
+.ink{color:var(--ink)}
+.day-panel{display:flex;gap:14px;align-items:center;background:radial-gradient(120% 130% at 0% 0%,rgba(0,254,138,.12),transparent 60%),var(--panel);border:1px solid rgba(0,254,138,.25)}
+.rings{position:relative;width:132px;flex:0 0 132px}
+.rings svg{width:100%;display:block}
+.rings-center{position:absolute;inset:0;margin:auto;width:58px;height:58px;border-radius:50%;background:transparent;border:0;color:var(--ink);display:grid;place-content:center;cursor:pointer;padding:0}
+.rings-center b{font:700 24px/1 Sora,sans-serif}.rings-center span{font-size:10px;opacity:.7;letter-spacing:.04em}
+.legend{flex:1;min-width:0;display:grid;gap:7px}
+.lg-row{display:grid;grid-template-columns:10px 1fr auto auto;align-items:center;gap:7px}
+.lg-row i{width:10px;height:10px;border-radius:50%}
+.mini-add{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:999px;padding:0 10px;font:700 12px Manrope,sans-serif;min-height:28px;cursor:pointer}
+.lg-foot,.lg-ch{margin:2px 0 0}
+.na-big .btn.big{margin-top:12px;min-height:54px;font-size:17px}
+.na-big{display:block}
+.na-when{font-size:13px;color:var(--gold);background:rgba(201,168,92,.12);padding:2px 10px;border-radius:999px;white-space:nowrap}
+.today-carousel{margin:16px 0 6px}
+.carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 10px;scrollbar-width:none;overscroll-behavior-x:contain}
+.carousel::-webkit-scrollbar{display:none}
+.slide{flex:0 0 84%;max-width:360px;scroll-snap-align:start;scroll-margin-left:16px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;display:grid;gap:8px;align-content:start}
+.slide .today-part{border:0;margin:0;padding:0}
+.slide .btn{justify-self:start}
+.sl-h{margin:0;font-weight:700}
+.energy-week .ew-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:96px;margin-top:12px;align-items:end}
+.ew-col{display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;gap:4px}
+.ew-bar{width:100%;max-width:26px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--neon),#0a8c58);display:flex;justify-content:center}
+.ew-bar.empty{background:rgba(255,255,255,.08)}
+.ew-bar small{font-size:10px;color:#00140d;font-weight:700;margin-top:2px}
+.ew-col i{font-style:normal;font-size:11px;color:var(--mute)}
+.ew-col.is-today i{color:var(--ink);font-weight:700}
+.shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.shortcuts button{display:grid;justify-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 4px;color:var(--ink);cursor:pointer}
+.sc-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(0,254,138,.1);color:var(--neon)}
+.sc-ic svg{width:22px;height:22px}
+
+/* abertura: fixa, não desliza com a rolagem (iPhone) */
+html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;height:100%}
+.intro{height:100vh;height:100dvh;touch-action:none;overscroll-behavior:none}
+
+.slide .scale .opt{min-height:40px;padding:6px 0}

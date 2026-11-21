@@ -133,7 +133,7 @@ export function journeyCard(S: AppState, now = new Date()): JourneyCard | null {
     case 6:
       return { day, kind: 'comunidade', title: '👨‍👩‍👧 Juntos é mais fácil', text: 'Convide a família ou amigos para um desafio, ou entre na liga semanal da comunidade.' };
     default:
-      return { day, kind: 'semana', title: '📊 A sua primeira semana', text: 'Veja o resumo dos seus primeiros 7 dias e faça a primeira reavaliação: o Índice antes e depois.' };
+      return { day, kind: 'semana', title: '📊 A sua primeira semana', text: 'Faça a primeira reavaliação e veja o Índice antes e depois.' };
   }
 }
 

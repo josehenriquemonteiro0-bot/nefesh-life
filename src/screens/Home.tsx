@@ -1,32 +1,23 @@
+import { DayPanel, EnergyWeek, NextActionCard, Shortcuts, TodayCarousel } from '../components/HomePanel';
 import { testDays } from '../testDate';
-import { CARD_LABEL, homeVisibility, insightProgress, journeyCard } from '../domain/firstWeek';
-import { askAccount, nextLaterQuestion } from '../domain/onboarding';
-import { getAuth } from '../domain/account';
-import { ChallengeCard, JourneyDayCard } from '../components/FirstWeek';
+import { homeVisibility } from '../domain/firstWeek';
 import { QUIZ } from '../domain/onboarding';
-import { AccountAskCard, LaterQuestionCard } from '../components/LaterQuestion';
-import { useMemo } from 'react';
 import { Bar, Glass, Ring } from '../components/Charts';
 import { Icon } from '../components/Icon';
-import { GLASS_ML, HABITS, PROS, SHOP_URL, STEP_GOAL, TIPS, whatsappLink } from '../domain/content';
+import { GLASS_ML, HABITS, PROS, SHOP_URL, STEP_GOAL, whatsappLink } from '../domain/content';
 import { daysSince, fmtNum, greeting, longToday, todayKey } from '../domain/dates';
-import { planFor, inAdaptation, indexOf, slotsFor } from '../domain/plan';
-import { adherence, habitOn, reorderText, stock } from '../domain/stats';
-import { nextAction } from '../domain/nextAction';
+import { planFor } from '../domain/plan';
+import { habitOn, reorderText, stock } from '../domain/stats';
 import { useStore } from '../state/store';
-import { useDoseToggle } from '../state/doses';
-import { requestListen } from '../domain/voice';
-import { weeklyReport } from '../domain/weekReport';
-import { doseText, stockText } from '../domain/lots';
+import { stockText } from '../domain/lots';
 import { DataCard } from '../components/DataCard';
 import { syncedLabel, useAuth } from '../domain/account';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
 import { HealthShotButton } from '../components/HealthShot';
 import { SourceTag } from '../components/SourceTag';
 import { setSource } from '../domain/sources';
-import { activityStreak, dayScore } from '../domain/points';
+import { dayScore } from '../domain/points';
 import { LEAGUES, unreadCount, useSocial } from '../domain/social';
-import { nextReassessment, spirulinaInsight, weeklySummary } from '../domain/progress';
 import type { Nav } from '../App';
 
 const litres = (glasses: number) => fmtNum(((glasses * GLASS_ML) / 1000).toFixed(2).replace(/0$/, ''));
@@ -95,12 +86,10 @@ function StatusStrip({ go }: { go: Nav }) {
   const joined = !!auth && !!S.community;
   const { state: st } = useSocial(joined ? 120_000 : Infinity);
   const pts = st?.verify ? st.verify.points : dayScore(S, todayKey()).points;
-  const streakN = useMemo(() => activityStreak(S), [S]);
   const me = st?.league?.find((m) => m.me);
   const unread = unreadCount(st);
   return (
     <button className="status-strip" data-tour="strip" onClick={() => go('social')} aria-label="Abrir a Comunidade">
-      <span><b>🔥 {streakN}</b><small>{streakN === 1 ? 'dia de ritual' : 'dias de ritual'}</small></span>
       <span><b>⭐ {pts}</b><small>pontos hoje</small></span>
       {joined ? (
         <span><b>🏆 {me ? `${me.rank}.º` : '—'}</b><small>liga {LEAGUES[st?.me?.league ?? 0]}</small></span>
@@ -129,42 +118,6 @@ export function ProsCard({ go }: { go: Nav }) {
       <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 12 }}>
         <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de ter acompanhamento profissional${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener">Pedir acompanhamento</a>
         <button className="btn ghost sm" onClick={() => go('pros')}>Ver profissionais</button>
-      </div>
-    </section>
-  );
-}
-
-/** Resumo dos últimos 7 dias. */
-function WeekCard({ go }: { go: Nav }) {
-  const { S } = useStore();
-  const w = weeklySummary(S);
-  if (!w.hasData) return null;
-  const items: [string, string][] = [
-    ['Spirulina', `${w.spirulina}/7 dias`],
-    ['Água na meta', `${w.water}/7 dias`],
-    ['Check-ins', `${w.checkins}/7`],
-    ['Atividade', `${w.minutes} min`],
-  ];
-  if (w.energy !== null) items.push(['Energia média', `${fmtNum(w.energy)}/5${w.energyDelta ? ` (${w.energyDelta > 0 ? '+' : ''}${fmtNum(w.energyDelta)})` : ''}`]);
-  if (w.sleep !== null) items.push(['Sono médio', `${fmtNum(w.sleep)} h`]);
-  if (w.plan !== null) items.push(['Plano alimentar', `${w.plan}%`]);
-  if (w.train) items.push(['Treinos do personal', `${w.train.done}/${w.train.planned}`]);
-  return (
-    <section className="card">
-      <div className="row">
-        <h2 style={{ margin: 0 }}>A sua semana</h2>
-        <button className="link small inline" onClick={() => go('evo')}>ver evolução →</button>
-      </div>
-      {(() => {
-        const r = spirulinaInsight(S);
-        return r.comparable && r.energyDiff! > 0 ? (
-          <p className="small" style={{ margin: '8px 0 0' }}>🌿 Nos dias com ritual, a sua energia foi <b className="neon">{fmtNum(r.energyDiff!)} pontos mais alta</b>.</p>
-        ) : null;
-      })()}
-      <div className="week-grid">
-        {items.map(([k, v]) => (
-          <div key={k}><span className="small mute">{k}</span><b>{v}</b></div>
-        ))}
       </div>
     </section>
   );
@@ -234,41 +187,8 @@ export function HabitsCard() {
   );
 }
 
-/** "Hoje": o cartão do dia, a novidade, a pergunta do dia e o pedido de conta, num só lugar. */
-function TodayCard({ vis, go, openScience, startQuiz, openSignup }: { vis: ReturnType<typeof homeVisibility>; go: Nav; openScience?: () => void; startQuiz: () => void; openSignup?: () => void }) {
-  const { S } = useStore();
-  const ip = insightProgress(S);
-  const newInsight = ip.level >= 2 && ip.level > (S.insightSeen ?? 0) && !!(ip.insight || ip.level >= 10);
-  const j = journeyCard(S);
-  const q = nextLaterQuestion(S);
-  const acct = !!openSignup && askAccount(S, !!getAuth());
-  const nov = newInsight || !!vis.novo || !!vis.amanha;
-  if (!j && !q && !acct && !nov) return null;
-  const day = S.planStart ? daysSince(S.planStart) + 1 : 0;
-  return (
-    <section className="card today">
-      <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>Hoje{day >= 1 && day <= 14 ? ` · dia ${day}` : ''}</p>
-      {nov && (
-        <div className="today-part">
-          {newInsight && (
-            <div className="row" style={{ gap: 8 }}>
-              <p className="small" style={{ margin: 0 }}>💡 <b>O seu novo insight está pronto.</b></p>
-              <button className="btn sm" onClick={() => go('evo')}>Ver</button>
-            </div>
-          )}
-          {vis.novo && <p className="small" style={{ margin: newInsight ? '8px 0 0' : 0 }}>✨ <b>Novo no Início:</b> {CARD_LABEL[vis.novo]}</p>}
-          {vis.amanha && <p className="small mute" style={{ margin: newInsight || vis.novo ? '6px 0 0' : 0 }}>Amanhã abre: {CARD_LABEL[vis.amanha]}</p>}
-        </div>
-      )}
-      <JourneyDayCard go={go} openScience={openScience} startQuiz={startQuiz} />
-      <LaterQuestionCard />
-      {openSignup && <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />}
-    </section>
-  );
-}
-
 export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth, openSignup, openScience }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void; openSignup?: () => void; openScience?: () => void }) {
-  const { S, updateToday, todayLog: l, toast } = useStore();
+  const { S } = useStore();
 
   if (!S.ans)
     return (
@@ -289,28 +209,10 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
     );
 
   const c = planFor(S);
-  const dt = (n: number) => doseText(n, c.format);
-  const sl = slotsFor(S);
   const st = stock(S);
-  const doses = l.doses || [];
-  const done = doses.filter(Boolean).length;
-  const ev = S.evals[S.evals.length - 1];
   const day = S.planStart ? daysSince(S.planStart) + 1 : 1;
-  const goalW = c.water;
-  const w = l.water || 0;
-  const tip = TIPS[((daysSince('2026-01-01') % TIPS.length) + TIPS.length) % TIPS.length];
-  const totalCaps = sl.reduce((t, s) => t + s.n, 0);
   const low = st.days <= 10;
-  const re = nextReassessment(S);
   const vis = homeVisibility(S);
-  const firstDays = vis.progressive && day <= 7;
-
-  const { toggle: toggleDose } = useDoseToggle();
-
-  const setWater = (n: number) => {
-    updateToday((t) => { t.water = Math.max(0, n); });
-    if (n === goalW && w < goalW) toast('Meta de água cumprida.');
-  };
 
   return (
     <>
@@ -318,92 +220,12 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       {testDays() > 0 && <p className="small warn" style={{ margin: '0 0 6px' }}>🧪 Modo de teste: a data está avançada {testDays()} {testDays() === 1 ? 'dia' : 'dias'} (Perfil → Voltar a hoje).</p>}
       <p className="mute small" style={{ margin: 0 }}>{longToday()} · dia {day} do ritual</p>
       <h1>{greeting()}{S.ans.name ? `, ${S.ans.name}` : ''}</h1>
-      {vis.show.has('comunidade') && <StatusStrip go={go} />}
 
-      {(() => {
-        const na = nextAction(S, l);
-        const run = () => {
-          if (na.kind === 'dose' && na.slot !== undefined) toggleDose(na.slot);
-          else if (na.kind === 'med' && na.med) updateToday((t) => { t.meds = { ...(t.meds ?? {}), [na.med!]: true }; });
-          else if (na.kind === 'agua') setWater(w + 1);
-          else if (na.kind === 'refeicao') go('nutri');
-          else if (na.kind === 'checkin') go('check');
-        };
-        const label = { dose: 'Tomei', med: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Check-in', treino: 'Treinar', feito: '' }[na.kind];
-        return (
-          <section className="card next-action" data-tour="proxima">
-            <div className="na-text">
-              <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>A seguir</p>
-              <h2 style={{ margin: '2px 0 2px' }}>{na.title}</h2>
-              <p className="small mute" style={{ margin: 0 }}>{na.detail}</p>
-            </div>
-            {label && na.kind !== 'dose' && <div className="na-actions"><button className="btn sm" onClick={run}>{label}</button></div>}
-            <div className="na-spirulina">
-              <div className="row">
-                <p className="small" style={{ margin: 0, opacity: 0.85 }}>Spirulina de hoje · <b>{done}/{sl.length}</b> · {dt(totalCaps)}</p>
-                {ev && <span className="small mute">Índice {indexOf(ev.sc)}</span>}
-              </div>
-              <div className="slots" data-tour="tomas">
-          {sl.map((s, i) => (
-            <div className="slot" key={s.l}>
-              <div>
-                <h3>{s.l}</h3>
-                <p className="small mute" style={{ margin: 0 }}>{dt(s.n)}{i === 0 && S.reminder ? ` · lembrete às ${S.reminder}` : ''}</p>
-              </div>
-              <button className={`tick ${doses[i] ? 'on' : ''}`} onClick={() => toggleDose(i)} aria-pressed={!!doses[i]} aria-label={`Marcar toma: ${s.l}`}>
-                <Icon name="ok" color="#00140d" width={3} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <p className="small" style={{ margin: '8px 0 0', opacity: 0.75 }}>
-          Aderência à Spirulina: <b>{adherence(S, 14)}%</b> dos últimos 14 dias
-          {inAdaptation(S) ? ' · semana de adaptação: está a tomar metade da dose.' : ''}
-        </p>
-            </div>
-
-            <button className="btn ghost full talk talk-big" onClick={() => { requestListen(); go('coach'); }} aria-label="Toca para falar com o NEFESH Voice Assistant">
-              <Icon name="mic" /> Toca para falar
-            </button>
-          </section>
-        );
-      })()}
-
-      <TodayCard vis={vis} go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
-      <ChallengeCard go={go} />
-
-      {(() => {
-        // relatório semanal pronto (domingo à noite e segunda-feira), até ser aberto
-        const now = new Date();
-        const show = (now.getDay() === 0 && now.getHours() >= 18) || now.getDay() === 1;
-        if (!show || S.sample) return null;
-        const r = weeklyReport(S, now);
-        if (r.index === null || S.reportSeen === r.week) return null;
-        return (
-          <section className="card next-action">
-            <div className="na-text">
-              <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>📊 Relatório da semana</p>
-              <h2 style={{ margin: '2px 0 2px' }}>Consistência: {r.index}/100</h2>
-              <p className="small mute" style={{ margin: 0 }}>Veja o que a IA percebeu e a sua prioridade para a próxima semana.</p>
-            </div>
-            <div className="na-actions"><button className="btn sm" onClick={() => go('evo')}>Ver</button></div>
-          </section>
-        );
-      })()}
-
-      {re?.due && !S.sample && (
-        <section className="card due">
-          <div className="row">
-            <div style={{ flex: '1 1 200px' }}>
-              <h2 style={{ margin: 0 }}>Hora da reavaliação dos {re.target} dias</h2>
-              <p className="small mute" style={{ margin: '4px 0 0' }}>2 minutos. Atualize o peso e as medidas e veja o antes e depois.</p>
-            </div>
-            <button className="btn sm" onClick={startQuiz}>Reavaliar</button>
-          </div>
-        </section>
-      )}
-
-
+      <DayPanel go={go} />
+      <NextActionCard go={go} />
+      <TodayCarousel go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
+      <EnergyWeek go={go} />
+      <Shortcuts go={go} />
 
       <SpirulinaCheck />
 
@@ -423,34 +245,12 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         </section>
       )}
 
+      {/* cartões que vão abrindo (Início progressivo) */}
+      {vis.show.has('comunidade') && <StatusStrip go={go} />}
       {vis.show.has('agua') && <WaterCard />}
-
-      {!l.e && (
-        <section className="card" data-tour="checkin">
-          <div className="row">
-            <div>
-              <h2 style={{ margin: 0 }}>Como se sente hoje?</h2>
-              <p className="mute small" style={{ margin: '4px 0 0' }}>30 segundos: energia, sono, disposição, treino e Spirulina.</p>
-            </div>
-            <button className="btn ghost sm" onClick={() => go('check')}>Check-in</button>
-          </div>
-        </section>
-      )}
-
       {vis.show.has('passos') && <ActivityCard openHealth={openHealth} />}
-
       {vis.show.has('habitos') && <HabitsCard />}
-
       {vis.show.has('pros') && <ProsCard go={go} />}
-
-      {firstDays ? null : <WeekCard go={go} />}
-
-
-      {!firstDays && <section className="card tip">
-        <p className="small gold" style={{ margin: '0 0 4px', fontWeight: 700 }}>Sabia que…</p>
-        <p style={{ margin: 0 }}>{tip}</p>
-      </section>}
-
     </>
   );
 }
