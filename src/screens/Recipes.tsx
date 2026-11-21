@@ -60,6 +60,7 @@ function RecipeDetail({ r, onBack }: { r: Recipe; onBack: () => void }) {
                   const ds = [...(d.doses || [])];
                   ds[next] = true;
                   d.doses = ds;
+                  d.slots = sl.length;
                   d.viaRecipe = { ...(d.viaRecipe || {}), [next]: r.id };
                 });
                 toast(`Toma registada: ${sl[next].l}, com a receita. Não conta para o stock.`);

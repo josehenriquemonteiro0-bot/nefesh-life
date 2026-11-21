@@ -6,7 +6,7 @@
  */
 import { dayKey, keyDaysAgo } from './dates';
 import { planFor } from './plan';
-import { took } from './stats';
+import { tookOn } from './stats';
 import { moodInsights } from './mind';
 import type { AppState, DayLog } from './types';
 
@@ -28,12 +28,12 @@ function lastDays(S: Pick<AppState, 'logs'>, n: number, now: Date) {
 }
 
 /** Dia da semana claramente mais fraco num hábito (só com 4+ semanas de uso). */
-function weakDay(days: ReturnType<typeof lastDays>, f: (l: DayLog | undefined) => boolean) {
+function weakDay(days: ReturnType<typeof lastDays>, f: (l: DayLog | undefined, k: string) => boolean) {
   const used = days.filter((d) => d.l && Object.keys(d.l).length);
   if (used.length < 21) return null;
   const rate = Array.from({ length: 7 }, (_, wd) => {
     const ds = used.filter((d) => d.wd === wd);
-    return ds.length >= 3 ? ds.filter((d) => f(d.l)).length / ds.length : null;
+    return ds.length >= 3 ? ds.filter((d) => f(d.l, d.k)).length / ds.length : null;
   });
   const known = rate.filter((r): r is number => r !== null);
   const avg = mean(known);
@@ -50,7 +50,7 @@ export function patternsOf(S: AppState, now = new Date()): Pattern[] {
   const tr = weakDay(d56, (l) => (l?.workouts?.length ?? 0) > 0);
   if (tr) out.push({ id: 'treino-dia', text: `Costuma falhar o treino ${DAYS_PL[tr.wd]}.` });
   if (S.ans) {
-    const sp = weakDay(d56, (l) => took(S, l, now));
+    const sp = weakDay(d56, (_l, k) => tookOn(S, k));
     if (sp) out.push({ id: 'spirulina-dia', text: `Esquece mais a Spirulina ${DAYS_PL[sp.wd]}.` });
   }
 

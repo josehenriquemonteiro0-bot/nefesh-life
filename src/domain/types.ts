@@ -47,6 +47,8 @@ export interface Answers {
 
 export interface DayLog {
   doses?: boolean[];
+  /** número de tomas desse dia quando foram marcadas (a dose muda depois da adaptação) */
+  slots?: number;
   water?: number;
   hab?: Partial<Record<HabitKey, boolean>>;
   /** energia, sono, disposição (1–5) */
@@ -132,6 +134,8 @@ export interface AppState {
   homeAll?: boolean;
   /** último insight da Evolução já visto (n.º de check-ins) */
   insightSeen?: number;
+  /** o ecrã dos 30 dias já foi visto */
+  month30Seen?: boolean;
   bottles?: Bottle[];
   /** formato em que a pessoa toma a Spirulina */
   format?: 'caps' | 'po' | 'nibs';

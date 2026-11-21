@@ -1,3 +1,4 @@
+import { MonthCelebration, showMonth } from '../components/MonthCelebration';
 import { DayPanel, EnergyWeek, NextActionCard, Shortcuts, TodayCarousel } from '../components/HomePanel';
 import { testDays } from '../testDate';
 import { homeVisibility } from '../domain/firstWeek';
@@ -211,7 +212,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   const c = planFor(S);
   const st = stock(S);
   const day = S.planStart ? daysSince(S.planStart) + 1 : 1;
-  const low = st.days <= 10;
+  const low = S.stockCaps > 0 && st.days <= 7;
   const vis = homeVisibility(S);
 
   return (
@@ -221,14 +222,9 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       <p className="mute small" style={{ margin: 0 }}>{longToday()} · dia {day} do ritual</p>
       <h1>{greeting()}{S.ans.name ? `, ${S.ans.name}` : ''}</h1>
 
+      {showMonth(S) && <MonthCelebration />}
       <DayPanel go={go} />
       <NextActionCard go={go} />
-      <TodayCarousel go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
-      <EnergyWeek go={go} />
-      <Shortcuts go={go} />
-
-      <SpirulinaCheck />
-
       {low && (
         <section className="card">
           <div className="row">
@@ -244,6 +240,13 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           </div>
         </section>
       )}
+      <TodayCarousel go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
+      <EnergyWeek go={go} />
+      <Shortcuts go={go} />
+
+      <SpirulinaCheck />
+
+
 
       {/* cartões que vão abrindo (Início progressivo) */}
       {vis.show.has('comunidade') && <StatusStrip go={go} />}

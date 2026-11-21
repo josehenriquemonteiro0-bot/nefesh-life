@@ -3,7 +3,7 @@ import { bodyOf } from './body';
 import { FOODS, entryOf, type FoodEntry, type MealKey } from './foods';
 import { indexOf, planFor } from './plan';
 import { weekAdherence } from './planAdherence';
-import { took } from './stats';
+import { tookOn } from './stats';
 import { weekTrainAdherence } from './trainAdherence';
 import type { WorkoutLog } from './training';
 import type { Answers, AppState, Evaluation, Slot } from './types';
@@ -21,7 +21,8 @@ export function nextReassessment(S: AppState, now = new Date()) {
   const marks = [...CHECKPOINTS, ...Array.from({ length: 12 }, (_, i) => 60 + i * 30)];
   const evalDay = day - sinceLast;
   // o marco mais recente já atingido e ainda sem avaliação; senão, o próximo
-  const passed = marks.filter((m) => m <= day && m > evalDay);
+  // uma reavaliação por fazer deixa de ser pedida ao fim de 5 dias (até ao marco seguinte)
+  const passed = marks.filter((m) => m <= day && m > evalDay && day - m <= 4);
   const target = passed.length ? passed[passed.length - 1] : marks.find((m) => m > day) ?? marks[marks.length - 1];
   return { day, target, due: day >= target, inDays: Math.max(0, target - day) };
 }
@@ -59,7 +60,7 @@ export function weeklySummary(S: AppState, now = new Date()) {
   const keys = Array.from({ length: 7 }, (_, i) => keyDaysAgo(i, now));
   const prevKeys = Array.from({ length: 7 }, (_, i) => keyDaysAgo(i + 7, now));
   const logs = keys.map((k) => S.logs[k]).filter(Boolean);
-  const spirulina = keys.filter((k) => took(S, S.logs[k], now)).length;
+  const spirulina = keys.filter((k) => tookOn(S, k)).length;
   const water = S.ans ? keys.filter((k) => (S.logs[k]?.water ?? 0) >= planFor(S).water).length : 0;
   const checkins = logs.filter((l) => l!.e).length;
   const energy = mean(keys.map((k) => S.logs[k]?.e).filter((v): v is number => !!v));
@@ -128,9 +129,10 @@ const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b
  * (últimos 30 dias com check-in). É uma observação pessoal, não uma prova científica.
  */
 export function spirulinaInsight(S: AppState, now = new Date(), days = 30) {
-  const rows = Array.from({ length: days }, (_, i) => S.logs[keyDaysAgo(i, now)]).filter((l) => l && l.e);
-  const withR = rows.filter((l) => took(S, l, now));
-  const without = rows.filter((l) => !took(S, l, now));
+  const keys = Array.from({ length: days }, (_, i) => keyDaysAgo(i, now)).filter((k) => S.logs[k]?.e);
+  const rows = keys.map((k) => S.logs[k]);
+  const withR = keys.filter((k) => tookOn(S, k)).map((k) => S.logs[k]);
+  const without = keys.filter((k) => !tookOn(S, k)).map((k) => S.logs[k]);
   const group = (ls: typeof rows) => ({ n: ls.length, e: avg(ls.map((l) => l!.e!)), s: avg(ls.map((l) => l!.s!).filter(Boolean)), d: avg(ls.map((l) => l!.d!).filter(Boolean)) });
   const a = group(withR);
   const b = group(without);

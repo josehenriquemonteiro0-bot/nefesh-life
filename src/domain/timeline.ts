@@ -6,7 +6,7 @@ import { PREVENTION, labSeries } from './care';
 import { dayKey } from './dates';
 import { PRODUCTS } from './lots';
 import { indexOf } from './plan';
-import { took } from './stats';
+import { tookOn } from './stats';
 import type { AppState } from './types';
 
 export type TimelineCat = 'saude' | 'spirulina' | 'corpo' | 'marcos';
@@ -62,7 +62,7 @@ export function timeline(S: AppState, now = new Date()): TimelineEvent[] {
   // marcos do ritual: dias com a Spirulina tomada (acumulados)
   let n = 0;
   for (const k of Object.keys(S.logs).sort()) {
-    if (!took(S, S.logs[k], now)) continue;
+    if (!tookOn(S, k)) continue;
     n++;
     if (RITUAL_MARKS.includes(n)) ev.push({ date: k, cat: 'marcos', icon: '🏅', title: `${n} dias de ritual da Spirulina` });
   }

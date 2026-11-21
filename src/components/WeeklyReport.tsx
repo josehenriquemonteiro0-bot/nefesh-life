@@ -10,6 +10,24 @@ import { speak, stopSpeaking, ttsSupported, voiceLang } from '../domain/voice';
 import { useStore } from '../state/store';
 
 /** Relatório semanal: índice de consistência, 5 áreas, o que a IA percebeu e uma prioridade. */
+/** Pedidos em curso por semana (sobrevivem a sair e voltar ao ecrã); 45 s no máximo. */
+const pending = new Map<string, Promise<string>>();
+function askInsights(week: string, summary: string): Promise<string> {
+  const cur = pending.get(week);
+  if (cur) return cur;
+  const ctl = new AbortController();
+  const timer = window.setTimeout(() => ctl.abort(), 45000);
+  const p = fetch(`${PHOTO_API}/relatorio`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary, device: deviceId() }), signal: ctl.signal })
+    .then((x) => (x.ok ? x.json() : Promise.reject(new Error(String(x.status)))))
+    .then((b: { insights?: string }) => String(b.insights ?? '').trim())
+    .finally(() => {
+      window.clearTimeout(timer);
+      pending.delete(week);
+    });
+  pending.set(week, p);
+  return p;
+}
+
 export function WeeklyReport() {
   const { S, update } = useStore();
   const r = weeklyReport(S);
@@ -17,24 +35,25 @@ export function WeeklyReport() {
   const note = S.reportNotes?.[r.week];
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [tries, setTries] = useState(0);
 
   // marca o relatório como visto e pede "o que a IA percebeu" uma vez por semana
   useEffect(() => {
     if (S.reportSeen !== r.week) update((d) => { d.reportSeen = r.week; });
     if (!full || note !== undefined || r.index === null || loading || S.sample) return;
     setLoading(true);
+    setFailed(false);
     notePremiumUse('relatorioCompleto');
-    fetch(`${PHOTO_API}/relatorio`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary: reportSummary(S, r), device: deviceId() }) })
-      .then((x) => (x.ok ? x.json() : Promise.reject(new Error(String(x.status)))))
-      .then((b: { insights?: string }) => {
-        const text = String(b.insights ?? '').trim();
+    // o pedido continua mesmo que a pessoa saia do ecrã; ao voltar, junta-se ao mesmo pedido
+    askInsights(r.week, reportSummary(S, r))
+      .then((text) => {
         if (text) update((d) => { d.reportNotes = { ...(d.reportNotes ?? {}), [r.week]: text }; });
         else setFailed(true);
       })
       .catch(() => setFailed(true))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r.week, full]);
+  }, [r.week, full, tries]);
   useEffect(() => () => stopSpeaking(), []);
 
   const listen = () => {
@@ -90,7 +109,7 @@ export function WeeklyReport() {
             ) : loading ? (
               <p className="small mute" style={{ margin: 0 }}>A analisar a sua semana…</p>
             ) : failed ? (
-              <p className="small mute" style={{ margin: 0 }}>Não foi possível analisar agora. Abra outra vez com internet.</p>
+              <p className="small mute" style={{ margin: 0 }}>Não foi possível analisar agora. <button className="link small inline" onClick={() => setTries((t) => t + 1)}>Tentar outra vez</button></p>
             ) : null}
           </div>
 

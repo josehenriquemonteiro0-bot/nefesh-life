@@ -5,7 +5,7 @@
 import { STEP_GOAL } from './content';
 import { dayKey, keyDaysAgo } from './dates';
 import { indexOf, planFor, slotsFor } from './plan';
-import { streak, took } from './stats';
+import { streak, dayDate, took } from './stats';
 import type { AppState, DayLog } from './types';
 
 /** Letras dos hábitos (iguais às do servidor). */
@@ -26,12 +26,12 @@ const mealsLogged = (l: DayLog) =>
   Object.values(l.meals ?? {}).filter((m) => (m ?? []).some((e) => !e.auto)).length;
 
 /** Pontos e hábitos cumpridos num dia (sem o bónus da sequência). */
-export function dayScore(S: AppState, key: string, now = new Date()): { points: number; flags: string; parts: Record<Flag, number>; halved: boolean } {
+export function dayScore(S: AppState, key: string, _now = new Date()): { points: number; flags: string; parts: Record<Flag, number>; halved: boolean } {
   const l = S.logs[key];
   const parts = { s: 0, a: 0, c: 0, m: 0, t: 0, p: 0, n: 0 } as Record<Flag, number>;
   if (!l || !S.ans) return { points: 0, flags: '', parts, halved: false };
   const doses = (l.doses ?? []).filter(Boolean).length;
-  if (took(S, l, now)) parts.s = 20;
+  if (took(S, l, dayDate(key))) parts.s = 20;
   else if (doses) parts.s = 10;
   const goal = planFor(S).water;
   const w = l.water ?? 0;

@@ -10,7 +10,7 @@ import { daysSince, fmtNum, keyDaysAgo, shortDate, todayKey } from './dates';
 import { foodById, entryOf, MEALS, totals, type FoodEntry, type MealKey } from './foods';
 import { planFor, slotsFor } from './plan';
 import { doseText } from './lots';
-import { adherence, average, streak, took } from './stats';
+import { adherence, average, streak, tookOn } from './stats';
 import { targetsFor } from './body';
 import { setSource } from './sources';
 import { mealForHour, PHOTO_API, deviceId } from './photo';
@@ -179,7 +179,7 @@ export function buildContext(S: AppState, now = new Date(), extra: { friends?: s
   lines.push(`Registos de hoje: ${today.join('; ')}.`);
   const e7 = average(S, 1, 7, 'e', now);
   const s7 = Array.from({ length: 7 }, (_, i) => S.logs[keyDaysAgo(i + 1, now)]?.sleepH).filter((x): x is number => x !== undefined);
-  const took7 = Array.from({ length: 7 }, (_, i) => took(S, S.logs[keyDaysAgo(i + 1, now)], now)).filter(Boolean).length;
+  const took7 = Array.from({ length: 7 }, (_, i) => tookOn(S, keyDaysAgo(i + 1, now))).filter(Boolean).length;
   lines.push(`Últimos 7 dias: energia média ${e7 ? fmtNum(r1(e7)) : '—'}/5; sono médio ${s7.length ? `${fmtNum(r1(s7.reduce((x, y) => x + y, 0) / s7.length))} h` : '—'}; Spirulina em ${took7} de 7 dias.`);
   return lines.join('\n');
 }

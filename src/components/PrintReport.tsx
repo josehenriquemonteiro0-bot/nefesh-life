@@ -4,7 +4,7 @@ import { BODY_GOAL_LABEL, bodyOf, targetsFor } from '../domain/body';
 import { indexOf, planFor } from '../domain/plan';
 import { doseText } from '../domain/lots';
 import { totals } from '../domain/foods';
-import { adherence, streak, took } from '../domain/stats';
+import { adherence, streak, tookOn } from '../domain/stats';
 import { isMeasured, sourceOf } from '../domain/sources';
 import { compareEvals, weeklySummary, workoutKcal } from '../domain/progress';
 import { weekAdherence, weekChanges } from '../domain/planAdherence';
@@ -154,7 +154,7 @@ export function PrintReport() {
               return (
                 <tr key={k}>
                   <td>{shortDate(k)}</td>
-                  <td>{took(S, l, now) ? 'sim' : '—'}</td>
+                  <td>{tookOn(S, k) ? 'sim' : '—'}</td>
                   <td>{l?.water ? `${l.water} copos` : '—'}</td>
                   <td>{l?.steps !== undefined ? `${l.steps.toLocaleString('pt-PT')}${isMeasured(sourceOf(l, 'steps')) ? ' ⌚' : ''}` : '—'}</td>
                   <td>{l?.sleepH !== undefined ? `${fmtNum(l.sleepH)} h${isMeasured(sourceOf(l, 'sleepH')) ? ' ⌚' : ''}` : '—'}</td>

@@ -12,6 +12,7 @@ export function applyDose(S: AppState, t: DayLog, i: number, on: boolean) {
   const next = [...(t.doses || [])];
   next[i] = on;
   t.doses = next;
+  t.slots = sl.length;
   const tag = `spirulina-${i}`;
   const meals = { ...(t.meals || {}) };
   for (const k of Object.keys(meals) as (keyof typeof meals)[]) meals[k] = (meals[k] || []).filter((e) => e.auto !== tag);

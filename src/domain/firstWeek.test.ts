@@ -73,7 +73,7 @@ describe('evolução na primeira semana', () => {
     S.logs['2026-11-21'] = { e: 4, water: 9, sleepH: 6.5 };
     const p = insightProgress(S, at('2026-11-21'));
     expect(p).toMatchObject({ n: 2, next: 4, left: 2, level: 2, yt: { y: 2, t: 4 } });
-    expect(p.insight!.text).toBe('No dia em que bebeu 9 copos de água, a sua energia foi 4. Nos outros, 2.');
+    expect(p.insight!.text).toBe('No dia em que bebeu a meta de água, a sua energia foi 4. Nos outros, 2.');
   });
 
   it('sem diferença no fator bom, não inventa', () => {
@@ -113,5 +113,21 @@ describe('português dos insights', () => {
     S.logs['2026-11-21'] = { sleepH: 5, e: 2 };
     S.logs['2026-11-22'] = { sleepH: 5, e: 2 };
     expect(firstInsight(S, at('2026-11-22'))).toMatch(/^No dia em que dormiu/);
+  });
+});
+
+describe('insights que variam', () => {
+  it('com dois fatores reais, muda de um dia para o outro', () => {
+    const S = S0('2026-11-01');
+    // sono e água ligados à energia, em dias diferentes
+    const days: [string, number, number, number][] = [
+      ['2026-11-10', 5, 8, 12], ['2026-11-11', 4, 8, 2], ['2026-11-12', 4, 5, 12],
+      ['2026-11-13', 2, 5, 2], ['2026-11-14', 5, 8, 12], ['2026-11-15', 2, 5, 2],
+    ];
+    for (const [k, e, sleepH, water] of days) S.logs[k] = { e, sleepH, water };
+    const a = energyInsight(S, at('2026-11-15', 20))!.id;
+    const b = energyInsight(S, at('2026-11-16', 20))!.id;
+    expect(new Set([a, b]).size).toBe(2);
+    expect(energyInsight(S, at('2026-11-15', 20))!.text).toMatch(/^Nos dias em que/);
   });
 });

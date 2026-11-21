@@ -8,7 +8,7 @@ import { AREAS, INSTAGRAM_REEL } from './content';
 import { addDaysKey, daysSince, todayKey } from './dates';
 import { provisionalAreas } from './onboarding';
 import { planFor } from './plan';
-import { took } from './stats';
+import { tookOn } from './stats';
 import type { AppState, AreaKey } from './types';
 
 export const MICRO: Record<AreaKey, { title: string; text: string; metric: string }> = {
@@ -105,7 +105,7 @@ export function firstInsight(S: AppState, now = new Date()) {
   if (water && water.diff >= 1) return `${water.a === 1 ? 'No dia' : `Nos ${water.a} dias`} em que bebeu a meta de água, a sua energia foi maior. Continue a marcar: com mais dias, a app confirma o padrão.`;
   const sleep = split((k) => (S.logs[k]?.sleepH ?? 0) >= 7);
   if (sleep && sleep.diff >= 1) return `${sleep.a === 1 ? 'No dia' : `Nos ${sleep.a} dias`} em que dormiu 7 horas ou mais, a sua energia foi maior.`;
-  const doses = keys.filter((k) => took(S, S.logs[k], now)).length;
+  const doses = keys.filter((k) => tookOn(S, k)).length;
   return doses ? `Já tomou a Spirulina em ${doses} ${doses === 1 ? 'dia' : 'dias'}. Faça o check-in (energia e sono) todos os dias: a partir daqui a app começa a mostrar o que mais mexe consigo.` : 'Faça o check-in (energia e sono) todos os dias: com 3 ou 4 dias, a app começa a mostrar o que mais mexe consigo.';
 }
 
@@ -118,7 +118,7 @@ export function journeyCard(S: AppState, now = new Date()): JourneyCard | null {
   const today = todayKey(now);
   switch (day) {
     case 1:
-      return took(S, S.logs[today], now)
+      return tookOn(S, today)
         ? { day, kind: 'vitoria', title: '🎉 Primeira vitória!', text: 'A sua primeira toma está feita: o ritual começou. Amanhã há uma pergunta nova e uma receita para experimentar.' }
         : null;
     case 2:
@@ -154,30 +154,44 @@ export function checkinDays(S: AppState, now = new Date()) {
 }
 
 /**
- * O dia de maior energia contra o de menor: o fator com mais diferença (desafio feito,
- * copos de água, horas de sono, Spirulina tomada), só quando o dia bom tem o valor "bom".
+ * Insight de energia: compara os dias com e sem um fator (água na meta, 7 h de sono, desafio
+ * feito, Spirulina tomada, treino, passos, respiração/meditação) nos últimos 14 dias com
+ * check-in. Só usa fatores com diferença real (0,5 ou mais) e o dia "bom" com mais energia;
+ * quando há vários, muda de fator de um dia para o outro.
  */
 export function energyInsight(S: AppState, now = new Date()) {
-  const days = checkinDays(S, now);
+  const days = checkinDays(S, now).slice(-14);
   if (days.length < 2) return null;
-  const e = (k: string) => S.logs[k]!.e!;
-  const hi = days.reduce((a, b) => (e(b) > e(a) ? b : a));
-  const lo = days.reduce((a, b) => (e(b) < e(a) ? b : a));
-  if (e(hi) === e(lo)) return null;
-  const L = (k: string) => S.logs[k] ?? {};
-  const cand: { score: number; text: string }[] = [];
+  const goal = S.ans ? planFor(S).water : 8;
   const ch = S.challenge;
-  if (ch && ch.done.includes(hi) && !ch.done.includes(lo)) cand.push({ score: 1, text: 'fez o desafio da semana' });
-  if (took(S, S.logs[hi], now) && !took(S, S.logs[lo], now)) cand.push({ score: 1, text: 'tomou a Spirulina' });
-  const w = (L(hi).water ?? 0) - (L(lo).water ?? 0);
-  if (w >= 2) cand.push({ score: w / 4, text: `bebeu ${L(hi).water} copos de água` });
-  const s = (L(hi).sleepH ?? 0) - (L(lo).sleepH ?? 0);
-  if (typeof L(hi).sleepH === 'number' && typeof L(lo).sleepH === 'number' && s >= 1) cand.push({ score: s / 2, text: `dormiu ${String(L(hi).sleepH).replace('.', ',')} horas` });
-  if (!cand.length) return null;
-  const best = cand.sort((a, b) => b.score - a.score)[0];
-  const others = days.filter((k) => k !== hi).map(e);
-  const y = Math.round((others.reduce((a, b) => a + b, 0) / others.length) * 10) / 10;
-  return { text: `No dia em que ${best.text}, a sua energia foi ${e(hi)}. Nos outros, ${String(y).replace('.', ',')}.` };
+  const L = (k: string) => S.logs[k] ?? {};
+  const factors: { id: string; text: string; on: (k: string) => boolean }[] = [
+    { id: 'agua', text: 'bebeu a meta de água', on: (k) => (L(k).water ?? 0) >= goal },
+    { id: 'sono', text: 'dormiu 7 horas ou mais', on: (k) => (L(k).sleepH ?? 0) >= 7 },
+    { id: 'desafio', text: 'fez o desafio da semana', on: (k) => !!ch?.done.includes(k) },
+    { id: 'spirulina', text: 'tomou a Spirulina', on: (k) => tookOn(S, k) },
+    { id: 'treino', text: 'treinou 20 minutos ou mais', on: (k) => (L(k).workouts ?? []).reduce((t, w) => t + w.minutes, 0) >= 20 },
+    { id: 'passos', text: 'andou 7000 passos ou mais', on: (k) => (L(k).steps ?? 0) >= 7000 },
+    { id: 'calma', text: 'fez respiração ou meditação', on: (k) => (L(k).breath ?? 0) + (L(k).medit ?? 0) > 0 },
+  ];
+  const minGroup = days.length >= 6 ? 2 : 1;
+  const e = (k: string) => S.logs[k]!.e!;
+  const avg = (ks: string[]) => Math.round((ks.reduce((t, k) => t + e(k), 0) / ks.length) * 10) / 10;
+  const cands = factors
+    .map((f) => {
+      const yes = days.filter(f.on), no = days.filter((k) => !f.on(k));
+      if (yes.length < minGroup || no.length < minGroup) return null;
+      const a = avg(yes), b = avg(no);
+      return a - b >= 0.5 ? { ...f, a, b, n: yes.length, diff: a - b } : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x)
+    .sort((x, y) => y.diff - x.diff);
+  if (!cands.length) return null;
+  // um fator diferente por dia (entre os que têm diferença real)
+  const pick = cands[((daysSince('2026-01-01', now) % cands.length) + cands.length) % cands.length];
+  const fmt = (v: number) => String(v).replace('.', ',');
+  const lead = pick.n === 1 ? `No dia em que ${pick.text}` : `Nos dias em que ${pick.text}`;
+  return { id: pick.id, text: `${lead}, a sua energia foi ${fmt(pick.a)}. Nos outros, ${fmt(pick.b)}.` };
 }
 
 /** Estado dos marcos: check-ins, próximo insight, nível já atingido e ontem/hoje. */

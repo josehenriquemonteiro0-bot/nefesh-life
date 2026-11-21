@@ -11,7 +11,7 @@ import { targetsFor } from './body';
 import { totals } from './foods';
 import { planFor } from './plan';
 import { weekAdherence } from './planAdherence';
-import { took } from './stats';
+import { tookOn } from './stats';
 import type { AppState, DayLog } from './types';
 
 export type ReportArea = 'movimento' | 'nutricao' | 'sono' | 'habitos' | 'spirulina';
@@ -104,7 +104,7 @@ export function weeklyReport(S: AppState, now = new Date()): WeekReport {
   const ref = new Date(`${days[6]}T23:00:00`);
 
   // Spirulina: dias com o ritual cumprido (só com plano)
-  const spirulinaDays = days.filter((k) => took(S, S.logs[k], ref)).length;
+  const spirulinaDays = days.filter((k) => tookOn(S, k)).length;
   // sem nenhum registo na semana (app não usada), a Spirulina também fica de fora
   const spirulina = S.ans && logs.some((l) => l && Object.keys(l).length) ? clamp((spirulinaDays / 7) * 100) : null;
 

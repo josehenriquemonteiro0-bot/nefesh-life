@@ -14,11 +14,21 @@ import { careReportLines } from './care';
 import type { AppState, DayLog } from './types';
 import type { IconName } from '../components/Icon';
 
-/** O ritual do dia está cumprido quando todas as tomas foram marcadas. */
-export function took(S: AppState, l: DayLog | undefined, now = new Date()) {
+/** Meio-dia do dia de uma chave (para saber a dose desse dia). */
+export const dayDate = (k: string) => new Date(`${k}T12:00:00`);
+
+/**
+ * O ritual do dia está cumprido quando todas as tomas DESSE dia foram marcadas.
+ * Usa o número de tomas guardado ao marcar; nos registos antigos, a dose da data do dia
+ * (passe a data do registo em "when": na semana de adaptação havia menos tomas).
+ */
+export function took(S: AppState, l: DayLog | undefined, when = new Date()) {
   if (!l || !l.doses) return false;
-  return l.doses.filter(Boolean).length >= Math.max(1, slotsFor(S, now).length);
+  const need = l.slots ?? slotsFor(S, when).length;
+  return l.doses.filter(Boolean).length >= Math.max(1, need);
 }
+/** Ritual cumprido no dia k. */
+export const tookOn = (S: AppState, k: string) => took(S, S.logs[k], dayDate(k));
 
 /**
  * Ritmo real das tomas: fração dos dias com o ritual feito nos últimos 14 dias
@@ -29,9 +39,9 @@ export function pace(S: AppState, now = new Date()) {
   const start = [S.planStart, S.stockStart].filter(Boolean).sort().pop() ?? null;
   const span = start ? Math.min(14, daysSince(start, now)) : 0;
   if (span < 5) return 1;
-  const today = took(S, S.logs[keyDaysAgo(0, now)], now) ? 1 : 0;
+  const today = tookOn(S, keyDaysAgo(0, now)) ? 1 : 0;
   let yes = today;
-  for (let i = 1; i <= span; i++) if (took(S, S.logs[keyDaysAgo(i, now)], now)) yes++;
+  for (let i = 1; i <= span; i++) if (tookOn(S, keyDaysAgo(i, now))) yes++;
   const n = span + today;
   return Math.max(0.25, Math.min(1, yes / n));
 }
@@ -70,7 +80,7 @@ export function streak(S: AppState, now = new Date()) {
   let n = 0;
   const rested = new Set<string>();
   for (let i = 0; i < 730; i++) {
-    if (took(S, S.logs[keyDaysAgo(i, now)], now)) {
+    if (tookOn(S, keyDaysAgo(i, now))) {
       n++;
       continue;
     }
@@ -86,17 +96,24 @@ export function streak(S: AppState, now = new Date()) {
 }
 
 export function bestStreak(S: AppState, now = new Date()) {
-  let best = 0;
-  let cur = 0;
-  let prev: string | null = null;
-  for (const k of Object.keys(S.logs).sort()) {
-    if (took(S, S.logs[k], now)) {
-      cur = prev && daysSince(prev, now) - daysSince(k, now) === 1 ? cur + 1 : 1;
+  // a mesma regra da sequência: um dia falhado por semana (segunda a domingo) é descanso
+  const keys = Object.keys(S.logs).sort();
+  if (!keys.length) return 0;
+  const today = keyDaysAgo(0, now);
+  let best = 0, cur = 0;
+  let rested = new Set<string>();
+  for (let d = new Date(`${keys[0]}T12:00:00`); dayKey(d) <= today; d.setDate(d.getDate() + 1)) {
+    const k = dayKey(d);
+    if (tookOn(S, k)) {
+      cur++;
       best = Math.max(best, cur);
-      prev = k;
-    } else {
-      cur = 0;
-      prev = null;
+    } else if (k !== today) {
+      const wk = mondayOf(d);
+      if (cur > 0 && !rested.has(wk)) rested.add(wk);
+      else {
+        cur = 0;
+        rested = new Set();
+      }
     }
   }
   return best;
@@ -117,7 +134,7 @@ export function average(S: AppState, from: number, to: number, f: 'e' | 's' | 'd
 
 export function adherence(S: AppState, n = 14, now = new Date()) {
   let y = 0;
-  for (let i = 0; i < n; i++) if (took(S, S.logs[keyDaysAgo(i, now)], now)) y++;
+  for (let i = 0; i < n; i++) if (tookOn(S, keyDaysAgo(i, now))) y++;
   return Math.round((y / n) * 100);
 }
 
@@ -143,7 +160,7 @@ export function badges(S: AppState, now = new Date()): Badge[] {
   if (!S.ans) return [];
   const logs = Object.values(S.logs);
   const st = stock(S, now);
-  const days = logs.filter((l) => took(S, l, now)).length;
+  const days = Object.keys(S.logs).filter((k) => tookOn(S, k)).length;
   const best = bestStreak(S, now);
   const goalW = planFor(S).water;
   const hyd = logs.filter((l) => (l.water || 0) >= goalW).length;
@@ -238,4 +255,37 @@ export function reorderText(S: AppState, now = new Date()) {
   const n = Math.max(1, Math.ceil((per * 30) / CAPS_PER_BOTTLE));
   const name = { caps: 'Spirulina em cápsulas (120 cápsulas)', po: 'Spirulina em pó (60 g)', nibs: 'Spirulina em palhinha / Nibs (60 g)' }[format];
   return `Olá NEFESH! Quero encomendar ${n} ${n === 1 ? 'frasco' : 'frascos'} de ${name}${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}. O meu stock acaba em ${st.days} ${st.days === 1 ? 'dia' : 'dias'}.`;
+}
+
+/**
+ * A sequência parou ontem (e não é o dia de descanso da semana): para mostrar
+ * "Não faz mal, recomece hoje" em vez de a deixar ir a zero sem uma palavra.
+ */
+export function streakBreak(S: AppState, now = new Date()) {
+  if (tookOn(S, keyDaysAgo(1, now))) return null;
+  const prev = streak(S, daysAgo(2, now));
+  const cur = streak(S, now);
+  if (prev < 2 || cur >= prev) return null;
+  return { prev, best: bestStreak(S, now) };
+}
+
+/** Resumo do primeiro mês (marco dos 30 dias). */
+export function monthSummary(S: AppState, now = new Date()) {
+  const keys = Array.from({ length: 30 }, (_, i) => keyDaysAgo(i, now)).filter((k) => !S.planStart || k >= S.planStart);
+  const goal = S.ans ? planFor(S).water : 8;
+  const e = (ks: string[]) => {
+    const v = ks.map((k) => S.logs[k]?.e).filter((x): x is number => !!x);
+    return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null;
+  };
+  const sorted = [...keys].sort();
+  return {
+    days: keys.length,
+    spirulina: keys.filter((k) => tookOn(S, k)).length,
+    water: keys.filter((k) => (S.logs[k]?.water ?? 0) >= goal).length,
+    checkins: keys.filter((k) => S.logs[k]?.e).length,
+    minutes: keys.reduce((t, k) => t + (S.logs[k]?.workouts ?? []).reduce((a, w) => a + w.minutes, 0), 0),
+    best: bestStreak(S, now),
+    energyFirst: e(sorted.slice(0, 7)),
+    energyLast: e(sorted.slice(-7)),
+  };
 }

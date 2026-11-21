@@ -1,3 +1,4 @@
+import { liveScores } from './domain/liveIndex';
 import { notePremiumUse } from './domain/analytics';
 import { useEffect, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
@@ -238,8 +239,9 @@ export function App() {
     if (!quiz) return;
     const ans = quiz.draft;
     const prov = provisionalAreas(ans);
-    const ev = { date: todayKey(), sc: scores(ans), body: bodySnapshot(ans), ...(prov.length ? { prov } : {}) };
     const first = S.sample || !S.ans;
+    // reavaliação: o Índice junta as respostas novas e os hábitos dos últimos 14 dias
+    const ev = { date: todayKey(), sc: first ? scores(ans) : liveScores(S, new Date(), ans), body: bodySnapshot(ans), ...(prov.length ? { prov } : {}) };
     if (first) {
       const fresh = blankState();
       replace({ ...fresh, planStart: todayKey(), ans, evals: [ev], notifications: S.notifications, consent: S.consent, homeProgressive: true });

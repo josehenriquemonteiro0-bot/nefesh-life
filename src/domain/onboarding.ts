@@ -6,7 +6,6 @@
  */
 import { QUESTIONS } from './content';
 import { daysSince, todayKey } from './dates';
-import { scores } from './plan';
 import type { Answers, AppState, AreaKey } from './types';
 
 /** Perguntas da avaliação inicial (e das reavaliações). */
@@ -79,14 +78,9 @@ export function answerLater(S: AppState, patch: Partial<Answers>, now = new Date
   const today = todayKey(now);
   const asked = S.laterAsk?.d === today ? S.laterAsk : { d: today, n: 0, skip: [] };
   S.laterAsk = { ...asked, n: asked.n + 1 };
-  const sc = scores(S.ans);
+  // a avaliação inicial fica como a pessoa a viu (o Índice vivo já usa as respostas novas)
   const still = provisionalAreas(S.ans);
-  S.evals = S.evals.map((e) => {
-    if (!e.prov?.length) return e;
-    const fixed = e.prov.filter((k) => !still.includes(k));
-    if (!fixed.length) return e;
-    return { ...e, sc: { ...e.sc, ...Object.fromEntries(fixed.map((k) => [k, sc[k]])) }, prov: e.prov.filter((k) => still.includes(k)) };
-  });
+  S.evals = S.evals.map((e) => (e.prov?.length ? { ...e, prov: e.prov.filter((k) => still.includes(k)) } : e));
 }
 
 /** "Agora não": não volta a perguntar isto hoje. */
@@ -97,7 +91,13 @@ export function skipLater(S: AppState, id: string, now = new Date()) {
 }
 
 /** Pedido de conta a partir do 3.º dia ("Proteja a sua sequência"), até criar ou adiar. */
+export const ACCOUNT_ROUNDS: [number, number][] = [[3, 4], [10, 11], [24, 25]];
 export function askAccount(S: Pick<AppState, 'ans' | 'planStart' | 'sample' | 'accountAsk'>, hasAccount: boolean, now = new Date()) {
-  if (hasAccount || !S.ans || S.sample || !S.planStart || daysSince(S.planStart, now) < 2) return false;
-  return !S.accountAsk || daysSince(S.accountAsk, now) >= 7;
+  if (hasAccount || !S.ans || S.sample || !S.planStart) return false;
+  // só em 3 rondas de 2 dias (dias 3-4, 10-11 e 24-25); "Agora não" fecha a ronda
+  const day = daysSince(S.planStart, now) + 1;
+  const round = ACCOUNT_ROUNDS.find(([a, b]) => day >= a && day <= b);
+  if (!round) return false;
+  const roundStart = daysSince(S.planStart, now) + 1 - round[0];
+  return !S.accountAsk || daysSince(S.accountAsk, now) > roundStart;
 }

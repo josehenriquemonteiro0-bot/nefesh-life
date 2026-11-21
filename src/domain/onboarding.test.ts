@@ -30,11 +30,11 @@ describe('chegada rápida', () => {
     expect(nextLaterQuestion(S, at('2026-11-22', 13))!.id).toBe('veg');
   });
 
-  it('as respostas acertam as áreas provisórias da avaliação inicial', () => {
+  it('a avaliação inicial fica como foi vista; só deixa de estar marcada como provisória', () => {
     const S = S0();
-    expect(S.evals[0].sc.sono).toBe(scores(base!).sono);
+    const before = { ...S.evals[0].sc };
     answerLater(S, { sonoq: 5 }, at('2026-11-21', 9));
-    expect(S.evals[0].sc.sono).toBe(100);
+    expect(S.evals[0].sc).toEqual(before);
     expect(S.evals[0].prov).not.toContain('sono');
     answerLater(S, { agua: '7-9' }, at('2026-11-21', 9));
     expect(S.evals[0].prov).toContain('hidratacao'); // falta o café
@@ -74,5 +74,21 @@ describe('pergunta do dia não fica presa', () => {
     noteLaterShown(S, second, d4);
     expect(nextLaterQuestion(S, d4)!.id).toBe(second); // estável durante o dia
     expect(missingLater(S.ans).map((x) => x.id)).toContain(first); // continua por responder
+  });
+});
+
+import { liveIndex, liveScores } from './liveIndex';
+
+describe('Índice vivo', () => {
+  it('mexe com os hábitos dos últimos 14 dias (metade avaliação, metade comportamento)', () => {
+    const S = S0();
+    const base = liveIndex(S, at('2026-12-01', 20));
+    for (let i = 0; i < 10; i++) {
+      const d = new Date(at('2026-12-01', 12)); d.setDate(d.getDate() - i);
+      S.logs[d.toLocaleDateString('en-CA')] = { e: 5, sleepH: 7.5, water: 12, steps: 9000, hab: { veg: true } };
+    }
+    const live = liveScores(S, at('2026-12-01', 20));
+    expect(live.sono).toBe(Math.round((scores(S.ans!).sono + 100) / 2));
+    expect(liveIndex(S, at('2026-12-01', 20))).toBeGreaterThan(base);
   });
 });

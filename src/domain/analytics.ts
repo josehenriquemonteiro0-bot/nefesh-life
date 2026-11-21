@@ -8,7 +8,7 @@
  */
 import { keyDaysAgo, todayKey } from './dates';
 import { PHOTO_API, deviceId } from './photo';
-import { adherence, took } from './stats';
+import { adherence, tookOn } from './stats';
 import type { AppState } from './types';
 import { isPremium, type Feature } from './features';
 import { rdSummary } from './consents';
@@ -77,7 +77,7 @@ export function buildPing(S: AppState, device: string, now = new Date(), env: { 
     device,
     plan: !!S.ans,
     stage: start === null ? 'sem plano' : start < 1 ? '0' : start <= 7 ? '1-7' : start <= 30 ? '8-30' : '31+',
-    spirulina: S.ans ? n((k) => took(S, S.logs[k], now)) : 0,
+    spirulina: S.ans ? n((k) => tookOn(S, k)) : 0,
     water: n((k) => (S.logs[k]?.water ?? 0) > 0),
     checkin: n((k) => !!S.logs[k]?.e),
     diary: n((k) => Object.values(S.logs[k]?.meals ?? {}).some((m) => m && m.length)),

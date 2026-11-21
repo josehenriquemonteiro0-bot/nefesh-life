@@ -1,3 +1,6 @@
+import { bestStreak, reorderText, stock, streakBreak } from '../domain/stats';
+import { whatsappLink } from '../domain/content';
+import { indexTrend } from '../domain/liveIndex';
 import { useEffect, type ReactNode } from 'react';
 import { AREAS, TIPS } from '../domain/content';
 import { daysSince, keyDaysAgo, todayKey } from '../domain/dates';
@@ -5,7 +8,7 @@ import { CARD_LABEL, challengeState, homeVisibility, insightProgress, journeyCar
 import { askAccount, nextLaterQuestion } from '../domain/onboarding';
 import { getAuth } from '../domain/account';
 import { nextAction } from '../domain/nextAction';
-import { indexOf, planFor, slotsFor } from '../domain/plan';
+import { planFor, slotsFor } from '../domain/plan';
 import { RECIPES } from '../domain/recipes';
 import { activityStreak } from '../domain/points';
 import { nextReassessment } from '../domain/progress';
@@ -43,7 +46,7 @@ export function DayPanel({ go }: { go: Nav }) {
   const w = l.water ?? 0;
   const ch = challengeState(S);
   const chDone = !!ch?.doneToday;
-  const first = S.evals[0], last = S.evals[S.evals.length - 1];
+  const trend = indexTrend(S);
   const streak = activityStreak(S);
   const p = { spirulina: sl.length ? done / sl.length : 0, agua: goalW ? w / goalW : 0, desafio: ch && !ch.ended ? (chDone ? 1 : 0) : 0 };
   const val = {
@@ -60,7 +63,7 @@ export function DayPanel({ go }: { go: Nav }) {
           <Arc r={28} p={p.desafio} color="var(--gold)" />
         </svg>
         <button className="rings-center" onClick={() => go('quiz')} aria-label="Ver o plano e o Índice">
-          <b>{last ? indexOf(last.sc) : '—'}</b>
+          <b>{trend.now}</b>
           <span>Índice</span>
         </button>
       </div>
@@ -74,8 +77,8 @@ export function DayPanel({ go }: { go: Nav }) {
           </div>
         ))}
         <p className="small mute lg-foot">
-          🔥 {streak} {streak === 1 ? 'dia seguido' : 'dias seguidos'}
-          {last && <> · Índice {first && first !== last ? `${indexOf(first.sc)} → ` : ''}<b className="ink">{indexOf(last.sc)}</b></>}
+          🔥 {streak === 0 && bestStreak(S) > 0 ? 'recomece hoje' : `${streak} ${streak === 1 ? 'dia seguido' : 'dias seguidos'}`}
+          {trend.from !== null && <> · Índice {trend.from !== trend.now ? `${trend.from} → ` : ''}<b className="ink">{trend.now}</b></>}
         </p>
       </div>
     </section>
@@ -137,7 +140,25 @@ export function TodayCarousel({ go, openScience, startQuiz, openSignup }: { go: 
   const n = daysSince('2026-01-01');
   const rec = RECIPES[((n % RECIPES.length) + RECIPES.length) % RECIPES.length];
   const tip = TIPS[((n % TIPS.length) + TIPS.length) % TIPS.length];
-  const slides: { k: string; el: ReactNode }[] = [];
+  // cada cartão com prioridade; no máximo 5, e só 2 a pedir alguma coisa (pergunta, conta, reavaliação)
+  const slides: { k: string; el: ReactNode; ask?: boolean }[] = [];
+  const br = streakBreak(S);
+  if (br)
+    slides.push({ k: 'recomecar', el: (
+      <>
+        <p className="small gold sl-h">🌱 Recomece hoje</p>
+        <p style={{ margin: 0 }}>A sua sequência de {br.prev} dias parou ontem. Não faz mal: um dia não apaga o que já fez. Tome a Spirulina hoje e começa uma nova{br.best > br.prev ? ` (a sua melhor marca é ${br.best})` : ''}.</p>
+      </>
+    ) });
+  const st = stock(S);
+  if (S.stockCaps > 0 && st.days <= 14 && st.days > 7)
+    slides.push({ k: 'reposicao', el: (
+      <>
+        <p className="small gold sl-h">🛒 Reposição</p>
+        <p style={{ margin: 0 }}>A sua Spirulina acaba daqui a cerca de <b>{st.days} dias</b>. Encomende com tempo para o ritual não parar.</p>
+        <a className="btn sm" href={whatsappLink(reorderText(S))} target="_blank" rel="noopener">Encomendar</a>
+      </>
+    ) });
   if (newInsight)
     slides.push({ k: 'insight', el: (
       <>
@@ -146,7 +167,7 @@ export function TodayCarousel({ go, openScience, startQuiz, openSignup }: { go: 
         <button className="btn sm" onClick={() => go('evo')}>Ver na Evolução</button>
       </>
     ) });
-  if (q) slides.push({ k: 'pergunta', el: <LaterQuestionCard /> });
+  if (q) slides.push({ k: 'pergunta', el: <LaterQuestionCard />, ask: true });
   if (j) slides.push({ k: 'jornada', el: <><p className="small gold sl-h">Dia {j.day} da sua primeira semana</p><JourneyDayCard go={go} openScience={openScience} startQuiz={startQuiz} /></> });
   if (vis.novo || vis.amanha)
     slides.push({ k: 'novo', el: (
@@ -166,14 +187,14 @@ export function TodayCarousel({ go, openScience, startQuiz, openSignup }: { go: 
       </>
     ) });
   if (re?.due && !S.sample)
-    slides.push({ k: 'reavaliar', el: (
+    slides.push({ k: 'reavaliar', ask: true, el: (
       <>
         <p className="small gold sl-h">🔄 Reavaliação dos {re.target} dias</p>
         <p style={{ margin: 0 }}>2 minutos: atualize o peso e veja o Índice antes e depois.</p>
         <button className="btn sm" onClick={startQuiz}>Reavaliar</button>
       </>
     ) });
-  if (acct && openSignup) slides.push({ k: 'conta', el: <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} /> });
+  if (acct && openSignup) slides.push({ k: 'conta', el: <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />, ask: true });
   slides.push({ k: 'receita', el: (
     <>
       <p className="small gold sl-h">🥣 Receita do dia</p>
@@ -183,14 +204,18 @@ export function TodayCarousel({ go, openScience, startQuiz, openSignup }: { go: 
     </>
   ) });
   slides.push({ k: 'dica', el: <><p className="small gold sl-h">Sabia que…</p><p style={{ margin: 0 }}>{tip}</p></> });
+  const PRI = ['recomecar', 'insight', 'reavaliar', 'reposicao', 'pergunta', 'jornada', 'desafio', 'novo', 'relatorio', 'conta', 'receita', 'dica'];
+  slides.sort((a, b) => PRI.indexOf(a.k) - PRI.indexOf(b.k));
+  let asks = 0;
+  const shown = slides.filter((x) => (x.ask ? ++asks <= 2 : true)).slice(0, 5);
   return (
     <section className="today-carousel" aria-label="Hoje para si">
       <div className="row" style={{ margin: '0 2px 6px' }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Hoje para si</h2>
-        <span className="small mute">{slides.length} · deslize →</span>
+        <span className="small mute">{shown.length} · deslize →</span>
       </div>
       <div className="carousel">
-        {slides.map((s) => <Slide key={s.k} k={s.k}>{s.el}</Slide>)}
+        {shown.map((s) => <Slide key={s.k} k={s.k}>{s.el}</Slide>)}
       </div>
     </section>
   );
