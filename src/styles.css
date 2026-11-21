@@ -659,3 +659,4 @@ ul.plain li.row{gap:8px}
 .chave-texto{font:600 19px/1.4 Sora,sans-serif;margin:8px 0 6px}
 .chave-lista{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
 .chave-lista li{border-top:1px solid var(--line);padding-top:8px}
+.chave-ref{color:var(--mute);text-decoration:underline;text-underline-offset:3px}
