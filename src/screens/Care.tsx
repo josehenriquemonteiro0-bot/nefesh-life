@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DecimalInput } from '../components/DecimalInput';
 import { LABS, VISIT_KINDS, labDef, labFlag, labSeries, newId, preventionFor, type LabResult, type PrevStatus } from '../domain/care';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { declaredWarnings, doseKey, medWarnings, medsToday, type Med } from '../domain/meds';
 import { useStore } from '../state/store';
+import { readLabs } from '../domain/docread';
 
 const fmt = (k: string) => k.split('-').reverse().join('/');
 const STATUS: Record<PrevStatus, [string, string]> = {
@@ -209,12 +210,71 @@ function LabsCard() {
   const [hi, setHi] = useState<number | undefined>();
   const series = labSeries(S);
   const def = labDef(key);
+  const file = useRef<HTMLInputElement>(null);
+  const [reading, setReading] = useState(false);
+  const [found, setFound] = useState<{ date: string; results: (LabResult & { keep: boolean })[] } | null>(null);
+  const [readErr, setReadErr] = useState<string | null>(null);
   return (
     <section className="card">
       <div className="row">
         <h2 style={{ margin: 0 }}>Análises</h2>
-        {!adding && <button className="btn ghost sm" onClick={() => setAdding(true)}>+ Resultado</button>}
+        {!adding && !found && (
+          <span className="row" style={{ gap: 6 }}>
+            <button className="btn sm" disabled={reading} onClick={() => file.current?.click()}>{reading ? 'A ler…' : '📄 Ler boletim'}</button>
+            <button className="btn ghost sm" onClick={() => setAdding(true)}>+ À mão</button>
+          </span>
+        )}
       </div>
+      <input
+        ref={file}
+        type="file"
+        accept="image/*,application/pdf"
+        hidden
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (!f) return;
+          setReadErr(null);
+          setReading(true);
+          try {
+            const r = await readLabs(f, todayKey());
+            setFound({ date: r.results[0]?.date ?? todayKey(), results: r.results.map((x) => ({ ...x, keep: true })) });
+          } catch (er) {
+            setReadErr((er as Error).message);
+          } finally {
+            setReading(false);
+          }
+        }}
+      />
+      {readErr && <p className="small warn-t">{readErr}</p>}
+      {found && (
+        <div className="med-form">
+          <p className="small" style={{ margin: 0 }}><b>Encontrei {found.results.length} resultados.</b> Confirme a data e o que quer guardar.</p>
+          <input className="field sm" type="date" max={todayKey()} value={found.date} onChange={(e) => setFound({ ...found, date: e.target.value })} aria-label="Data das análises" style={{ width: 160, marginTop: 8 }} />
+          {found.results.map((r, i) => (
+            <label key={r.id} className="check" style={{ marginTop: 6 }}>
+              <input type="checkbox" checked={r.keep} onChange={(e) => setFound({ ...found, results: found.results.map((x, j) => (j === i ? { ...x, keep: e.target.checked } : x)) })} />
+              <span className="small">{r.name}: <b>{fmtNum(r.value)}</b> {r.unit}{r.lo != null || r.hi != null ? <span className="mute"> (ref. {r.lo != null && r.hi != null ? `${fmtNum(r.lo)}–${fmtNum(r.hi)}` : r.hi != null ? `até ${fmtNum(r.hi)}` : `a partir de ${fmtNum(r.lo!)}`})</span> : null}</span>
+            </label>
+          ))}
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 10 }}>
+            <button
+              className="btn sm"
+              disabled={!found.results.some((r) => r.keep)}
+              onClick={() => {
+                const keep = found.results.filter((r) => r.keep).map(({ keep: _k, ...r }) => ({ ...r, date: found.date }));
+                update((d) => { d.care = { ...(d.care ?? {}), labs: [...(d.care?.labs ?? []), ...keep] }; });
+                toast(`${keep.length} resultados guardados.`);
+                setFound(null);
+              }}
+            >
+              Guardar
+            </button>
+            <button className="btn ghost sm" onClick={() => setFound(null)}>Cancelar</button>
+          </div>
+          <p className="small mute" style={{ margin: '8px 0 0' }}>Transcrição feita por IA: confira com o boletim. O documento não é guardado.</p>
+        </div>
+      )}
       {adding && (
         <div className="med-form">
           <select className="field sm" value={key} onChange={(e) => setKey(e.target.value)} aria-label="Análise">

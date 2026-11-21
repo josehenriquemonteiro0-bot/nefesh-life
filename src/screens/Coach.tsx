@@ -4,6 +4,7 @@ import { PremiumTag } from '../components/PremiumTag';
 import type { Nav } from '../App';
 import { applyCoachActions, askCoach, clearHistory, CoachError, loadHistory, NEEDS_CONFIRM, saveHistory, type CoachMsg } from '../domain/coach';
 import { SCREEN_TAB, daySummary } from '../domain/assistant';
+import { asksNow } from '../domain/prompts';
 import { useSocial } from '../domain/social';
 import { MemoryPanel, ProposalCard } from '../components/AssistantParts';
 import { todayKey } from '../domain/dates';
@@ -42,6 +43,8 @@ export function Coach({ go }: { go: Nav }) {
   const [level, setLevel] = useState(0);
   const rec = useRef<Listening | null>(null);
   const [showMemory, setShowMemory] = useState(false);
+  // pergunta do momento (sono de manhã, almoço, energia à noite, peso semanal)
+  const ask = asksNow(S)[0];
   const { state: social } = useSocial(120_000);
   // conversa por voz: depois de responder em voz alta, volta a ouvir
   const convo = useRef(false);
@@ -100,7 +103,7 @@ export function Coach({ go }: { go: Nav }) {
       if (r.limit !== undefined && r.remaining !== undefined) setQuota({ remaining: r.remaining, limit: r.limit });
       const key = todayKey();
       const before: DayLog | null = S.logs[key] ? structuredClone(S.logs[key]) : null;
-      const extra = structuredClone({ memory: S.memory, gymLoadLog: S.gymLoadLog, gymLoads: S.gymLoads, exNames: S.exNames });
+      const extra = structuredClone({ memory: S.memory, gymLoadLog: S.gymLoadLog, gymLoads: S.gymLoads, exNames: S.exNames, bodyLog: S.bodyLog, ans: S.ans });
       let applied: string[] = [];
       const auto = r.actions.filter((a) => !NEEDS_CONFIRM.includes(a.type));
       if (auto.length) {
@@ -114,6 +117,8 @@ export function Coach({ go }: { go: Nav }) {
           d.gymLoadLog = draft.gymLoadLog;
           d.gymLoads = draft.gymLoads;
           d.exNames = draft.exNames;
+          d.bodyLog = draft.bodyLog;
+          d.ans = draft.ans;
         });
         const done = after ? ritualJustDone(S, before ?? undefined, after) : null;
         if (done) toast(done);
@@ -277,6 +282,15 @@ export function Coach({ go }: { go: Nav }) {
       )}
 
       <div className="coach-chat" aria-live="polite">
+        {ask && !hist.some((m) => new Date(m.at).toDateString() === new Date().toDateString()) && (
+          <div className="bubble assistant ask-bubble">
+            <p style={{ margin: 0 }}>{ask.text}</p>
+            <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 8 }}>
+              {ask.quick.map((q) => <button key={q} className="chip sm" disabled={busy} onClick={() => send(q)}>{q}</button>)}
+              <button className="chip sm" disabled={busy} onClick={startVoice}>🎙️ Responder por voz</button>
+            </div>
+          </div>
+        )}
         {hist.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>
             <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{m.voice ? '🎙️ ' : ''}{m.text}</p>
@@ -362,7 +376,9 @@ export function Coach({ go }: { go: Nav }) {
           }
           primeAudio();
           setConvo(true);
-          if (!listening) startVoice();
+          // começa por perguntar o que falta hoje (se houver), e depois ouve
+          if (ask && !hist.some((m) => new Date(m.at).toDateString() === new Date().toDateString())) speak(ask.text, lang, afterSpeech);
+          else if (!listening) startVoice();
         }}
       >
         {convoOn ? '⏹ Terminar a conversa por voz' : '🗣️ Conversa por voz (mãos-livres)'}

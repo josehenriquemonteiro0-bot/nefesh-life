@@ -16,6 +16,7 @@ import { setSource } from './sources';
 import { mealForHour, PHOTO_API, deviceId } from './photo';
 import { applyDose } from './doses';
 import { memoryContext } from './patterns';
+import { asksContext } from './prompts';
 import { logLoads } from './gym';
 import { coachPlanMeal, coachPlanWorkout } from './planMeal';
 import { womenContext } from './women';
@@ -24,7 +25,7 @@ import type { AppState, DayLog } from './types';
 
 export type CoachActionType =
   | 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos'
-  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo';
+  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -69,7 +70,7 @@ export interface CoachMsg {
   /** o que foi registado com esta resposta */
   applied?: string[];
   /** registo do dia antes destas ações (para desfazer) */
-  undo?: { day: string; log: DayLog | null; extra?: Pick<AppState, 'memory' | 'gymLoadLog' | 'gymLoads' | 'exNames'> };
+  undo?: { day: string; log: DayLog | null; extra?: Pick<AppState, 'memory' | 'gymLoadLog' | 'gymLoads' | 'exNames' | 'bodyLog' | 'ans'> };
   /** propostas que pedem confirmação (lembretes, consulta, desafio) e o seu estado */
   proposals?: CoachAction[];
   proposalStatus?: 'pendente' | 'feito' | 'cancelado';
@@ -98,6 +99,8 @@ export function buildContext(S: AppState, now = new Date(), extra: { friends?: s
   lines.push(`Agora: ${now.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, ${hh}. Data de hoje: ${todayKey(now)}.`);
   const mem = memoryContext(S, now);
   if (mem) lines.push(mem);
+  const asks = asksContext(S, now);
+  if (asks) lines.push(asks);
   if (extra.friends) lines.push(extra.friends.length ? `Amigos na app (alcunhas): ${extra.friends.slice(0, 30).join(', ')}.` : 'Ainda não tem amigos na app.');
   if (a.name) lines.push(`Primeiro nome: ${a.name}.`);
   if (!S.ans) lines.push('Ainda não fez a avaliação inicial (sugere fazê-la no separador Saúde → Plano).');
@@ -151,7 +154,7 @@ export function buildContext(S: AppState, now = new Date(), extra: { friends?: s
   if (l.t) today.push(`treino ${TRAINING[l.t].toLowerCase()}`);
   for (const [k, name] of MEALS) {
     const e = (l.meals?.[k] || []).filter((x) => !x.auto);
-    if (e.length) today.push(`${name.toLowerCase()}: ${e.map((x) => x.name).join(', ')} (${totals(e).kcal} kcal)`);
+    if (e.length) today.push(`${name.toLowerCase()}: ${e.map((x) => `${x.name}${x.barcode && S.scanned?.[x.barcode]?.nova === 4 ? ' [ultraprocessado]' : ''}`).join(', ')} (${totals(e).kcal} kcal)`);
   }
   if (l.workouts?.length) today.push(`treinos: ${l.workouts.map((w) => `${w.title} ${w.minutes} min`).join(', ')}`);
   lines.push(`Registos de hoje: ${today.join('; ')}.`);
@@ -266,6 +269,15 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
           l.grat = [...(l.grat ?? []), g].slice(-5);
           done.push(`💚 Gratidão: ${g}`);
         }
+        break;
+      }
+      case 'peso': {
+        const kg = Math.round(a.value * 10) / 10;
+        const day = todayKey(now);
+        S.bodyLog = [...(S.bodyLog ?? []).filter((e) => e.date !== day), { ...((S.bodyLog ?? []).find((e) => e.date === day) ?? {}), date: day, peso: kg }];
+        // o plano (água, metas, dose) acompanha o peso mais recente
+        if (S.ans) S.ans = { ...S.ans, peso: kg };
+        done.push(`⚖️ Peso: ${String(kg).replace('.', ',')} kg (plano atualizado)`);
         break;
       }
       case 'memoria': {

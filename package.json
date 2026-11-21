@@ -11,6 +11,8 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@zxing/browser": "0.1.5",
+    "@zxing/library": "0.21.3",
     "jsqr": "^1.4.0",
     "mammoth": "1.8.0",
     "react": "^18.3.1",

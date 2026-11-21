@@ -18,7 +18,7 @@ export function coachLimits(env: { TEST_MODE?: string }): Limits {
   return { device: Number.isFinite(q) ? q : 40, ip: Number.isFinite(q) ? q * 4 : 120, global: 3000 };
 }
 
-const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos', 'humor', 'stress', 'gratidao', 'respiracao', 'memoria', 'nota', 'lembrete', 'consulta', 'desafio', 'abrir', 'resumo'] as const;
+const ACTION_TYPES = ['agua', 'sono', 'spirulina', 'energia', 'disposicao', 'refeicao', 'plano_refeicao', 'plano_treino', 'treino', 'passos', 'humor', 'stress', 'gratidao', 'respiracao', 'memoria', 'nota', 'lembrete', 'consulta', 'desafio', 'abrir', 'resumo', 'peso'] as const;
 /** Ecrãs da app que o assistente pode abrir (procura por voz). */
 export const SCREENS = ['plano', 'nutricao', 'receitas', 'treino', 'sono', 'mente', 'corpo', 'cuidados', 'ciclo', 'evolucao', 'comunidade', 'desafios', 'profissionais', 'perfil', 'checkin'] as const;
 export const CHALLENGES = ['ritual', 'agua', 'treino', 'checkin', 'passos', 'ritual_agua', 'ritual_treino', 'ritual_checkin', 'ritual_refeicoes', 'reset21'] as const;
@@ -35,7 +35,7 @@ export const COACH_SCHEMA = {
         type: 'object',
         properties: {
           type: { type: 'string', enum: ACTION_TYPES },
-          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); humor e stress: 1 a 5; respiracao: minutos da pausa sugerida (2 a 5); gratidao: 1; spirulina e refeicao: 1' },
+          value: { type: 'number', description: 'agua: copos de 250 ml a ACRESCENTAR; sono: horas dormidas na última noite; energia e disposicao: 1 a 5; treino: minutos; passos: número de passos; plano_refeicao: número [n] da refeição do plano do nutricionista (no contexto); plano_treino: número [n] do treino do plano do personal (no contexto); humor e stress: 1 a 5; peso: kg (ex.: 68.5); respiracao: minutos da pausa sugerida (2 a 5); gratidao: 1; spirulina e refeicao: 1' },
           option: { type: 'number', description: 'plano_refeicao: número da opção do plano que comeu (0 se só houver uma ou se não disser); plano_treino: minutos do treino (0 se não disser); 0 nos outros' },
           status: { type: 'string', enum: ['seguido', 'alterado', 'saltado', ''], description: 'só para plano_refeicao e plano_treino: seguido = como no plano; alterado = com mudanças; saltado = não fez; "" nos outros' },
           note: { type: 'string', description: 'plano_refeicao alterado: as mudanças (ex.: "sem arroz"); gratidao: a frase de gratidão; memoria: o facto a lembrar, curto e na 3.ª pessoa (ex.: "É vegetariana"); nota: o relato da pessoa resumido numa frase; lembrete: o texto do lembrete (ex.: "Hora de deitar"); consulta: especialidade e com quem (ex.: "Cardiologia, Dr. Silva"); "" nos outros' },
@@ -123,6 +123,7 @@ Regras de registo:
   · consulta: marcar uma consulta na agenda da pessoa (date, time se disser, note com especialidade e com quem).
   · desafio: criar um desafio com amigos (challenge, value = dias 7, 21, 30 ou 90, level, friends com as alcunhas nomeadas). Se a pessoa não tiver amigos na app, sugere o 21 Day Reset, que se pode começar a solo.
 - Procura ("onde vejo as minhas análises?", "quero uma receita com Spirulina", "preciso de um nutricionista"): responde em poucas palavras e usa abrir com o screen certo (análises e medicação = cuidados; receitas = receitas; profissionais = profissionais; relatório e timeline = evolucao).
+- Peso ("hoje pesei 68,5"): peso com value em kg.
 - Resumo do dia ("como está o meu dia?", "o que me falta hoje?"): usa resumo; a app junta o resumo com os dados de hoje.
 - Acrescentar ("também comi uma maçã"): envia só o que é novo, com replace = false.
 - Correções ("não, foram três ovos", "afinal dormi 6 horas"): envia o registo corrigido completo com replace = true; a app substitui o que o Coach registou antes nessa refeição (ou o valor desse dia). Para água, replace = true quer dizer o total de copos do dia.
@@ -176,7 +177,7 @@ export function cleanActions(raw: unknown) {
     .slice(0, 8)
     .map((a) => ({
       type: a.type as CoachActionType,
-      value: a.type === 'desafio' ? ([7, 21, 30, 90].includes(Math.round(Number(a.value))) ? Math.round(Number(a.value)) : 7) : a.type === 'respiracao' ? Math.round(num(a.value, 2, 5)) : a.type === 'humor' || a.type === 'stress' ? Math.round(num(a.value, 1, 5)) : a.type === 'plano_refeicao' || a.type === 'plano_treino' ? Math.round(num(a.value, 0, 30)) : a.type === 'energia' || a.type === 'disposicao' ? Math.round(num(a.value, 1, 5)) : a.type === 'sono' ? num(a.value, 0, 16) : a.type === 'passos' ? Math.round(num(a.value, 0, 100000)) : a.type === 'treino' ? Math.round(num(a.value, 0, 600)) : a.type === 'agua' ? Math.round(num(a.value, -20, 20)) : 1,
+      value: a.type === 'peso' ? Math.round(num(a.value, 0, 400) * 10) / 10 : a.type === 'desafio' ? ([7, 21, 30, 90].includes(Math.round(Number(a.value))) ? Math.round(Number(a.value)) : 7) : a.type === 'respiracao' ? Math.round(num(a.value, 2, 5)) : a.type === 'humor' || a.type === 'stress' ? Math.round(num(a.value, 1, 5)) : a.type === 'plano_refeicao' || a.type === 'plano_treino' ? Math.round(num(a.value, 0, 30)) : a.type === 'energia' || a.type === 'disposicao' ? Math.round(num(a.value, 1, 5)) : a.type === 'sono' ? num(a.value, 0, 16) : a.type === 'passos' ? Math.round(num(a.value, 0, 100000)) : a.type === 'treino' ? Math.round(num(a.value, 0, 600)) : a.type === 'agua' ? Math.round(num(a.value, -20, 20)) : 1,
       meal: ['pa', 'almoco', 'lanche', 'jantar'].includes(a.meal) ? a.meal : '',
       intensity: ['leve', 'moderado', 'intenso'].includes(a.intensity) ? a.intensity : '',
       title: String(a.title ?? '').slice(0, 40),
@@ -212,7 +213,8 @@ export function cleanActions(raw: unknown) {
     .filter((a) => !['memoria', 'nota', 'lembrete'].includes(a.type) || a.note.trim().length > 0)
     .filter((a) => !['lembrete', 'consulta'].includes(a.type) || a.date)
     .filter((a) => a.type !== 'desafio' || a.challenge)
-    .filter((a) => a.type !== 'abrir' || a.screen);
+    .filter((a) => a.type !== 'abrir' || a.screen)
+    .filter((a) => a.type !== 'peso' || (a.value >= 25 && a.value <= 350));
 }
 
 export async function handleCoach(

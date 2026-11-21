@@ -134,6 +134,8 @@ export interface AppState {
   trainWhere?: 'personal' | 'ginasio' | 'casa';
   /** últimas cargas usadas no ginásio, por exercício */
   gymLoads?: Record<string, string>;
+  /** produtos lidos pelo código de barras (ou pela foto do rótulo), por código */
+  scanned?: Record<string, import('./barcode').ScannedFood>;
   /** nomes dos exercícios livres (fora da lista do ginásio) registados por voz */
   exNames?: Record<string, string>;
   /** histórico das cargas no ginásio, por exercício (mais antigo primeiro) */

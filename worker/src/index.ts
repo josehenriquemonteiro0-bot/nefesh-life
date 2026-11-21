@@ -21,6 +21,7 @@ import { handleTip } from './tips';
 import { coachLimits, handleCoach } from './coach';
 import { handleVoice, type AiBinding } from './voice';
 import { handleReport } from './report';
+import { handleDocRead } from './docread';
 import * as prize from './prize';
 import { savePing, statsPage, summarize } from './stats';
 import * as social from './social';
@@ -492,6 +493,15 @@ export default {
         return await handleVoice(body as Record<string, unknown>, env.AI, env.LIMITS, device, ip, (b, st) => json(b, st, h));
       } catch {
         return json({ error: 'Não foi possível perceber a gravação. Tente outra vez ou escreva.' }, 502, h);
+      }
+    }
+    // tabela nutricional (produto fora da Open Food Facts) e boletins de análises
+    if (path === '/rotulo' || path === '/analises') {
+      try {
+        const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+        return await handleDocRead(path === '/rotulo' ? 'rotulo' : 'analises', body as Record<string, unknown>, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+      } catch (err) {
+        return apiError(err, h);
       }
     }
     // relatório semanal: o que a IA percebeu

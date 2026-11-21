@@ -590,3 +590,12 @@ ul.plain li.row{gap:8px}
 .memory-panel{margin-top:10px}
 .mem-row{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
 .proposal{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px dashed var(--gold);background:rgba(201,168,92,.07)}
+/* código de barras */
+.scan-overlay{display:grid;justify-items:stretch;margin-top:12px}
+.scan-video{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.scan-video video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-frame{position:absolute;left:12%;right:12%;top:32%;bottom:32%;border:3px solid var(--neon);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+.scan-img{width:64px;height:64px;object-fit:contain;border-radius:10px;background:#fff}
+.nutri-badge{font-size:11.5px;font-weight:800;color:#fff;padding:2px 8px;border-radius:6px}
+.nova-badge{font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
+.ask-bubble{border-color:rgba(201,168,92,.5)}

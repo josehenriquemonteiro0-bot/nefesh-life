@@ -177,6 +177,8 @@ export interface FoodEntry {
   coach?: boolean;
   /** valores estimados (alimento fora da tabela) */
   est?: boolean;
+  /** lido pelo código de barras (valores do rótulo) */
+  barcode?: string;
   foodId?: string;
   name: string;
   grams: number;

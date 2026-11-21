@@ -59,3 +59,17 @@ describe('medicação', () => {
     expect(medAdherence(S, ['2026-11-20'])).toBe(33);
   });
 });
+
+describe('análises lidas por foto ou PDF', () => {
+  it('liga às análises conhecidas quando a unidade é a mesma, e guarda a referência do laboratório', async () => {
+    const { toLabResults } = await import('./docread');
+    const r = toLabResults({ date: '2026-10-05', results: [
+      { key: 'ldl', name: 'Colesterol LDL', value: 128, unit: 'mg/dL', ref_low: -1, ref_high: 115 },
+      { key: 'glicemia', name: 'Glicose', value: 5.2, unit: 'mmol/L', ref_low: 3.9, ref_high: 5.5 },
+      { key: '', name: 'Sódio', value: 140, unit: 'mmol/L', ref_low: 135, ref_high: 145 },
+    ] }, '2026-11-21');
+    expect(r[0]).toMatchObject({ key: 'ldl', name: 'Colesterol LDL', date: '2026-10-05', lo: null, hi: 115 });
+    expect(r[1]).toMatchObject({ key: 'outra:glicose', unit: 'mmol/L' }); // unidade diferente: não mistura
+    expect(r[2]).toMatchObject({ key: 'outra:sódio', lo: 135, hi: 145 });
+  });
+});

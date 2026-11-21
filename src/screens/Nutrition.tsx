@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Bar, Ring } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
 import { PhotoMealCard } from '../components/PhotoMeal';
+import { FoodScan, ScannedProduct } from '../components/FoodScan';
+import type { ScannedFood } from '../domain/barcode';
 import { targetsFor } from '../domain/body';
 import { workoutKcal } from '../domain/progress';
 import { PlanUpload } from '../components/PlanUpload';
@@ -62,6 +64,8 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
   const [portions, setPortions] = useState(1);
   const [grams, setGrams] = useState<number | undefined>(undefined);
   const [custom, setCustom] = useState(false);
+  const [scan, setScan] = useState(false);
+  const [scannedPick, setScannedPick] = useState<ScannedFood | null>(null);
   const [cName, setCName] = useState('');
   const [cKcal, setCKcal] = useState<number | undefined>();
   const recent = useRecent();
@@ -94,7 +98,11 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
           <button className="btn ghost sm" onClick={onClose}>Fechar</button>
         </div>
 
-        {custom ? (
+        {scan ? (
+          <FoodScan hide={hide} onAdd={add} onClose={() => setScan(false)} />
+        ) : scannedPick ? (
+          <ScannedProduct food={scannedPick} hide={hide} onAdd={add} onBack={() => setScannedPick(null)} />
+        ) : custom ? (
           <>
             <p className="small mute">Não encontrou o alimento? Escreva o nome e as calorias (estão no rótulo).</p>
             <input className="field sm" style={{ width: '100%', marginBottom: 10 }} placeholder="Nome (ex.: Bolo da avó)" value={cName} onChange={(e) => setCName(e.target.value)} aria-label="Nome do alimento" />
@@ -142,6 +150,17 @@ function AddFood({ meal, onClose }: { meal: MealKey; onClose: () => void }) {
           </>
         ) : (
           <>
+            <button className="btn full" style={{ marginTop: 12 }} onClick={() => setScan(true)}>📷 Ler código de barras</button>
+            {!q.trim() && Object.keys(S.scanned ?? {}).length > 0 && (
+              <>
+                <p className="small mute" style={{ margin: '10px 0 6px' }}>Produtos que já leu</p>
+                <div className="chips">
+                  {Object.values(S.scanned ?? {}).slice(0, 6).map((f) => (
+                    <button key={f.code} className="chip sm" onClick={() => setScannedPick(f)}>{f.name}{f.brand ? ` · ${f.brand}` : ''}</button>
+                  ))}
+                </div>
+              </>
+            )}
             <input className="field sm" style={{ width: '100%', margin: '12px 0' }} placeholder="Pesquisar (ex.: arroz, frango, banana)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Pesquisar alimento" autoFocus />
             {!q.trim() && <p className="small mute" style={{ margin: '0 0 6px' }}>{recent.length ? 'Usados recentemente' : 'Sugestões'}</p>}
             <div className="foodlist">
@@ -257,7 +276,7 @@ function Diary() {
                         {e.est && <span className="est-chip" title="Valores estimados: toque para corrigir">≈ estimativa</span>}
                       </span>
                       <span className="small mute">
-                        {e.id.startsWith('foto-') ? '📷 ' : e.coach ? '🎙️ ' : ''}
+                        {e.id.startsWith('foto-') ? '📷 ' : e.coach ? '🎙️ ' : e.barcode ? '▮▯ ' : ''}
                         {e.grams ? `${fmtNum(e.grams)} g` : ''}{hide ? '' : `${e.grams ? ' · ' : ''}${e.kcal} kcal`}
                         {!e.auto && <span className="edit-hint"> · corrigir</span>}
                       </span>

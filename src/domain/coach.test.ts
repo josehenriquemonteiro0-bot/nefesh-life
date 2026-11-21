@@ -196,3 +196,13 @@ describe('assistente: propostas e resumo do dia', async () => {
     expect(matchFriends(['Ana', 'joão'], [{ id: '1', nick: 'Ana' }, { id: '2', nick: 'João P' }, { id: '3', nick: 'Rui' }])).toEqual(['1', '2']);
   });
 });
+
+describe('assistente: peso', () => {
+  it('"hoje pesei 68,5" vai para o corpo e atualiza o plano', () => {
+    const S = person();
+    const d = applyCoachActions(S, [act({ type: 'peso', value: 68.5 })], NOW);
+    expect(S.bodyLog).toEqual([{ date: todayKey(NOW), peso: 68.5 }]);
+    expect(S.ans!.peso).toBe(68.5);
+    expect(d[0]).toBe('⚖️ Peso: 68,5 kg (plano atualizado)');
+  });
+});
