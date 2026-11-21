@@ -28,12 +28,19 @@ export const TOUR: Step[] = [
   { tab: 'home', target: 'perfil', title: 'O seu perfil', text: 'Conta, notificações, lembrete da toma, frascos, reavaliação e o tutorial outra vez, se precisar. Bom ritual! 🌿' },
 ];
 
+/** Tutorial curto da primeira utilização: só o essencial (o completo fica no Perfil). */
+export const SHORT_TOUR: Step[] = [
+  { tab: 'home', target: 'tomas', title: 'Tomei', text: 'Toque no círculo quando tomar a Spirulina. É o centro do seu ritual e conta para a sua sequência.' },
+  { tab: 'home', target: 'proxima', title: 'Toca para falar', text: 'Diga o que fez, como falaria com um amigo ("bebi 2 copos", "almocei frango com arroz"). O assistente regista por si.' },
+  { tab: 'home', target: 'checkin', title: 'Check-in de 30 segundos', text: 'Como se sente hoje: energia, sono e disposição. É assim que a app lhe mostra o efeito do ritual. O tutorial completo está no Perfil.' },
+];
+
 const PAD = 8;
 
-export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
+export function GuidedTour({ go, onClose, steps = TOUR }: { go: Nav; onClose: () => void; steps?: Step[] }) {
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
-  const step = TOUR[i];
+  const step = steps[i];
 
   // abre o separador do passo e procura o elemento (passos sem elemento são saltados)
   useEffect(() => {
@@ -48,7 +55,7 @@ export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
         return;
       }
       if (++tries < 15) raf = window.setTimeout(find, 60);
-      else setI((x) => (x < TOUR.length - 1 ? x + 1 : x));
+      else setI((x) => (x < steps.length - 1 ? x + 1 : x));
     };
     setRect(null);
     find();
@@ -80,7 +87,7 @@ export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  const next = () => (i < TOUR.length - 1 ? setI(i + 1) : onClose());
+  const next = () => (i < steps.length - 1 ? setI(i + 1) : onClose());
   const vh = window.innerHeight;
   const below = rect ? rect.top + rect.height / 2 < vh / 2 : true;
   const hole = rect && {
@@ -103,17 +110,17 @@ export function GuidedTour({ go, onClose }: { go: Nav; onClose: () => void }) {
             : { top: '35%' }
         }
       >
-        <p className="small tour-count">{i + 1} de {TOUR.length}</p>
+        <p className="small tour-count">{i + 1} de {steps.length}</p>
         <h2>{step.title}</h2>
         <p className="small">{step.text}</p>
         <div className="tour-dots" aria-hidden="true">
-          {TOUR.map((_, k) => <i key={k} className={k === i ? 'on' : k < i ? 'done' : ''} />)}
+          {steps.map((_, k) => <i key={k} className={k === i ? 'on' : k < i ? 'done' : ''} />)}
         </div>
         <div className="row" style={{ gap: 8 }}>
           <button className="skip" onClick={onClose}>Saltar</button>
           <div className="row" style={{ gap: 8 }}>
             {i > 0 && <button className="btn ghost sm" onClick={() => setI(i - 1)}>Anterior</button>}
-            <button className="btn sm" onClick={next}>{i < TOUR.length - 1 ? 'Seguinte' : 'Começar'}</button>
+            <button className="btn sm" onClick={next}>{i < steps.length - 1 ? 'Seguinte' : 'Começar'}</button>
           </div>
         </div>
       </div>

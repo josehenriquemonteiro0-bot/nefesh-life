@@ -1,3 +1,4 @@
+import { provisionalAreas } from '../domain/onboarding';
 import { Bar, Radar } from '../components/Charts';
 import { DoseSteps, LevelTag, StudyCard } from '../components/Science';
 import { useState } from 'react';
@@ -117,7 +118,9 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
   const prevEv = isNew ? S.evals[S.evals.length - 1] : S.evals[S.evals.length - 2];
   const prev = prevEv && (!S.sample || !isNew) ? prevEv.sc : null;
   const delta = prev ? ix - indexOf(prev) : null;
-  const weak = AREAS.slice().sort((x, y) => sc[x[0]] - sc[y[0]])[0];
+  // áreas ainda sem resposta (perguntas do dia) não contam como a maior oportunidade
+  const prov = provisionalAreas(a);
+  const weak = AREAS.filter(([k]) => !prov.includes(k)).sort((x, y) => sc[x[0]] - sc[y[0]])[0] ?? AREAS[0];
   const goal = a.goal ?? 'energia';
   const ev = GOAL_EVIDENCE[goal];
 
@@ -144,6 +147,11 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
             </p>
           )}
         </div>
+        {prov.length > 0 && (
+          <p className="small" style={{ margin: '0 0 6px', opacity: 0.85 }}>
+            Índice provisório: {AREAS.filter(([k]) => prov.includes(k)).map(([, t]) => t.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' e $1')} {prov.length === 1 ? 'completa-se' : 'completam-se'} com as perguntas do dia, a partir de amanhã.
+          </p>
+        )}
         <Radar sc={sc} prev={prev} />
         {prev && <p className="small" style={{ textAlign: 'center', margin: 0, opacity: 0.8 }}><span className="gold">- - -</span> avaliação anterior</p>}
         <div className="areas">

@@ -1,4 +1,5 @@
-import { QUESTIONS } from '../domain/content';
+import { QUIZ } from '../domain/onboarding';
+import { AccountAskCard, LaterQuestionCard } from '../components/LaterQuestion';
 import { useMemo } from 'react';
 import { Bar, Glass, Ring } from '../components/Charts';
 import { Icon } from '../components/Icon';
@@ -164,7 +165,7 @@ function WeekCard({ go }: { go: Nav }) {
   );
 }
 
-export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void }) {
+export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth, openSignup }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void; openSignup?: () => void }) {
   const { S, updateToday, todayLog: l, toast } = useStore();
 
   if (!S.ans)
@@ -173,7 +174,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         <SampleBanner onReset={onReset} />
         <section className="card hero">
           <h1>Descubra o seu Índice NEFESH e a sua dose ideal</h1>
-          <p>{QUESTIONS.length} perguntas, cerca de 3 minutos. No fim recebe a sua pontuação de bem-estar e um plano de Spirulina feito para si.</p>
+          <p>{QUIZ.length} perguntas, cerca de 1 minuto. No fim recebe a sua pontuação de bem-estar e um plano de Spirulina feito para si.</p>
           <button className="btn" onClick={startQuiz}>Começar a avaliação</button>
         </section>
         <section className="card">
@@ -238,6 +239,9 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           </section>
         );
       })()}
+
+      <LaterQuestionCard />
+      {openSignup && <AccountAskCard openSignup={openSignup} streak={activityStreak(S)} />}
 
       {(() => {
         // relatório semanal pronto (domingo à noite e segunda-feira), até ser aberto

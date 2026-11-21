@@ -9,7 +9,7 @@ import { Nutrition } from './screens/Nutrition';
 import { Training } from './screens/Training';
 import { Consent } from './components/Consent';
 import { planFor } from './domain/plan';
-import { QUESTIONS } from './domain/content';
+import { QUIZ, provisionalAreas } from './domain/onboarding';
 import { daysSince, todayKey } from './domain/dates';
 import { indexOf, scores } from './domain/plan';
 import { blankState } from './domain/sample';
@@ -43,7 +43,7 @@ import { saveInviteFromUrl } from './domain/social';
 import { requestListen } from './domain/voice';
 import { Community } from './screens/Community';
 import { AvatarImg } from './components/Avatar';
-import { GuidedTour, TAB_TIPS } from './components/GuidedTour';
+import { GuidedTour, SHORT_TOUR, TAB_TIPS, TOUR } from './components/GuidedTour';
 import { savePendingCode, takePendingCode, useRedeemBottle } from './components/BottleCode';
 import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
@@ -79,7 +79,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   // abertura em cada utilização: boas-vindas completas sem plano, abertura curta com escolha com plano
-  const [intro, setIntro] = useState<null | 'welcome' | 'return'>(S.ans ? 'return' : 'welcome');
+  const [intro, setIntro] = useState<null | 'welcome' | 'return'>(S.ans ? 'return' : null);
   const setShowIntro = (v: boolean) => setIntro(v ? 'welcome' : null);
   // ao voltar à app depois de 30 minutos em segundo plano, mostra de novo a abertura
   useEffect(() => {
@@ -122,10 +122,10 @@ export function App() {
     if (pending) redeemBottle(pending);
   }, [getAuth()?.token, S.ans]);
   // tutorial guiado: na primeira vez que chega ao Início com um plano (e sempre que o pedir no Perfil)
-  const [tour, setTour] = useState(false);
+  const [tour, setTour] = useState<false | 'short' | 'full'>(false);
   useEffect(() => {
     if (tour || intro || quiz || !S.ans || S.sample || S.tourDone || tab !== 'home') return;
-    const t = window.setTimeout(() => setTour(true), 900);
+    const t = window.setTimeout(() => setTour('short'), 900);
     return () => window.clearTimeout(t);
   }, [S.ans, S.tourDone, tab, intro, quiz, tour]);
   const closeTour = () => {
@@ -222,6 +222,10 @@ export function App() {
     setTab('quiz');
     window.scrollTo(0, 0);
   };
+  // primeira utilização: direto à avaliação (sem ecrãs de boas-vindas; a mensagem vai na 1.ª pergunta)
+  useEffect(() => {
+    if (!S.ans && !S.sample) startQuiz(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const resetDemo = () => {
     replace(blankState());
     startQuiz(true);
@@ -233,7 +237,8 @@ export function App() {
   const adopt = () => {
     if (!quiz) return;
     const ans = quiz.draft;
-    const ev = { date: todayKey(), sc: scores(ans), body: bodySnapshot(ans) };
+    const prov = provisionalAreas(ans);
+    const ev = { date: todayKey(), sc: scores(ans), body: bodySnapshot(ans), ...(prov.length ? { prov } : {}) };
     const first = S.sample || !S.ans;
     if (first) {
       const fresh = blankState();
@@ -247,26 +252,22 @@ export function App() {
     }
     setQuiz(null);
     toast(`Plano guardado. Índice NEFESH: ${indexOf(ev.sc)}.`);
-    // primeiro plano sem conta: propõe criar a conta para o guardar (pode saltar)
-    if (first && !getAuth()) {
-      openAccount('guardar');
-      return;
-    }
+    // a conta é pedida a partir do 3.º dia ("Proteja a sua sequência"), no Início
     setTab('home');
     window.scrollTo(0, 0);
   };
 
   let screen: JSX.Element | null;
   if (tab === 'quiz') {
-    if (quiz && !S.consent) screen = <Consent onAccept={() => setQuiz({ ...quiz })} onCancel={cancelQuiz} />;
-    else if (quiz && quiz.qi < QUESTIONS.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
+    if (quiz && !S.consent) screen = <Consent onAccept={() => setQuiz({ ...quiz })} onCancel={cancelQuiz} onLogin={() => openAccount('quiz', 'entrar')} />;
+    else if (quiz && quiz.qi < QUIZ.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
   } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social' && tab !== 'coach' && tab !== 'sono') {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
-      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />,
+      home: <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} openSignup={() => openAccount('perfil', 'criar')} />,
       check: <Check onSaved={() => go('evo')} />,
       evo: <Evolution openReport={() => setReportOpen(true)} go={go} />,
       recipes: <Nutrition initial="receitas" />,
@@ -295,7 +296,7 @@ export function App() {
           }}
         />
       ),
-      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} openTour={() => { go('home'); setTour(true); }} />,
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} openTour={() => { go('home'); setTour('full'); }} />,
     }[tab];
   }
 
@@ -382,7 +383,7 @@ export function App() {
       )}
       {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} onPrint={() => { setReportOpen(false); printReport(); }} />}
       {printing && <PrintReport />}
-      {tour && <GuidedTour go={go} onClose={closeTour} />}
+      {tour && <GuidedTour go={go} onClose={closeTour} steps={tour === 'short' ? SHORT_TOUR : TOUR} />}
       {healthOpen && (
         <HealthConnectSheet
           onClose={() => setHealthOpen(false)}

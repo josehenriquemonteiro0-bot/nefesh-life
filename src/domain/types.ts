@@ -39,6 +39,8 @@ export interface Answers {
   veg?: string;
   proc?: string;
   dieta?: string;
+  /** a pessoa saltou as medidas na pergunta do dia (não voltar a pedir) */
+  medidasSaltadas?: boolean;
   prior?: string;
   safe?: string[];
 }
@@ -99,6 +101,8 @@ export interface Evaluation {
   sc: Scores;
   /** medidas no dia da avaliação, para comparar antes e depois */
   body?: { peso: number; bmi?: number; fat?: number; cintura?: number };
+  /** áreas calculadas com respostas em falta (acertadas quando a pessoa responde às perguntas do dia) */
+  prov?: AreaKey[];
 }
 
 export interface AppState {
@@ -113,6 +117,10 @@ export interface AppState {
   stockCaps: number;
   logs: Record<string, DayLog>;
   evals: Evaluation[];
+  /** perguntas do dia: quantas hoje e as adiadas hoje */
+  laterAsk?: { d: string; n: number; skip?: string[] };
+  /** último "agora não" ao pedido de conta */
+  accountAsk?: string;
   bottles?: Bottle[];
   /** formato em que a pessoa toma a Spirulina */
   format?: 'caps' | 'po' | 'nibs';

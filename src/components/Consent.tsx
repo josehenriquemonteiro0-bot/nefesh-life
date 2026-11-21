@@ -22,7 +22,7 @@ export function PrivacyText() {
 }
 
 /** Aceitação do aviso de privacidade antes da primeira avaliação. */
-export function Consent({ onAccept, onCancel }: { onAccept: () => void; onCancel: () => void }) {
+export function Consent({ onAccept, onCancel, onLogin }: { onAccept: () => void; onCancel: () => void; onLogin?: () => void }) {
   const { update } = useStore();
   const [ok, setOk] = useState(false);
   const [rd, setRd] = useState(false);
@@ -69,6 +69,7 @@ export function Consent({ onAccept, onCancel }: { onAccept: () => void; onCancel
           Continuar
         </button>
       </div>
+      {onLogin && <p className="small mute" style={{ textAlign: 'center', marginTop: 14 }}>Já usava a NEFESH Life? <button className="link small inline" onClick={onLogin}>Entrar na minha conta</button></p>}
     </>
   );
 }

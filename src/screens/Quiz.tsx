@@ -1,6 +1,6 @@
 import { DecimalInput } from '../components/DecimalInput';
 import { useEffect, useRef } from 'react';
-import { QUESTIONS } from '../domain/content';
+import { QUIZ as QUESTIONS } from '../domain/onboarding';
 import type { Answers } from '../domain/types';
 
 export interface QuizState {
@@ -148,6 +148,7 @@ export function Quiz({ state, setState, onCancel }: { state: QuizState; setState
       <p className="mute small" style={{ margin: 0 }}>Pergunta {qi + 1} de {QUESTIONS.length}</p>
       <div className="prog"><i style={{ width: `${(qi / QUESTIONS.length) * 100}%` }} /></div>
       <h1>{q.t}</h1>
+      {qi === 0 && !draft.goal && <p className="mute" style={{ marginTop: -6 }}>Em cerca de 1 minuto: o seu Índice NEFESH e uma dose de Spirulina feita para si, explicada passo a passo.</p>}
       {q.kind === 'options' && q.multi && <p className="mute small">Pode escolher mais do que uma.</p>}
       {body}
       <div className="row" style={{ marginTop: 22 }}>
