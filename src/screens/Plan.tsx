@@ -221,8 +221,8 @@ export function Plan({ answers: a, isNew, go, onAdopt, onCancel, onReassess, ope
             <p className="small mute" style={{ margin: 0 }}>{dt(c.caps)} por dia e check-in diário.</p>
           </li>
           <li className={cur === 2 ? 'now' : ''}>
-            <h3>Dia 30 · reavaliação</h3>
-            <p className="small mute" style={{ margin: 0 }}>Repete esta avaliação e compara o seu Índice.</p>
+            <h3>Dias 7, 15 e 30 · reavaliações</h3>
+            <p className="small mute" style={{ margin: 0 }}>Repete esta avaliação aos 7, 15 e 30 dias e compara o seu Índice. A app avisa quando chega cada uma (também em Evolução).</p>
           </li>
           <li className={cur === 3 ? 'now' : ''}>
             <h3>Dias 30 a 90 · consolidação</h3>

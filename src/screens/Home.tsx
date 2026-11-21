@@ -1,3 +1,4 @@
+import { QUESTIONS } from '../domain/content';
 import { useMemo } from 'react';
 import { Bar, Glass, Ring } from '../components/Charts';
 import { Icon } from '../components/Icon';
@@ -172,7 +173,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
         <SampleBanner onReset={onReset} />
         <section className="card hero">
           <h1>Descubra o seu Índice NEFESH e a sua dose ideal</h1>
-          <p>17 perguntas, cerca de 2 minutos. No fim recebe a sua pontuação de bem-estar e um plano de Spirulina feito para si.</p>
+          <p>{QUESTIONS.length} perguntas, cerca de 3 minutos. No fim recebe a sua pontuação de bem-estar e um plano de Spirulina feito para si.</p>
           <button className="btn" onClick={startQuiz}>Começar a avaliação</button>
         </section>
         <section className="card">

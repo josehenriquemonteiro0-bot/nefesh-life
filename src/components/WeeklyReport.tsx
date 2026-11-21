@@ -5,7 +5,7 @@ import { REPORT_AREAS, reportSummary, weeklyReport } from '../domain/weekReport'
 import { canAccess } from '../domain/features';
 import { PHOTO_API, deviceId } from '../domain/photo';
 import { notePremiumUse } from '../domain/analytics';
-import { shortDate } from '../domain/dates';
+import { addDaysKey, shortDate, todayKey } from '../domain/dates';
 import { speak, stopSpeaking, ttsSupported, voiceLang } from '../domain/voice';
 import { useStore } from '../state/store';
 
@@ -51,8 +51,11 @@ export function WeeklyReport() {
     <section className="card week-report" data-tour="relatorio">
       <div className="row">
         <h2 style={{ margin: 0 }}>Relatório da semana</h2>
-        <span className="small mute">{shortDate(r.days[0])} – {shortDate(r.days[6])}</span>
+        <span className="small mute">{r.days[6] < todayKey() ? 'Semana passada · ' : ''}{shortDate(r.days[0])} – {shortDate(r.days[6])}</span>
       </div>
+      {r.days[6] < todayKey() && (
+        <p className="small mute" style={{ margin: '4px 0 0' }}>O relatório desta semana ({shortDate(addDaysKey(r.days[6], 1))} – {shortDate(addDaysKey(r.days[6], 7))}) fica pronto no domingo às 18h.</p>
+      )}
       {r.index === null ? (
         <p className="small mute" style={{ margin: '10px 0 0' }}>Ainda sem registos nesta semana. Marque a Spirulina, a água, o sono ou um treino e o relatório aparece aqui no domingo à noite.</p>
       ) : (

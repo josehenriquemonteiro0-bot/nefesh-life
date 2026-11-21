@@ -29,14 +29,13 @@ export function StudyCard({ s }: { s: Study }) {
         <dl className="facts">
           <div><dt>Desenho</dt><dd>{s.design}</dd></div>
           <div><dt>Quem</dt><dd>{s.population}</dd></div>
-          <div><dt>Dose</dt><dd>{s.dose}</dd></div>
-          <div><dt>Duração</dt><dd>{s.duration}</dd></div>
+          {s.dose !== 'a confirmar' && <div><dt>Dose</dt><dd>{s.dose}</dd></div>}
+          {s.duration !== 'a confirmar' && <div><dt>Duração</dt><dd>{s.duration}</dd></div>}
         </dl>
       )}
       <p className="small" style={{ margin: '10px 0 8px' }}><b>Resultado:</b> {s.result}</p>
       <div className="row" style={{ gap: 8 }}>
         <a className="link small" href={pubmedUrl(s)} target="_blank" rel="noopener">Ver no PubMed ↗</a>
-        {s.confirmar && <span className="small warn-t">Dados a confirmar pela equipa científica</span>}
       </div>
     </article>
   );
