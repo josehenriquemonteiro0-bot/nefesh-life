@@ -48,6 +48,7 @@ export const FEATURES = {
   relatorioCompleto: { label: 'Relatório semanal e mensal completo', tier: 'premium', enabled: true, freeNote: 'resumo' },
   planosAdaptativos: { label: 'Planos adaptativos', tier: 'premium', enabled: true },
   timeline: { label: 'Personal Health Timeline', tier: 'premium', enabled: true },
+  meditacao: { label: 'Biblioteca de meditação completa', tier: 'premium', enabled: true, freeNote: '4 sessões grátis' },
   descontoConsultas: { label: 'Desconto em consultas de parceiros', tier: 'premium', enabled: true },
 } satisfies Record<string, FeatureConfig>;
 

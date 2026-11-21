@@ -11,7 +11,8 @@ import { todayKey } from '../domain/dates';
 import { dailyQuota, TEST_MODE } from '../domain/features';
 import { ritualJustDone } from '../state/doses';
 import { useStore } from '../state/store';
-import { requestBreath } from '../domain/mind';
+import { requestBreath, requestMeditation } from '../domain/mind';
+import { meditationById } from '../domain/meditations';
 import type { DayLog } from '../domain/types';
 import { notePremiumUse } from '../domain/analytics';
 import { KEYBOARD_DICTATION_HINT, keepScreenOn, listen, primeAudio, record, speak, speechSupported, stopSpeaking, takeListenRequest, transcribe, ttsSupported, shouldRecord, voiceLang, type Listening } from '../domain/voice';
@@ -131,7 +132,7 @@ export function Coach({ go }: { go: Nav }) {
         {
           role: 'assistant', text: r.reply, at: new Date().toISOString(), applied,
           undo: applied.length ? { day: key, log: before, extra } : undefined,
-          pro: r.suggest_professional, breath: r.actions.find((a) => a.type === 'respiracao')?.value,
+          pro: r.suggest_professional, breath: r.actions.find((a) => a.type === 'respiracao')?.value, meditate: r.actions.find((a) => a.type === 'meditar')?.note?.trim(),
           proposals: proposals.length ? proposals : undefined, proposalStatus: proposals.length ? 'pendente' : undefined, open: open.length ? open : undefined,
         },
       ];
@@ -310,6 +311,9 @@ export function Coach({ go }: { go: Nav }) {
                 {m.open.map((sc) => <button key={sc} className="btn ghost sm" onClick={() => go(SCREEN_TAB[sc][0])}>Abrir {SCREEN_TAB[sc][1]} ›</button>)}
               </div>
             )}
+            {m.meditate && meditationById(m.meditate) ? (
+              <button className="btn sm" style={{ marginTop: 8 }} onClick={() => { requestMeditation(m.meditate!); go('mente'); }}>🧘 {meditationById(m.meditate)!.title} ({meditationById(m.meditate)!.minutes} min)</button>
+            ) : null}
             {m.breath ? (
               <button className="btn sm" style={{ marginTop: 8 }} onClick={() => { requestBreath(m.breath!); go('mente'); }}>🌬️ Fazer a pausa ({m.breath} min)</button>
             ) : null}

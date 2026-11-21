@@ -106,7 +106,7 @@ export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone
 }
 
 /** Lê um texto em voz alta (respostas do Coach). */
-export function speak(text: string, lang: VoiceLang, onEnd?: () => void) {
+export function speak(text: string, lang: VoiceLang, onEnd?: () => void, rate = 1.02) {
   if (!ttsSupported() || !text) {
     onEnd?.();
     return;
@@ -118,7 +118,7 @@ export function speak(text: string, lang: VoiceLang, onEnd?: () => void) {
     u.lang = lang;
     const v = synth.getVoices().find((x) => x.lang?.replace('_', '-').toLowerCase() === lang.toLowerCase());
     if (v) u.voice = v;
-    u.rate = 1.02;
+    u.rate = rate;
     // avisa quando acaba (para a conversa por voz voltar a ouvir); cancelar não avisa
     let ended = false;
     u.onend = () => {

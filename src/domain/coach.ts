@@ -25,7 +25,7 @@ import type { AppState, DayLog } from './types';
 
 export type CoachActionType =
   | 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos'
-  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso';
+  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso' | 'meditar';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -84,6 +84,8 @@ export interface CoachMsg {
   voice?: boolean;
   /** pausa de respiração sugerida (minutos) */
   breath?: number;
+  /** meditação da biblioteca sugerida (id) */
+  meditate?: string;
 }
 
 const MEAL_LABEL = Object.fromEntries(MEALS) as Record<MealKey, string>;
@@ -297,6 +299,7 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         break;
       }
       case 'respiracao':
+      case 'meditar':
       case 'lembrete':
       case 'consulta':
       case 'desafio':

@@ -24,6 +24,7 @@ export const SERVER_FEATURES: Record<string, { tier: Tier; enabled: boolean; fre
   relatorioCompleto: { tier: 'premium', enabled: true },
   planosAdaptativos: { tier: 'premium', enabled: true },
   timeline: { tier: 'premium', enabled: true },
+  meditacao: { tier: 'premium', enabled: true },
   descontoConsultas: { tier: 'premium', enabled: true },
 };
 

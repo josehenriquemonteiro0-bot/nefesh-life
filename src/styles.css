@@ -599,3 +599,14 @@ ul.plain li.row{gap:8px}
 .nutri-badge{font-size:11.5px;font-weight:800;color:#fff;padding:2px 8px;border-radius:6px}
 .nova-badge{font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
 .ask-bubble{border-color:rgba(201,168,92,.5)}
+/* meditação */
+.med-list{display:grid;margin-top:8px}
+.med-row{all:unset;cursor:pointer;display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.med-play{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--neon);color:#00140d;font-size:13px}
+.med-overlay{gap:14px}
+.med-circle{transform:scale(.85);transition:transform 6s ease-in-out}
+.med-circle.pulse{animation:medBreath 10s ease-in-out infinite}
+@keyframes medBreath{0%,100%{transform:scale(.8)}50%{transform:scale(1)}}
+.med-caption{max-width:340px;min-height:66px;font:500 17px/1.45 Sora,sans-serif;opacity:.92;margin:0}
+.med-vol{display:grid;gap:4px;justify-items:center;opacity:.85}
+.med-vol input{width:200px;accent-color:var(--neon)}

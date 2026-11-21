@@ -61,8 +61,8 @@ export function moodInsights(S: Pick<AppState, 'logs'>, now = new Date()) {
   if (sleep) out.push({ text: `Nos dias depois de dormir 7 h ou mais, o seu humor é ${sleep.yes} (contra ${sleep.no}).`, diff: sleep.yes - sleep.no });
   const move = pair((l) => (l.workouts?.length ?? 0) > 0 || (l.steps ?? 0) >= 7000);
   if (move) out.push({ text: `Nos dias com treino ou 7000+ passos, o humor é ${move.yes} (contra ${move.no}).`, diff: move.yes - move.no });
-  const breath = pair((l) => (l.breath ?? 0) > 0);
-  if (breath) out.push({ text: `Nos dias com respiração guiada, o humor é ${breath.yes} (contra ${breath.no}).`, diff: breath.yes - breath.no });
+  const breath = pair((l) => (l.breath ?? 0) > 0 || (l.medit ?? 0) > 0);
+  if (breath) out.push({ text: `Nos dias com respiração guiada ou meditação, o humor é ${breath.yes} (contra ${breath.no}).`, diff: breath.yes - breath.no });
   return out.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 }
 
@@ -76,6 +76,25 @@ export function needsSupport(S: Pick<AppState, 'logs'>, now = new Date()) {
 export function gratitudeLog(S: Pick<AppState, 'logs'>, n = 14, now = new Date()) {
   return Array.from({ length: n }, (_, i) => ({ day: keyDaysAgo(i, now), items: S.logs[keyDaysAgo(i, now)]?.grat ?? [] })).filter((x) => x.items.length);
 }
+
+/** Pedido para abrir uma meditação da biblioteca (vindo do assistente). */
+const MED_KEY = 'nefesh-meditar';
+export const requestMeditation = (id: string) => {
+  try {
+    sessionStorage.setItem(MED_KEY, id);
+  } catch {
+    /* sem armazenamento */
+  }
+};
+export const takeMeditationRequest = () => {
+  try {
+    const v = sessionStorage.getItem(MED_KEY);
+    sessionStorage.removeItem(MED_KEY);
+    return v;
+  } catch {
+    return null;
+  }
+};
 
 /** Pedido para abrir a respiração guiada (vindo do Coach). */
 const KEY = 'nefesh-respirar';

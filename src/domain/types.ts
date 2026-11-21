@@ -75,6 +75,8 @@ export interface DayLog {
   stress?: number;
   grat?: string[];
   breath?: number;
+  /** minutos de meditação guiada */
+  medit?: number;
   /** ciclo menstrual / menopausa / gravidez: menstruação, fluxo (1–3) e sintomas */
   cycle?: { p?: boolean; flow?: 1 | 2 | 3; sy?: string[] };
   /** origem de cada valor medível (sem entrada = escrito pela pessoa) */
