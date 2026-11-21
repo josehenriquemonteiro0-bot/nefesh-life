@@ -59,16 +59,10 @@ export function RunTracker({ kind, plan, onClose }: { kind: RunKind; plan?: { se
   phaseRef.current = phase;
   const provider = geoProvider();
 
-  const say = (t: string) => { if (voice) speak(t, lang); };
-  const elapsed = () => {
-    if (!t0.current) return 0;
-    const now = phaseRef.current === 'pause' ? paused.current.since : Date.now();
-    return Math.max(0, (now - t0.current - paused.current.total) / 1000);
-  };
-
-  // GPS ligado desde a abertura (para ganhar sinal antes de começar)
-  useEffect(() => {
-    keepScreenOn(true);
+  /** Liga o GPS (também ao tocar em "Tentar outra vez", que volta a pedir a autorização). */
+  const startGps = () => {
+    stop.current();
+    setErr('');
     stop.current = provider.start(
       (p: GeoPoint) => {
         setAcc(Math.round(p.acc));
@@ -79,6 +73,18 @@ export function RunTracker({ kind, plan, onClose }: { kind: RunKind; plan?: { se
       },
       (m) => setErr(m),
     );
+  };
+  const say = (t: string) => { if (voice) speak(t, lang); };
+  const elapsed = () => {
+    if (!t0.current) return 0;
+    const now = phaseRef.current === 'pause' ? paused.current.since : Date.now();
+    return Math.max(0, (now - t0.current - paused.current.total) / 1000);
+  };
+
+  // GPS ligado desde a abertura (para ganhar sinal antes de começar)
+  useEffect(() => {
+    keepScreenOn(true);
+    startGps();
     const id = window.setInterval(() => tick((x) => x + 1), 1000);
     const vis = () => {
       if (document.hidden) hiddenAt.current = Date.now();
@@ -242,8 +248,9 @@ export function RunTracker({ kind, plan, onClose }: { kind: RunKind; plan?: { se
           {phase === 'gps' ? (
             <>
               <p className="small" style={{ margin: 0 }}>
-                {err || (acc === null ? '📡 À procura do sinal de GPS…' : acc <= 30 ? `✓ GPS pronto (precisão ${acc} m)` : `📡 Sinal fraco (${acc} m): vá para um sítio aberto.`)}
+                {err || (acc === null ? '📡 À procura do sinal de GPS…' : acc <= 30 ? `✓ GPS pronto (precisão ${acc} m)` : acc > 150 ? `📡 Precisão de ${acc} m: a "Localização exata" parece desligada.` : `📡 Sinal fraco (${acc} m): vá para um sítio aberto.`)}
               </p>
+              {(err || (acc !== null && acc > 150)) && <GpsHelp precise={!err} onRetry={startGps} />}
               <button className="btn" onClick={begin} disabled={!!err}>▶ Começar</button>
               {plan && <p className="small" style={{ margin: 0, opacity: 0.85 }}>{sessionText(plan.segs)} · ~{sessionMinutes(plan.segs)} min, com aquecimento e arrefecimento. A voz avisa cada mudança.</p>}
             </>
@@ -259,6 +266,31 @@ export function RunTracker({ kind, plan, onClose }: { kind: RunKind; plan?: { se
           {phase === 'gps' && <button className="link small inline" onClick={() => onClose(false)}>Fechar</button>}
         </>
       )}
+    </div>
+  );
+}
+
+/** Passos para autorizar a localização (iPhone ou Android) e voltar a tentar. */
+function GpsHelp({ precise, onRetry }: { precise: boolean; onRetry: () => void }) {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const installed = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  return (
+    <div className="gps-help small">
+      {ios ? (
+        <ol>
+          <li><b>Definições (Ajustes) → Privacidade e segurança → Serviços de localização</b>: ligado.</li>
+          <li>Na mesma lista, <b>Websites do Safari</b> (ou o navegador que usa) → <b>Durante a utilização</b> e <b>Localização exata</b> ligada.</li>
+          {!installed && <li>No Safari, toque em <b>aA</b> (ou ☰) ao lado do endereço → <b>Definições do website</b> → <b>Localização</b> → <b>Perguntar</b> ou <b>Permitir</b>.</li>}
+          <li>Volte aqui e toque em <b>Tentar outra vez</b>; se o iPhone perguntar, escolha <b>Permitir</b>.</li>
+        </ol>
+      ) : (
+        <ol>
+          <li>Ligue a <b>Localização</b> no painel rápido do telemóvel{precise ? ' e a opção de precisão (Precisão da localização Google)' : ''}.</li>
+          <li>No Chrome, toque no cadeado ao lado do endereço → <b>Permissões</b> → <b>Localização</b> → <b>Permitir</b>.</li>
+          <li>Toque em <b>Tentar outra vez</b>.</li>
+        </ol>
+      )}
+      <button className="btn sm" onClick={onRetry}>↻ Tentar outra vez</button>
     </div>
   );
 }

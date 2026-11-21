@@ -25,7 +25,7 @@ const webGeo: GeoProvider = {
       (err) =>
         onError(
           err.code === err.PERMISSION_DENIED
-            ? 'A localização está bloqueada para a app. Autorize-a nas definições do telemóvel (Localização → NEFESH / navegador) e tente outra vez.'
+            ? '📍 A localização está bloqueada para a NEFESH. Veja como autorizar:'
             : err.code === err.TIMEOUT
               ? 'Ainda sem sinal de GPS. Vá para um sítio aberto, longe de prédios altos.'
               : 'Não foi possível obter a localização.',
