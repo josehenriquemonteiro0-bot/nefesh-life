@@ -727,4 +727,19 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .pro-ex-grid label{display:grid;gap:2px;font-size:11.5px;color:var(--mute)}
 .pro-ex-grid .field{width:100%;box-sizing:border-box;min-width:0}
 .pro-link{border:1px solid rgba(201,168,92,.4)}
+.pro-tabs{display:flex;gap:6px;overflow-x:auto;margin:4px 0 10px;scroll-margin-top:12px}
+.pro-tabs button{flex:1;min-width:52px;display:grid;gap:2px;justify-items:center;padding:8px 6px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:inherit;cursor:pointer}
+.pro-tabs button b{font-size:18px}
+.pro-tabs button span{font-size:11px;color:var(--mute)}
+.pro-tabs button.on{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon) inset}
+.pro-tabs button.on b{color:var(--neon)}
+.pro-ac{position:relative}
+.pro-ac-list{position:absolute;z-index:5;left:0;right:0;top:100%;margin:2px 0 0;padding:4px 0;list-style:none;max-height:240px;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.pro-ac-list button,.pro-sugg li button{display:flex;width:100%;justify-content:space-between;gap:8px;align-items:center;text-align:left;background:none;border:0;color:inherit;padding:9px 12px;cursor:pointer;font:inherit}
+.pro-ac-list button:hover,.pro-sugg li button:hover:not(:disabled){background:var(--panel2)}
+.pro-sugg{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:8px 4px 4px}
+.pro-sugg>button{padding:0 8px}
+.pro-sugg ul{list-style:none;margin:6px 0 0;padding:0;max-height:260px;overflow-y:auto}
+.pro-sugg li button:disabled{opacity:.55;cursor:default}
+.pro-sugg li button span:first-child,.pro-ac-list button span:first-child{flex:1;min-width:0}
 textarea.field{font-family:inherit;width:100%;box-sizing:border-box}

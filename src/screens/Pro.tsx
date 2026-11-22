@@ -4,33 +4,68 @@ import { shortDate } from '../domain/dates';
 import { GYM } from '../domain/gymData';
 import { EXERCISES } from '../domain/training';
 import { inviteText, proApi, type ProInfo, type ProLog, type ProStudent } from '../domain/pro';
+import { FOCUS_PRESETS, GROUP_NAME, addFromLibrary, applySplit, letter, searchExercises, splitName, type LibExercise } from '../domain/proLibrary';
 import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/planRead';
 import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
-const LIB = [...new Set([...Object.values(GYM).map((e) => e.name), ...EXERCISES.map((e) => e.name)])].sort((a, b) => a.localeCompare(b, 'pt'));
+const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
-const newWorkout = (i: number): PlanWorkout => ({ name: `Treino ${String.fromCharCode(65 + i)}`, focus: '', day: '', exercises: [newEx()] });
 
-/** Montar ou editar o treino de um aluno. */
+/** Nome do exercício com lista de sugestões que se vai filtrando enquanto se escreve. */
+function ExerciseInput({ value, focus, onPick, onType, label }: { value: string; focus: string; onPick: (e: LibExercise) => void; onType: (t: string) => void; label: string }) {
+  const [open, setOpen] = useState(false);
+  const list = open ? searchExercises(value, focus, LIB) : [];
+  return (
+    <div className="pro-ac">
+      <input className="field sm" style={{ width: '100%', boxSizing: 'border-box' }} value={value} maxLength={80} placeholder="Escreva ou escolha o exercício" autoComplete="off"
+        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onChange={(ev) => { onType(ev.target.value); setOpen(true); }} aria-label={label} />
+      {open && list.length > 0 && !(list.length === 1 && list[0].name === value) && (
+        <ul className="pro-ac-list" role="listbox">
+          {list.map((e) => (
+            <li key={e.name}><button type="button" onMouseDown={(ev) => ev.preventDefault()} onClick={() => { onPick(e); setOpen(false); }}>
+              <span>{e.name}</span><span className="small mute">{GROUP_NAME[e.group]}</span>
+            </button></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Montar ou editar o treino de um aluno: divisão (A, AB, ABC…), um treino de cada vez, sugestões pelo foco. */
 function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent; others: ProStudent[]; onClose: () => void; onSaved: () => void }) {
   const { toast } = useStore();
-  const [plan, setPlan] = useState<ParsedWorkoutPlan>(() => student.plan ?? { is_workout: true, workouts: [newWorkout(0)], per_week: 3, professional: '', notes: '' });
+  const [plan, setPlan] = useState<ParsedWorkoutPlan>(() => student.plan ?? { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '' });
+  const [cur, setCur] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const setW = (i: number, f: (w: PlanWorkout) => PlanWorkout) => setPlan({ ...plan, workouts: plan.workouts.map((w, j) => (j === i ? f(w) : w)) });
-  const setE = (i: number, k: number, patch: Partial<WorkoutExercise>) => setW(i, (w) => ({ ...w, exercises: w.exercises.map((e, j) => (j === k ? { ...e, ...patch } : e)) }));
-  const moveE = (i: number, k: number, d: number) => setW(i, (w) => {
-    const ex = [...w.exercises];
+  const [sugOpen, setSugOpen] = useState(true);
+  const top = () => document.querySelector('.pro-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const n = plan.workouts.length;
+  const i = Math.min(cur, Math.max(0, n - 1));
+  const w = plan.workouts[i];
+  const setW = (f: (w: PlanWorkout) => PlanWorkout) => setPlan({ ...plan, workouts: plan.workouts.map((x, j) => (j === i ? f(x) : x)) });
+  const setE = (k: number, patch: Partial<WorkoutExercise>) => setW((x) => ({ ...x, exercises: x.exercises.map((e, j) => (j === k ? { ...e, ...patch } : e)) }));
+  const moveE = (k: number, d: number) => setW((x) => {
+    const ex = [...x.exercises];
     const t = k + d;
-    if (t < 0 || t >= ex.length) return w;
+    if (t < 0 || t >= ex.length) return x;
     [ex[k], ex[t]] = [ex[t], ex[k]];
-    return { ...w, exercises: ex };
+    return { ...x, exercises: ex };
   });
+  const chooseSplit = (m: number) => {
+    const lost = plan.workouts.slice(m).filter((x) => x.exercises.some((e) => e.name.trim()));
+    if (lost.length && !confirm(`Passar para ${m} treino${m > 1 ? 's' : ''}? ${lost.map((x) => x.name).join(', ')} ${lost.length > 1 ? 'são apagados' : 'é apagado'}.`)) return;
+    setPlan({ ...plan, workouts: applySplit(plan.workouts, m), per_week: n ? plan.per_week : m });
+    setCur(0);
+  };
+  const filled = (x: PlanWorkout) => x.exercises.filter((e) => e.name.trim()).length;
   const save = async () => {
+    if (!plan.workouts.some(filled)) { setErr('Junte pelo menos um exercício.'); return; }
     setBusy(true);
     setErr('');
     try {
@@ -44,64 +79,111 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
     }
   };
   const templates = others.filter((o) => o.plan && o.code !== student.code);
+  const sugg = w ? searchExercises('', w.focus, [], 60) : [];
+  const has = (name: string) => !!w?.exercises.some((e) => e.name === name);
   return (
     <>
       <button className="btn ghost sm" onClick={onClose}>← Alunos</button>
       <h1 style={{ marginBottom: 4 }}>Treino de {student.name}</h1>
-      <datalist id="pro-ex-lib">{LIB.map((n) => <option key={n} value={n} />)}</datalist>
       {templates.length > 0 && (
         <label className="small" style={{ display: 'block', margin: '0 0 12px' }}>
           Partir do treino de outro aluno:{' '}
-          <select className="field sm" defaultValue="" onChange={(e) => { const o = templates.find((t) => t.code === e.target.value); if (o?.plan && confirm(`Copiar o treino de ${o.name}? O que está neste ecrã é substituído.`)) setPlan(o.plan); }}>
+          <select className="field sm" defaultValue="" onChange={(e) => { const o = templates.find((t) => t.code === e.target.value); if (o?.plan && confirm(`Copiar o treino de ${o.name}? O que está neste ecrã é substituído.`)) { setPlan(o.plan); setCur(0); } }}>
             <option value="">escolher…</option>
             {templates.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
           </select>
         </label>
       )}
       <section className="card">
-        <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
-          <label className="small">Treinos por semana <input className="field sm" type="number" min={1} max={7} style={{ width: 64 }} value={plan.per_week} onChange={(e) => setPlan({ ...plan, per_week: Math.max(1, Math.min(7, Number(e.target.value) || 1)) })} /></label>
-        </div>
-        <label className="small" style={{ display: 'block', marginTop: 8 }}>Observações gerais
-          <textarea className="field" rows={2} maxLength={600} value={plan.notes} onChange={(e) => setPlan({ ...plan, notes: e.target.value })} placeholder="ex.: aquecer 10 min; beber água entre séries" />
-        </label>
-      </section>
-      {plan.workouts.map((w, i) => (
-        <section className="card pro-workout" key={i}>
-          <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-            <input className="field sm" style={{ flex: 1, fontWeight: 700 }} value={w.name} maxLength={60} onChange={(e) => setW(i, (x) => ({ ...x, name: e.target.value }))} aria-label="Nome do treino" />
-            {plan.workouts.length > 1 && <button className="x" aria-label={`Apagar ${w.name}`} onClick={() => confirm(`Apagar ${w.name}?`) && setPlan({ ...plan, workouts: plan.workouts.filter((_, j) => j !== i) })}>×</button>}
-          </div>
-          <div className="row" style={{ gap: 8, marginTop: 6 }}>
-            <input className="field sm" style={{ flex: 2 }} value={w.focus} maxLength={80} placeholder="Foco (ex.: inferior)" onChange={(e) => setW(i, (x) => ({ ...x, focus: e.target.value }))} aria-label="Foco" />
-            <input className="field sm" style={{ flex: 1 }} value={w.day} maxLength={30} placeholder="Dia (ex.: seg)" onChange={(e) => setW(i, (x) => ({ ...x, day: e.target.value }))} aria-label="Dia" />
-          </div>
-          {w.exercises.map((e, k) => (
-            <div className="pro-ex" key={k}>
-              <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
-                <span className="small mute">{k + 1}.</span>
-                <input className="field sm" style={{ flex: 1, minWidth: 0 }} list="pro-ex-lib" value={e.name} maxLength={80} placeholder="Exercício (escreva ou escolha)" onChange={(ev) => setE(i, k, { name: ev.target.value })} aria-label={`Exercício ${k + 1}`} />
-              </div>
-              <div className="pro-ex-grid">
-                <label className="small">Séries<input className="field sm" type="number" min={1} max={10} value={e.sets} onChange={(ev) => setE(i, k, { sets: Math.max(1, Math.min(10, Number(ev.target.value) || 1)) })} /></label>
-                <label className="small">Repetições<input className="field sm" value={e.reps} maxLength={30} placeholder="10 ou 8-12" onChange={(ev) => setE(i, k, { reps: ev.target.value })} /></label>
-                <label className="small">Carga<input className="field sm" value={e.load} maxLength={30} placeholder="20 kg" onChange={(ev) => setE(i, k, { load: ev.target.value })} /></label>
-                <label className="small">Descanso<input className="field sm" value={e.rest} maxLength={30} placeholder="60 s" onChange={(ev) => setE(i, k, { rest: ev.target.value })} /></label>
-              </div>
-              <div className="row" style={{ gap: 6, flexWrap: 'nowrap', marginTop: 6 }}>
-                <input className="field sm" style={{ flex: 1, minWidth: 0 }} value={e.notes} maxLength={240} placeholder="Nota (técnica, cadência, vídeo…)" onChange={(ev) => setE(i, k, { notes: ev.target.value })} aria-label="Nota do exercício" />
-                <button className="btn ghost sm" aria-label="Subir" onClick={() => moveE(i, k, -1)}>↑</button>
-                <button className="btn ghost sm" aria-label="Descer" onClick={() => moveE(i, k, 1)}>↓</button>
-                <button className="x" aria-label="Apagar exercício" onClick={() => setW(i, (x) => ({ ...x, exercises: x.exercises.filter((_, j) => j !== k) }))}>×</button>
-              </div>
-            </div>
+        <h3 style={{ marginTop: 0 }}>{n ? 'Divisão do treino' : 'Quantos treinos diferentes?'}</h3>
+        <div className="chips">
+          {[1, 2, 3, 4, 5, 6].map((m) => (
+            <button key={m} className={`chip ${n === m ? 'on' : ''}`} onClick={() => chooseSplit(m)} aria-pressed={n === m}>
+              <b>{splitName(m)}</b><span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{m} treino{m > 1 ? 's' : ''}</span>
+            </button>
           ))}
-          <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW(i, (x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>
-        </section>
-      ))}
-      <button className="btn ghost full" disabled={plan.workouts.length >= 10} onClick={() => setPlan({ ...plan, workouts: [...plan.workouts, newWorkout(plan.workouts.length)] })}>+ Treino</button>
-      <p />
-      <button className="btn full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar ao aluno'}</button>
+        </div>
+        {!n && <p className="small mute" style={{ marginBottom: 0 }}>Escolha a divisão: os treinos são criados já com um foco sugerido, que pode mudar.</p>}
+        {n > 0 && (
+          <>
+            <label className="small" style={{ display: 'block', marginTop: 10 }}>Treinos por semana <input className="field sm" type="number" min={1} max={7} style={{ width: 64 }} value={plan.per_week} onChange={(e) => setPlan({ ...plan, per_week: Math.max(1, Math.min(7, Number(e.target.value) || 1)) })} /></label>
+            <label className="small" style={{ display: 'block', marginTop: 8 }}>Observações gerais
+              <textarea className="field" rows={2} maxLength={600} value={plan.notes} onChange={(e) => setPlan({ ...plan, notes: e.target.value })} placeholder="ex.: aquecer 10 min; beber água entre séries" />
+            </label>
+          </>
+        )}
+      </section>
+      {w && (
+        <>
+          <div className="pro-tabs" role="tablist">
+            {plan.workouts.map((x, j) => (
+              <button key={j} role="tab" aria-selected={j === i} className={j === i ? 'on' : ''} onClick={() => setCur(j)}>
+                <b>{letter(j)}</b><span>{filled(x) ? `${filled(x)} ex.` : '—'}</span>
+              </button>
+            ))}
+          </div>
+          <section className="card pro-workout">
+            <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+              <input className="field sm" style={{ flex: 1, fontWeight: 700 }} value={w.name} maxLength={60} onChange={(e) => setW((x) => ({ ...x, name: e.target.value }))} aria-label="Nome do treino" />
+              <input className="field sm" style={{ width: 90 }} value={w.day} maxLength={30} placeholder="Dia (seg)" onChange={(e) => setW((x) => ({ ...x, day: e.target.value }))} aria-label="Dia" />
+            </div>
+            <input className="field sm" style={{ width: '100%', boxSizing: 'border-box', marginTop: 6 }} value={w.focus} maxLength={80} placeholder="Foco (ex.: inferior, peito e tríceps)" onChange={(e) => setW((x) => ({ ...x, focus: e.target.value }))} aria-label="Foco" />
+            <div className="chips" style={{ marginTop: 6 }}>
+              {FOCUS_PRESETS.map((p) => <button key={p.label} className={`chip sm ${w.focus === p.label ? 'on' : ''}`} onClick={() => setW((x) => ({ ...x, focus: p.label }))}>{p.label}</button>)}
+            </div>
+            {sugg.length > 0 && (
+              <div className="pro-sugg">
+                <button className="link small inline" onClick={() => setSugOpen(!sugOpen)}>{sugOpen ? '▾' : '▸'} Sugestões para {w.focus.toLowerCase()} ({sugg.length})</button>
+                {sugOpen && (
+                  <ul>
+                    {sugg.map((e) => (
+                      <li key={e.name}>
+                        <button disabled={has(e.name) || w.exercises.length >= 20} onClick={() => setW((x) => addFromLibrary(x, e))}>
+                          <span>{has(e.name) ? '✓' : '+'} {e.name}</span><span className="small mute">{GROUP_NAME[e.group]} · {e.sets} × {e.reps}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            {w.exercises.map((e, k) => (
+              <div className="pro-ex" key={k}>
+                <div className="row" style={{ gap: 6, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+                  <span className="small mute" style={{ paddingTop: 8 }}>{k + 1}.</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <ExerciseInput value={e.name} focus={w.focus} label={`Exercício ${k + 1}`} onType={(t) => setE(k, { name: t })}
+                      onPick={(l) => setE(k, { name: l.name, sets: l.sets, reps: l.reps, rest: l.rest })} />
+                  </div>
+                </div>
+                <div className="pro-ex-grid">
+                  <label className="small">Séries<input className="field sm" type="number" min={1} max={10} value={e.sets} onChange={(ev) => setE(k, { sets: Math.max(1, Math.min(10, Number(ev.target.value) || 1)) })} /></label>
+                  <label className="small">Repetições<input className="field sm" value={e.reps} maxLength={30} placeholder="10 ou 8-12" onChange={(ev) => setE(k, { reps: ev.target.value })} /></label>
+                  <label className="small">Carga<input className="field sm" value={e.load} maxLength={30} placeholder="20 kg" onChange={(ev) => setE(k, { load: ev.target.value })} /></label>
+                  <label className="small">Descanso<input className="field sm" value={e.rest} maxLength={30} placeholder="60 s" onChange={(ev) => setE(k, { rest: ev.target.value })} /></label>
+                </div>
+                <div className="row" style={{ gap: 6, flexWrap: 'nowrap', marginTop: 6 }}>
+                  <input className="field sm" style={{ flex: 1, minWidth: 0 }} value={e.notes} maxLength={240} placeholder="Nota (técnica, cadência, vídeo…)" onChange={(ev) => setE(k, { notes: ev.target.value })} aria-label="Nota do exercício" />
+                  <button className="btn ghost sm" aria-label="Subir" onClick={() => moveE(k, -1)}>↑</button>
+                  <button className="btn ghost sm" aria-label="Descer" onClick={() => moveE(k, 1)}>↓</button>
+                  <button className="x" aria-label="Apagar exercício" onClick={() => setW((x) => ({ ...x, exercises: x.exercises.filter((_, j) => j !== k) }))}>×</button>
+                </div>
+              </div>
+            ))}
+            <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>
+          </section>
+          {i < n - 1 ? (
+            <>
+              <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); setSugOpen(true); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>
+              <p />
+              <button className="btn ghost full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar já'}</button>
+            </>
+          ) : (
+            <button className="btn full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : n > 1 ? `Concluir ${w.name} e enviar ao aluno` : 'Guardar e enviar ao aluno'}</button>
+          )}
+          {!filled(w) && <p className="small mute">Junte pelo menos um exercício a este treino para avançar.</p>}
+        </>
+      )}
       {err && <p className="small warn-t">{err}</p>}
     </>
   );
