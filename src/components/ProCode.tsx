@@ -3,6 +3,7 @@ import { applyProPlan, checkProPlan, clearProPlan, codeLooksValid, flushWorkouts
 import { shortDate } from '../domain/dates';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
 import { useStore } from '../state/store';
+import { ChatThread } from './ProChat';
 
 /** Aluno: o código do personal (NEFESH Life Pro) carrega o treino; com o código ligado, mostra quem é e permite desligar. */
 export function ProCodeCard() {
@@ -11,6 +12,8 @@ export function ProCodeCard() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const link = S.proLink;
+  const [unread, setUnread] = useState(0);
+  const [chat, setChat] = useState(false);
 
   // ao abrir: plano novo do personal? e treinos por enviar
   useEffect(() => {
@@ -18,6 +21,7 @@ export function ProCodeCard() {
     flushWorkouts();
     checkProPlan(link.code)
       .then((r) => {
+        setUnread(r.unread ?? 0);
         if (r.version > link.version) {
           update((d) => applyProPlan(d, r));
           toast(`${r.pro} atualizou o seu treino. 💪`);
@@ -33,6 +37,9 @@ export function ProCodeCard() {
         <p style={{ margin: '4px 0 2px' }}>Treino de <b>{link.pro}</b></p>
         <p className="small mute" style={{ margin: 0 }}>Código {link.code} · atualizado a {shortDate(link.at)}. Quando concluir um treino, {link.pro} recebe um aviso com o que fez.</p>
         {!S.trainPlan && <p className="small warn" style={{ margin: '6px 0 0' }}>{link.pro} ainda não montou o seu treino. Aparece aqui assim que estiver pronto.</p>}
+        <button className="btn sm" style={{ marginTop: 10 }} onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
+        {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
+        <br />
         <button
           className="link small inline"
           style={{ marginTop: 6 }}

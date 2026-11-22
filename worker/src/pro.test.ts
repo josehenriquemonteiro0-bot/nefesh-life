@@ -175,3 +175,24 @@ describe('Pro: avaliações físicas', () => {
     expect(await db.prepare('SELECT (SELECT COUNT(*) FROM pro_assess) + (SELECT COUNT(*) FROM pro_photos) AS n').first<{ n: number }>()).toEqual({ n: 0 });
   });
 });
+
+describe('Pro: conversa', () => {
+  it('personal e aluno trocam mensagens (com referência ao treino); não lidas; só quem está ligado', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
+    await pro.linkStudent(db, 'd:telemovel-maria', { code }, NOW);
+    const noFetch = (async () => new Response('', { status: 201 })) as unknown as typeof fetch;
+    await pro.studentWrite(db, keys, 'd:telemovel-maria', { code, text: 'Senti o joelho no agachamento', ref: 'Treino A · 22/11' }, NOW, noFetch);
+    expect(((await pro.proState(db, 'isa', NOW)).body.students as { unread: number }[])[0].unread).toBe(1);
+    const m = (await pro.proMessages(db, 'isa', { code })).body.messages as { from: string; text: string; ref: string }[];
+    expect(m).toEqual([expect.objectContaining({ from: 'aluno', text: 'Senti o joelho no agachamento', ref: 'Treino A · 22/11' })]);
+    expect(((await pro.proState(db, 'isa', NOW)).body.students as { unread: number }[])[0].unread).toBe(0);
+    await pro.proWrite(db, keys, 'isa', { code, text: 'Troque por leg press esta semana.' }, NOW, noFetch);
+    expect((await pro.studentPlan(db, 'd:telemovel-maria', { code })).body.unread).toBe(1);
+    const sm = (await pro.studentMessages(db, 'd:telemovel-maria', { code })).body.messages as { from: string }[];
+    expect(sm.map((x) => x.from)).toEqual(['aluno', 'pro']);
+    expect((await pro.studentMessages(db, 'd:outro', { code })).status).toBe(404);
+    expect((await pro.proWrite(db, keys, 'isa', { code, text: '  ' }, NOW, noFetch)).status).toBe(400);
+  });
+});

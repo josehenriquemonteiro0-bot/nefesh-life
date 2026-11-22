@@ -116,7 +116,8 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     let draft: ReturnType<typeof cleanPlan> | null = null;
     try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
     const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now) }, now);
-    students.push({ alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
+    const unread = await unreadFor(db, s.code, 'pro');
+    students.push({ unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
   }
   return ok({ pro, students });
 }
@@ -282,7 +283,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 
@@ -310,7 +311,7 @@ export async function studentPlan(db: DB, key: string, b: Record<string, unknown
   if (!s) return bad('Código não ligado a este telemóvel.', 404);
   let plan: unknown = null;
   try { plan = s.plan ? JSON.parse(s.plan) : null; } catch { plan = null; }
-  return ok({ code: s.code, pro: s.pro_name, plan, version: s.version });
+  return ok({ code: s.code, pro: s.pro_name, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno') });
 }
 
 /** O aluno desliga-se do personal (o histórico do personal fica, sem novos registos). */
@@ -344,14 +345,71 @@ export async function logWorkout(db: DB, store: KeyStore, key: string, b: Record
   const msg = pain
     ? { title: `⚠️ ${s.name} relatou dor no treino`, body: `${workout}${painAt.length ? ` · ${painAt.slice(0, 3).join(', ')}` : ''}${data.note ? ` · "${data.note.slice(0, 80)}"` : ''}`, tag: `nefesh-pro-${s.code}` }
     : { title: `${s.name} ${verb} o treino 💪`, body: `${workout}${data.minutes ? ` · ${data.minutes} min` : ''}${data.effort ? ` · ${EFFORT_TXT[data.effort]}` : ''}${data.note ? ` · "${data.note.slice(0, 80)}"` : ''}`, tag: `nefesh-pro-${s.code}` };
-  const { results: subs } = await db.prepare('SELECT endpoint, tz FROM push_subs WHERE uid = ?').bind(s.pro).all<{ endpoint: string; tz: string | null }>();
+  const sent = await notify(db, store, s.pro, msg, now, fetcher);
+  return ok({ sent });
+}
+
+/** Aviso no telemóvel (fora das 22h-8h): a conta (uid) ou, sem conta, o telemóvel ("d:<device>"). */
+async function notify(db: DB, store: KeyStore, who: string, msg: { title: string; body: string; tag: string }, now: Date, fetcher: typeof fetch) {
+  const q = who.startsWith('d:') ? db.prepare('SELECT endpoint, tz FROM push_subs WHERE device = ?').bind(who.slice(2)) : db.prepare('SELECT endpoint, tz FROM push_subs WHERE uid = ?').bind(who);
+  const { results: subs } = await q.all<{ endpoint: string; tz: string | null }>();
   let sent = 0;
   for (const sub of subs) {
     if (isQuiet(Number(localNow(sub.tz || 'Europe/Lisbon', now).time.slice(0, 2)))) continue;
     await sendPush(db, store, sub.endpoint, msg, fetcher).catch(() => undefined);
     sent++;
   }
-  return ok({ sent });
+  return sent;
+}
+
+/* ───────── conversa personal ↔ aluno (com comentários num treino) ───────── */
+
+type Msg = { id: number; sender: 'pro' | 'aluno'; text: string; ref: string; created: string; seen: number };
+async function thread(db: DB, code: string, reader: 'pro' | 'aluno') {
+  const { results } = await db.prepare('SELECT id, sender, text, ref, created, seen FROM pro_msgs WHERE code = ? ORDER BY id DESC LIMIT 100').bind(code).all<Msg>();
+  // o que o outro escreveu fica lido
+  await db.prepare('UPDATE pro_msgs SET seen = 1 WHERE code = ? AND sender != ? AND seen = 0').bind(code, reader).run();
+  return results.reverse().map((m) => ({ id: m.id, from: m.sender, text: m.text, ref: m.ref, at: m.created }));
+}
+async function post(db: DB, code: string, sender: 'pro' | 'aluno', b: Record<string, unknown>, now: Date) {
+  const text = str(b.text, 1000);
+  if (!text) return null;
+  const n = await db.prepare('SELECT COUNT(*) AS n FROM pro_msgs WHERE code = ? AND sender = ? AND created >= ?').bind(code, sender, new Date(now.getTime() - 864e5).toISOString()).first<{ n: number }>();
+  if ((n?.n ?? 0) >= 100) return 'limite';
+  await db.prepare('INSERT INTO pro_msgs (code, sender, text, ref, created) VALUES (?, ?, ?, ?, ?)').bind(code, sender, text, str(b.ref, 80), now.toISOString()).run();
+  return text;
+}
+export const unreadFor = async (db: DB, code: string, reader: 'pro' | 'aluno') =>
+  (await db.prepare('SELECT COUNT(*) AS n FROM pro_msgs WHERE code = ? AND sender != ? AND seen = 0').bind(code, reader).first<{ n: number }>())?.n ?? 0;
+
+export async function proMessages(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  return ok({ messages: await thread(db, s.code, 'pro') });
+}
+export async function proWrite(db: DB, store: KeyStore, uid: string, b: Record<string, unknown>, now = new Date(), fetcher: typeof fetch = fetch): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const t = await post(db, s.code, 'pro', b, now);
+  if (!t) return bad('Escreva a mensagem.');
+  if (t === 'limite') return bad('Muitas mensagens hoje. Tente amanhã.', 429);
+  const pro = await proOf(db, uid);
+  if (s.uid) await notify(db, store, s.uid, { title: `💬 ${pro?.name ?? 'O seu personal'}`, body: `${b.ref ? `${str(b.ref, 80)}: ` : ''}${t.slice(0, 120)}`, tag: `nefesh-pro-msg-${s.code}` }, now, fetcher);
+  return ok({ messages: await thread(db, s.code, 'pro') });
+}
+export async function studentMessages(db: DB, key: string, b: Record<string, unknown>): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  return ok({ messages: await thread(db, s.code, 'aluno') });
+}
+export async function studentWrite(db: DB, store: KeyStore, key: string, b: Record<string, unknown>, now = new Date(), fetcher: typeof fetch = fetch): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  const t = await post(db, s.code, 'aluno', b, now);
+  if (!t) return bad('Escreva a mensagem.');
+  if (t === 'limite') return bad('Muitas mensagens hoje. Tente amanhã.', 429);
+  await notify(db, store, s.pro, { title: `💬 ${s.name}`, body: `${b.ref ? `${str(b.ref, 80)}: ` : ''}${t.slice(0, 120)}`, tag: `nefesh-pro-msg-${s.code}` }, now, fetcher);
+  return ok({ messages: await thread(db, s.code, 'aluno') });
 }
 
 type Effort = '' | 'facil' | 'ok' | 'dificil';

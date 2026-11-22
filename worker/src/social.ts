@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS pro_assess (id INTEGER PRIMARY KEY AUTOINCREMENT, cod
 CREATE INDEX IF NOT EXISTS pro_assess_code ON pro_assess (code, day);
 CREATE TABLE IF NOT EXISTS pro_photos (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, assess INTEGER NOT NULL, pose TEXT NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS pro_photos_code ON pro_photos (code, assess);
+CREATE TABLE IF NOT EXISTS pro_msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', created TEXT NOT NULL, seen INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS pro_msgs_code ON pro_msgs (code, id);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */

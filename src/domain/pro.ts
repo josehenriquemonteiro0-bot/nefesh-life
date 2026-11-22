@@ -25,6 +25,8 @@ export interface ProStudent {
   /** treino guardado e ainda não enviado ao aluno */
   draft?: ParsedWorkoutPlan | null;
   draftAt?: string | null;
+  /** mensagens do aluno por ler */
+  unread?: number;
   /** precisa de atenção (calculado no servidor) */
   alerts?: { kind: 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }[];
 }
@@ -71,7 +73,7 @@ export function clearProPlan(S: AppState) {
 
 /** Ao abrir a app: há versão nova do plano? */
 export async function checkProPlan(code: string) {
-  return proApi<{ code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number }>('aluno/plano', { code });
+  return proApi<{ code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number; unread?: number }>('aluno/plano', { code });
 }
 
 /** Resumo do treino feito, para o personal. */

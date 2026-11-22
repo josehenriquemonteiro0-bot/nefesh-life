@@ -11,6 +11,7 @@ import { useStore } from '../state/store';
 import { DictationCard, ReviewCard } from '../components/ProAI';
 import { ProfileEditor } from '../components/ProProfile';
 import { StudentAssessments } from '../components/ProAssess';
+import { ChatThread } from '../components/ProChat';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
@@ -303,7 +304,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
 }
 
 /** Registos de treino de um aluno. */
-function StudentLogs({ student, onClose }: { student: ProStudent; onClose: () => void }) {
+function StudentLogs({ student, onClose, onComment }: { student: ProStudent; onClose: () => void; onComment: (ref: string) => void }) {
   const [logs, setLogs] = useState<ProLog[] | null>(null);
   const [err, setErr] = useState('');
   useEffect(() => {
@@ -322,6 +323,7 @@ function StudentLogs({ student, onClose }: { student: ProStudent; onClose: () =>
           <p className="small" style={{ margin: '4px 0' }}>{STATUS[g.status] ?? g.status}{g.minutes ? ` · ${g.minutes} min` : ''}{g.effort ? ` · ${EFFORT[g.effort]}` : ''}{g.pain ? <b className="warn-t"> · 😣 relatou dor</b> : null}</p>
           {g.note && <p className="small" style={{ margin: '4px 0' }}>💬 "{g.note}"</p>}
           {g.changes?.length > 0 && <p className="small mute" style={{ margin: '4px 0' }}>Alterações: {g.changes.join('; ')}</p>}
+          <button className="link small inline" onClick={() => onComment(`${g.workout} · ${shortDate(g.day)}`)}>💬 Comentar este treino</button>
           {g.exercises?.length > 0 && (
             <table className="mydata small">
               <tbody>
@@ -347,6 +349,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [edit, setEdit] = useState<ProStudent | null>(null);
   const [profileOf, setProfileOf] = useState<ProStudent | null>(null);
   const [assessOf, setAssessOf] = useState<ProStudent | null>(null);
+  const [chatOf, setChatOf] = useState<{ s: ProStudent; ref: string } | null>(null);
   const [askPlan, setAskPlan] = useState<ProStudent | null>(null);
   const [askProfile, setAskProfile] = useState<{ code: string; name: string } | null>(null);
   const [logs, setLogs] = useState<ProStudent | null>(null);
@@ -366,9 +369,10 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       </>
     );
   if (edit) return <PlanEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
+  if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
   if (profileOf) return <ProfileEditor student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
-  if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} />;
+  if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
 
   return (
     <>
@@ -456,6 +460,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                 <button className="btn sm" onClick={() => setEdit(s)}>{s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
                 <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{s.profile ? 'Perfil' : '+ Perfil'}</button>
+                <button className="btn ghost sm" onClick={() => setChatOf({ s, ref: '' })}>💬 Conversa{s.unread ? <span className="badge">{s.unread}</span> : null}</button>
                 <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
                 {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appUrl))} target="_blank" rel="noreferrer">Enviar código</a>}

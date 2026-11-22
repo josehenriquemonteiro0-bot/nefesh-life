@@ -11,6 +11,7 @@ import { Bar } from './Charts';
 import { DecimalInput } from './DecimalInput';
 import { PremiumTag } from './PremiumTag';
 import { ExerciseHelp } from './ExerciseHelp';
+import { ChatThread } from './ProChat';
 
 const STATUS: Record<TrainSessionLog['status'], string> = { seguido: 'Feito como planeado', alterado: 'Feito com alterações', saltado: 'Não fiz' };
 
@@ -46,6 +47,7 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
   const [fx, setFx] = useState<NonNullable<TrainSessionLog['fx']>>(current?.fx ?? {});
   const setEx = (i: number, v: { effort?: Effort; pain?: boolean }) => setFx({ ...fx, [i]: { ...fx[i], ...v } });
   const isPro = !!S.proLink;
+  const [chat, setChat] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -165,6 +167,8 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
         </label>
         <input className="field sm" style={{ width: '100%', marginBottom: 10 }} value={note} maxLength={140} onChange={(e) => setNote(e.target.value)} placeholder="Nota para o personal (opcional, ex.: ombro sensível)" aria-label="Nota para o personal" />
         <button className="btn full" disabled={!sets.some((s) => s.done)} onClick={saveDone}>Guardar o que fiz</button>
+        {isPro && <button className="link small inline" style={{ marginTop: 10 }} onClick={() => setChat(true)}>💬 Perguntar a {S.proLink!.pro} sobre este treino</button>}
+        {chat && S.proLink && <ChatThread code={S.proLink.code} me="aluno" other={S.proLink.pro} initialRef={`${w.name} · ${shortDate(todayKey())}`} asSheet onClose={() => setChat(false)} />}
       </div>
     </div>
   );
