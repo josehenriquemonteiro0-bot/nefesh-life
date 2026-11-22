@@ -21,6 +21,7 @@ export const FOCUS_PRESETS: { label: string; groups: Group[] }[] = [
   { label: 'Corpo inteiro', groups: ['quadriceps', 'gluteos', 'peito', 'costas', 'ombros', 'abdomen'] },
   { label: 'Empurrar', groups: ['peito', 'ombros', 'triceps'] },
   { label: 'Puxar', groups: ['costas', 'biceps'] },
+  { label: 'Cardio', groups: ['cardio'] },
 ];
 
 export interface LibExercise { name: string; group: Group; sets: number; reps: string; rest: string }
@@ -73,13 +74,53 @@ const RAW: [string, Group, Kind][] = [
   ['Abdominal na polia', 'abdomen', 'i'], ['Abdominal bicicleta', 'abdomen', 'i'], ['Dead bug', 'abdomen', 'i'], ['Bird dog', 'abdomen', 'i'],
   ['Russian twist', 'abdomen', 'i'], ['Roda abdominal', 'abdomen', 'i'], ['Mountain climber', 'abdomen', 't'], ['Pallof press', 'abdomen', 'i'],
   // cardio
-  ['Passadeira (caminhada)', 'cardio', 'r'], ['Passadeira (corrida)', 'cardio', 'r'], ['Bicicleta', 'cardio', 'r'], ['Elíptica', 'cardio', 'r'],
-  ['Remo (ergómetro)', 'cardio', 'r'], ['Escada (simulador)', 'cardio', 'r'], ['Corda de saltar', 'cardio', 't'], ['Polichinelos', 'cardio', 't'],
-  ['Burpees', 'cardio', 'i'], ['HIIT (intervalado)', 'cardio', 'r'],
+  ['Passadeira / esteira (caminhada)', 'cardio', 'r'], ['Passadeira / esteira (corrida)', 'cardio', 'r'], ['Passadeira / esteira inclinada', 'cardio', 'r'],
+  ['Bicicleta ergométrica', 'cardio', 'r'], ['Bicicleta de spinning', 'cardio', 'r'], ['Air bike (assault bike)', 'cardio', 'r'],
+  ['Elíptica / elíptico (transport)', 'cardio', 'r'], ['Remo ergómetro (remo indoor)', 'cardio', 'r'], ['Escada / simulador de escada', 'cardio', 'r'],
+  ['Caminhada ao ar livre', 'cardio', 'r'], ['Corrida ao ar livre', 'cardio', 'r'], ['Natação', 'cardio', 'r'], ['Step (aeróbica)', 'cardio', 'r'], ['Dança / zumba', 'cardio', 'r'],
+  ['Corda de saltar / pular corda', 'cardio', 't'], ['Polichinelos', 'cardio', 't'], ['Burpees', 'cardio', 'i'], ['HIIT (intervalado)', 'cardio', 'r'],
   // mobilidade
   ['Mobilidade de anca', 'mobilidade', 't'], ['Mobilidade de ombros', 'mobilidade', 't'], ['Gato-camelo', 'mobilidade', 'i'],
   ['Alongamento de posteriores', 'mobilidade', 't'], ['Alongamento de peitoral', 'mobilidade', 't'], ['Rotação torácica', 'mobilidade', 'i'],
 ];
+
+/** Outros nomes (Brasil/Portugal, inglês de ginásio) que a pesquisa também reconhece. */
+const ALIASES: Record<string, string> = {
+  'Passadeira / esteira (caminhada)': 'treadmill aerobico cardio',
+  'Passadeira / esteira (corrida)': 'treadmill aerobico cardio',
+  'Passadeira / esteira inclinada': 'treadmill rampa subida aerobico cardio',
+  'Bicicleta ergométrica': 'bike bicicleta estatica aerobico cardio',
+  'Bicicleta de spinning': 'bike bicicleta indoor cycle ciclismo aerobico cardio',
+  'Air bike (assault bike)': 'bike bicicleta aerobico cardio',
+  'Elíptica / elíptico (transport)': 'eliptico transport crosstrainer aerobico cardio',
+  'Remo ergómetro (remo indoor)': 'remo ergometro rowing aerobico cardio',
+  'Escada / simulador de escada': 'stairmaster escada aerobico cardio',
+  'Caminhada ao ar livre': 'andar aerobico cardio',
+  'Corrida ao ar livre': 'correr aerobico cardio',
+  'Natação': 'nadar piscina aerobico cardio',
+  'Step (aeróbica)': 'step aerobico cardio',
+  'Dança / zumba': 'danca aerobico cardio',
+  'Corda de saltar / pular corda': 'corda aerobico cardio',
+  'HIIT (intervalado)': 'tabata intervalado aerobico cardio',
+  'Puxada à frente': 'pulley frente puxada frontal pulldown',
+  'Puxada com pega fechada (triângulo)': 'pulley triangulo',
+  'Afundo (passada)': 'avanco lunge',
+  'Afundo andando': 'avanco caminhando lunge',
+  'Abdominal crunch': 'abdominal supra',
+  'Abdominal infra (elevação de pernas)': 'abdominal inferior',
+  'Desenvolvimento com barra': 'press militar',
+  'Desenvolvimento com halteres': 'press ombro',
+  'Tríceps na polia (barra)': 'triceps pulley',
+  'Tríceps corda': 'triceps pulley corda',
+  'Mergulho no banco': 'triceps banco',
+  'Prancha': 'plank isometria',
+  'Panturrilha em pé': 'gemeos',
+  'Panturrilha sentada': 'gemeos solear',
+  'Cadeira abdutora': 'abducao',
+  'Cadeira adutora': 'aducao',
+  'Remada curvada com barra': 'remada curvada',
+  'Peck deck (voador)': 'voador fly',
+};
 
 const DOSE: Record<Kind, Pick<LibExercise, 'sets' | 'reps' | 'rest'>> = {
   c: { sets: 4, reps: '8-10', rest: '90 s' },
@@ -104,6 +145,7 @@ export function focusGroups(focus: string): Group[] {
   if (/abdo|core/.test(f)) out.add('abdomen');
   if (/full|inteiro/.test(f)) FOCUS_PRESETS[2].groups.forEach((g) => out.add(g));
   if (/gluteo/.test(f)) out.add('gluteos');
+  if (/aerob|cardio|hiit|esteira|passadeira|eliptic|corrida|caminhada|bike|bicicleta/.test(f)) out.add('cardio');
   return [...out];
 }
 
@@ -117,14 +159,14 @@ export function searchExercises(q: string, focus: string, extra: { name: string;
   const pool: LibExercise[] = [...LIBRARY];
   for (const x of extra) if (!pool.some((e) => norm(e.name) === norm(x.name))) pool.push({ name: x.name, group: focusGroups(x.area)[0] ?? 'mobilidade', sets: 3, reps: '12', rest: '60 s' });
   const hits = words.length
-    ? pool.filter((e) => { const n = norm(e.name) + ' ' + norm(GROUP_NAME[e.group]); return words.every((w) => n.includes(w)); })
+    ? pool.filter((e) => { const n = `${norm(e.name)} ${norm(GROUP_NAME[e.group])} ${norm(ALIASES[e.name] ?? '')}`; return words.every((w) => n.includes(w)); })
     : pool.filter((e) => groups.includes(e.group));
   // primeiro os grupos do foco (pela ordem), dentro de cada grupo os compostos; ao escrever, o que começa pela palavra
   const gi = (e: LibExercise) => (groups.includes(e.group) ? groups.indexOf(e.group) : 99);
   const starts = (e: LibExercise) => (words.length && !norm(e.name).startsWith(words[0]) ? 1 : 0);
   return hits
     .map((e, k) => ({ e, k }))
-    .sort((a, b) => starts(a.e) - starts(b.e) || gi(a.e) - gi(b.e) || b.e.sets - a.e.sets || a.k - b.k)
+    .sort((a, b) => starts(a.e) - starts(b.e) || gi(a.e) - gi(b.e) || (a.e.group === 'cardio' && b.e.group === 'cardio' ? 0 : b.e.sets - a.e.sets) || a.k - b.k)
     .map((x) => x.e)
     .slice(0, limit);
 }

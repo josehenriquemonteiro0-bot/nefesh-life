@@ -32,4 +32,15 @@ describe('NEFESH Life Pro: biblioteca e divisão', () => {
     expect(r.exercises[0]).toMatchObject({ name: 'Leg press 45°', sets: 4, reps: '8-10' });
     expect(addFromLibrary(r, e).exercises).toHaveLength(2);
   });
+  it('aeróbicos: nomes do Brasil e de Portugal, sinónimos e foco cardio', () => {
+    expect(searchExercises('esteira', 'superior')[0].name).toMatch(/esteira/);
+    expect(searchExercises('passadeira', '').length).toBeGreaterThanOrEqual(3);
+    expect(searchExercises('eliptico', '')[0].name).toBe('Elíptica / elíptico (transport)');
+    expect(searchExercises('transport', '')[0].name).toBe('Elíptica / elíptico (transport)');
+    expect(searchExercises('bike', '').map((e) => e.name)).toEqual(expect.arrayContaining(['Bicicleta ergométrica', 'Air bike (assault bike)']));
+    expect(searchExercises('pulley', '')[0].name).toBe('Puxada à frente');
+    expect(searchExercises('avanço', '')[0].name).toMatch(/Afundo/);
+    expect(focusGroups('Aeróbico')).toContain('cardio');
+    expect(searchExercises('', 'Cardio').every((e) => e.group === 'cardio')).toBe(true);
+  });
 });

@@ -77,7 +77,7 @@ Devolves o plano COMPLETO atualizado:
 - Aplica só o que foi pedido; mantém tudo o resto exatamente como está (inclusive a ordem).
 - "Treino A", "treino B"… referem-se aos treinos pela ordem; se pedir um treino que ainda não existe, cria-o com o nome "Treino X". Se disser a divisão ("ABC", "3 treinos"), cria esses treinos.
 - Junta os exercícios ao fim do treino indicado, pela ordem em que foram ditos. "Tira", "remove", "troca" mudam o que já existe.
-- Usa, quando corresponder, o nome desta lista (corrige a transcrição: "extensora" → "Cadeira extensora", "búlgaro" → "Agachamento búlgaro"): ${NAMES}. Se não houver correspondência, escreve o nome como o profissional disse, com maiúscula inicial.
+- Usa, quando corresponder, o nome desta lista (corrige a transcrição e os nomes do Brasil: "extensora" → "Cadeira extensora", "búlgaro" → "Agachamento búlgaro", "esteira" → "Passadeira / esteira (caminhada)", "elíptico" ou "transport" → "Elíptica / elíptico (transport)", "pulley" → "Puxada à frente", "avanço" → "Afundo (passada)"): ${NAMES}. Se não houver correspondência, escreve o nome como o profissional disse, com maiúscula inicial.
 - "4 de 10", "4 por 10", "4x10" = 4 séries de 10 repetições. Sem séries/repetições ditas: usa 3 séries e "12" (ou "8-10" nos exercícios compostos pesados). Descanso por omissão "60 s" (compostos "90 s"); "1 minuto" = "60 s". Carga só se for dita ("20 quilos" = "20 kg").
 - As observações para o aluno vão em "notes" desse exercício, reescritas de forma curta e clara, dirigidas ao aluno (ex.: "Desça devagar, 3 s na descida").
 - Observações gerais (aquecimento, frequência) vão em "notes" do plano; "per_week" se disser quantas vezes por semana.
