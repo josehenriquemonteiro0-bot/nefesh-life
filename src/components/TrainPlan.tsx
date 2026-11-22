@@ -3,6 +3,7 @@ import { shortDate, todayKey } from '../domain/dates';
 import { loadFile } from '../domain/files';
 import type { PhotoError } from '../domain/photo';
 import { readWorkoutPlan, type PlanWorkout } from '../domain/planRead';
+import { sendWorkout, workoutReport } from '../domain/pro';
 import { describeTrainChanges, lastPerformance, perSet, weekTrainAdherence, type TrainSessionLog, type TrainSetLog } from '../domain/trainAdherence';
 import type { DayLog } from '../domain/types';
 import { useStore } from '../state/store';
@@ -51,9 +52,11 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
 
   const save = (status: TrainSessionLog['status'], list: TrainSetLog[], changes?: string[]) => {
     const m = Math.max(1, Math.round(minutes ?? 45));
+    const log: TrainSessionLog = { status, sets: list, ...(status !== 'saltado' ? { minutes: m } : {}), ...(changes?.length ? { changes } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
+    // treino do NEFESH Life Pro: o personal recebe o aviso com o que foi feito
+    if (S.proLink) sendWorkout(S.proLink.code, todayKey(), workoutReport(w, log));
     updateToday((d) => {
       clearSession(d, ref);
-      const log: TrainSessionLog = { status, sets: list, ...(status !== 'saltado' ? { minutes: m } : {}), ...(changes?.length ? { changes } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
       d.trainLog = { ...(d.trainLog || {}), [ref]: log };
       if (status !== 'saltado') {
         d.workouts = [...(d.workouts || []), { sessionId: `plano-${ref}`, title: w.name, minutes: m, mvpa: m, strength: true }];

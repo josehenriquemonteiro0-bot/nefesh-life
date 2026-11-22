@@ -140,6 +140,8 @@ export interface AppState {
   /** formato em que a pessoa toma a Spirulina */
   format?: 'caps' | 'po' | 'nibs';
   proDose?: ProDose | null;
+  /** ligação ao personal pelo NEFESH Life Pro (código, nome, versão do plano) */
+  proLink?: { code: string; pro: string; version: number; at: string };
   /** a pessoa prefere seguir a recomendação geral do rótulo */
   followLabel?: boolean;
   /** data em que aceitou o aviso de privacidade */

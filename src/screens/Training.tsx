@@ -24,6 +24,7 @@ import { homeVisibility } from '../domain/firstWeek';
 import { homeDose, recordProgress, type Feel } from '../domain/progression';
 import { todayKey } from '../domain/dates';
 import { OutdoorCard } from '../components/RunTracker';
+import { ProCodeCard } from '../components/ProCode';
 
 const KIND_ICON = { forca: 'flame', caminhada: 'steps', intervalos: 'evo', mobilidade: 'wind', descanso: 'moon' } as const;
 const INTENSITY: Record<Session['kind'], number> = { forca: 2, intervalos: 3, caminhada: 1, mobilidade: 1, descanso: 0 };
@@ -322,9 +323,15 @@ export function Training({ openHealth }: { openHealth?: () => void } = {}) {
         <GymPlan level={level === 'iniciante' ? 'iniciante' : 'intermedio'} levelPicker={levelPicker} personal={<PersonalNote />} />
       ) : tab === 'personal' ? (
         <>
-          {hasPro ? (
+          {S.proLink ? (
+            <>
+              <ProCodeCard />
+              <TrainPlanCard />
+            </>
+          ) : hasPro ? (
             <>
               <TrainPlanCard />
+              <ProCodeCard />
               <PlanUpload kind="treino" />
             </>
           ) : (
@@ -338,6 +345,7 @@ export function Training({ openHealth }: { openHealth?: () => void } = {}) {
                   </p>
                 </section>
               )}
+              <ProCodeCard />
               <PlanUpload kind="treino" />
               <TrainPlanCard />
             </>

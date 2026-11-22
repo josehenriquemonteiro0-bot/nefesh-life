@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest';
+import { createRequire } from 'node:module';
+import * as so from './social';
+import * as pro from './pro';
+
+const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
+function memoryDB(): so.DB {
+  const db = new DatabaseSync(':memory:');
+  db.exec(so.SCHEMA);
+  const stmt = (sql: string, args: unknown[] = []): so.Stmt => ({
+    bind: (...v: unknown[]) => stmt(sql, v),
+    first: async <T,>() => ((db.prepare(sql).get(...(args as never[])) as T) ?? null),
+    all: async <T,>() => ({ results: db.prepare(sql).all(...(args as never[])) as T[] }),
+    run: async () => db.prepare(sql).run(...(args as never[])),
+  });
+  return { prepare: (sql) => stmt(sql), batch: async (s) => { for (const x of s) await x.run(); return []; } };
+}
+const keys = { get: async () => null, put: async () => undefined } as never;
+const NOW = new Date('2026-11-22T15:00:00Z');
+
+describe('NEFESH Life Pro', () => {
+  it('profissional pendente até a equipa aprovar; depois cria alunos com código', async () => {
+    const db = memoryDB();
+    expect((await pro.registerPro(db, 'isa', { name: 'I', reg: 'x' })).status).toBe(400);
+    expect((await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 012345-G/SP' }, NOW)).body.pro).toMatchObject({ status: 'pendente' });
+    expect((await pro.newStudent(db, 'isa', { name: 'Maria' })).status).toBe(403);
+    await pro.setProStatus(db, 'isa', 'aprovado');
+    const r = await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW);
+    expect(r.body.code).toMatch(/^NP-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    expect(pro.validCode(r.body.code)).toBe(true);
+  });
+
+  it('plano limpo e com limites; a versão sobe; o aluno liga-se e recebe-o', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 1' }, NOW);
+    await pro.setProStatus(db, 'isa', 'aprovado');
+    const code = String((await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code);
+    const plan = { workouts: [{ name: 'Treino A', focus: 'Inferior', exercises: [{ name: 'Agachamento', sets: 4, reps: '8-10', load: '40 kg', rest: '90 s', notes: '' }, { name: '' }] }] };
+    expect((await pro.savePlan(db, 'isa', { code, plan }, NOW)).body.version).toBe(1);
+    expect((await pro.savePlan(db, 'outro', { code, plan }, NOW)).status).toBe(404);
+    expect((await pro.linkStudent(db, 'maria', { code: code.toLowerCase() }, NOW)).body).toMatchObject({ pro: 'Isabela', version: 1, plan: { workouts: [{ name: 'Treino A', exercises: [{ name: 'Agachamento', sets: 4 }] }] } });
+    expect((await pro.linkStudent(db, 'outra', { code }, NOW)).status).toBe(409);
+    expect((await pro.studentPlan(db, 'outra', { code })).status).toBe(404);
+  });
+
+  it('treino concluído fica no registo e no painel do profissional', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 1' }, NOW);
+    await pro.setProStatus(db, 'isa', 'aprovado');
+    const code = String((await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code);
+    await pro.savePlan(db, 'isa', { code, plan: { workouts: [{ name: 'Treino A', exercises: [{ name: 'Agachamento' }] }] } }, NOW);
+    await pro.linkStudent(db, 'd:telemovel-123', { code }, NOW);
+    const sent = await pro.logWorkout(db, keys, 'd:telemovel-123', { code, day: '2026-11-22', workout: 'Treino A', status: 'alterado', minutes: 50, note: 'Joelho bem', exercises: [{ name: 'Agachamento', sets: 4, of: 4, load: '42,5 kg' }] }, NOW);
+    expect(sent.status).toBe(200);
+    // corrigir no mesmo dia substitui
+    await pro.logWorkout(db, keys, 'd:telemovel-123', { code, day: '2026-11-22', workout: 'Treino A', status: 'seguido', minutes: 45 }, NOW);
+    const st = await pro.proState(db, 'isa', NOW);
+    expect(st.body.students).toEqual([expect.objectContaining({ name: 'Maria', linked: true, week: 1, last: expect.objectContaining({ workout: 'Treino A', status: 'seguido', minutes: 45 }) })]);
+    expect(((await pro.studentLogs(db, 'isa', { code })).body.logs as unknown[]).length).toBe(1);
+  });
+});

@@ -94,7 +94,7 @@ function PushToggle() {
   );
 }
 
-export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth, openTour }: {
+export function Profile({ startQuiz, replayIntro, openBottle, openReport, printReport, openAccount, syncNow, openHealth, openTour, openPro }: {
   openTour: () => void;
   openHealth: () => void;
   openAccount: () => void;
@@ -104,6 +104,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
   openBottle: () => void;
   openReport: () => void;
   printReport: () => void;
+  openPro?: () => void;
 }) {
   const { S, update, toast } = useStore();
   if (!S.ans) {
@@ -115,6 +116,13 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <button className="btn" onClick={startQuiz}>Começar a avaliação</button>
         </section>
         <AccountCard openAccount={openAccount} syncNow={syncNow} />
+        {openPro && (
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>NEFESH Life Pro</h2>
+            <p className="small mute">Para personais: monte o treino dos seus alunos e acompanhe-os na app.</p>
+            <button className="btn ghost sm" onClick={openPro}>Abrir</button>
+          </section>
+        )}
         <DataCard />
       </>
     );
@@ -266,6 +274,18 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
               <button key={n} className="btn ghost sm" onClick={() => { localStorage.setItem(TEST_DAYS_KEY, String(testDays() + n)); location.reload(); }}>+{n} {n === 1 ? 'dia' : 'dias'}</button>
             ))}
             {testDays() > 0 && <button className="btn sm" onClick={() => { localStorage.removeItem(TEST_DAYS_KEY); location.reload(); }}>Voltar a hoje</button>}
+          </div>
+        </section>
+      )}
+
+      {openPro && (
+        <section className="card">
+          <div className="row">
+            <div>
+              <h2 style={{ margin: 0 }}>NEFESH Life Pro</h2>
+              <p className="small mute" style={{ margin: '4px 0 0' }}>Para personais: monte o treino dos seus alunos e acompanhe-os na app.</p>
+            </div>
+            <button className="btn ghost sm" onClick={openPro}>Abrir</button>
           </div>
         </section>
       )}

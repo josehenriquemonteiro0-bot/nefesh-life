@@ -72,6 +72,7 @@ export function adminForm(key: string) {
 <label>E-mail (opcional)<input name="email" type="email"></label>
 <button>Gerar códigos</button>
 </form>
+<form method="post" action="/admin/profissionais" class="card"><input type="hidden" name="key" value="${esc(key)}"><h2>NEFESH Life Pro</h2><p class="m">Aprovar os profissionais (personal) que pedem acesso para montar treinos.</p><button>Ver profissionais</button></form>
 <form method="post" action="/admin/premios" class="card">
 <input type="hidden" name="key" value="${esc(key)}">
 <h2 style="margin-top:0">Prémios NEFESH15</h2>
@@ -123,6 +124,23 @@ ${r.status === 'enviado' ? `${btn(r.code, 'usado', 'Marcar como usado')}${btn(r.
 <div class="card"><p style="margin:0">Todas as segundas-feiras às 9h, a app fecha o ranking da semana e gera um código para cada um dos 3 primeiros.</p>
 <p class="m" style="margin:8px 0 0">Antes de enviar: registe o código na loja online como cupão de 15%, <b>uso único</b>, válido até à data indicada e não acumulável. Depois toque em "Enviar por e-mail" (a mensagem já vai escrita) e em "Marcar como enviado".</p></div>
 ${items || '<p class="m">Ainda não há vencedores. O primeiro ranking fecha na próxima segunda-feira.</p>'}
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
+}
+
+export function prosPage(key: string, rows: { uid: string; name: string; kind: string; reg: string; status: string; created: string; students: number }[]) {
+  const fmt = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+  const btn = (uid: string, status: string, text: string, ghost = true) =>
+    `<form method="post" action="/admin/profissional" style="display:inline"><input type="hidden" name="key" value="${esc(key)}"><input type="hidden" name="uid" value="${esc(uid)}"><input type="hidden" name="status" value="${status}"><button class="${ghost ? 'ghost' : ''}">${text}</button></form>`;
+  const items = rows
+    .map((r) => `<div class="card">
+<p style="margin:0"><b>${esc(r.name)}</b> · ${esc(r.kind)} · <span class="m">${esc(r.status)}</span></p>
+<p class="m" style="margin:6px 0">Registo: ${esc(r.reg)} · pedido a ${fmt(r.created)} · ${r.students} ${r.students === 1 ? 'aluno' : 'alunos'}</p>
+${r.status !== 'aprovado' ? btn(r.uid, 'aprovado', 'Aprovar', false) : btn(r.uid, 'pendente', 'Suspender')}${r.status === 'pendente' ? btn(r.uid, 'recusado', 'Recusar') : ''}
+</div>`)
+    .join('');
+  return page(`<h1>NEFESH Life Pro</h1>
+<div class="card"><p style="margin:0">Confirme o registo profissional (CREF no Brasil, título profissional em Portugal) antes de aprovar. Depois de aprovado, o profissional cria alunos e monta treinos na app.</p></div>
+${items || '<p class="m">Ainda não há pedidos. O profissional pede acesso na app: Perfil → NEFESH Life Pro.</p>'}
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }
 

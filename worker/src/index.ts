@@ -33,6 +33,7 @@ import * as admin from './admin';
 import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
+import * as pro from './pro';
 import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 import { originAllowed } from './origin';
 export { originAllowed };
@@ -186,6 +187,15 @@ export default {
       }
       return html(admin.marketingPage(key, rows.sort((a, b) => b.at.localeCompare(a.at))));
     }
+    if ((url.pathname === '/admin/profissionais' || url.pathname === '/admin/profissional') && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html('Página indisponível.', 403);
+      const f = await req.formData();
+      if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      if (url.pathname === '/admin/profissional') await pro.setProStatus(env.DB, String(f.get('uid') ?? ''), String(f.get('status') ?? ''));
+      return html(admin.prosPage(key, await pro.proList(env.DB)));
+    }
     if ((url.pathname === '/admin/premios' || url.pathname === '/admin/premio') && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
       const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
@@ -274,6 +284,47 @@ export default {
       else if (action === 'medicacao') r = await push.setMedTimes(env.DB, b);
       else if (action === 'lembretes') r = await push.setReminders(env.DB, b);
       else r = { status: 404, body: { error: 'rota desconhecida' } };
+      return json(r.body, r.status, h);
+    }
+
+    // NEFESH Life Pro: o profissional monta o treino; o aluno liga-se com um código
+    if (url.pathname.startsWith('/pro/')) {
+      if (!env.DB) return json({ error: 'Indisponível de momento. Tente mais tarde.' }, 503, h);
+      let b: Record<string, unknown>;
+      try {
+        b = await req.json();
+      } catch {
+        return json({ error: 'pedido inválido' }, 400, h);
+      }
+      const db = env.DB;
+      const action = url.pathname.slice('/pro/'.length);
+      const uid = b.token ? await sessionUser(env.LIMITS as never, b.token) : null;
+      // lado do aluno: com conta ou só com este telemóvel
+      const student: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
+        'aluno/ligar': () => pro.linkStudent(db, key!, b),
+        'aluno/plano': () => pro.studentPlan(db, key!, b),
+        'aluno/sair': () => pro.unlinkStudent(db, key!, b),
+        'aluno/treino': () => pro.logWorkout(db, env.LIMITS as never, key!, b),
+      };
+      const key = pro.studentKey(uid, b.device);
+      if (student[action]) {
+        if (!key) return json({ error: 'pedido inválido' }, 400, h);
+        const r = await student[action]();
+        return json(r.body, r.status, h);
+      }
+      // lado do profissional: precisa de conta
+      if (!uid) return json({ error: 'Entre na sua conta para usar o NEFESH Life Pro.' }, 401, h);
+      const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
+        registar: () => pro.registerPro(db, uid, b),
+        estado: () => pro.proState(db, uid),
+        'aluno/novo': () => pro.newStudent(db, uid, b),
+        'aluno/guardar': () => pro.savePlan(db, uid, b),
+        'aluno/registos': () => pro.studentLogs(db, uid, b),
+        'aluno/apagar': () => pro.removeStudent(db, uid, b),
+      };
+      const fn = routes[action];
+      if (!fn) return json({ error: 'pedido inválido' }, 404, h);
+      const r = await fn();
       return json(r.body, r.status, h);
     }
 

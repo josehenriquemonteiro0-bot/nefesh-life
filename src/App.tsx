@@ -33,6 +33,7 @@ import { showWomen } from './domain/women';
 import { Coach } from './screens/Coach';
 import { Profile } from './screens/Profile';
 import { PrintReport } from './components/PrintReport';
+import { Pro } from './screens/Pro';
 import { cycleReminders } from './domain/women';
 import { bodySnapshot } from './domain/progress';
 import { sendDailyPing } from './domain/analytics';
@@ -50,7 +51,7 @@ import { HealthConnectSheet } from './components/HealthConnect';
 import { Quiz, type QuizState } from './screens/Quiz';
 import { useStore } from './state/store';
 
-export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'sono' | 'mente' | 'corpo' | 'cuidados' | 'ciclo' | 'saude' | 'coach' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social';
+export type Tab = 'home' | 'quiz' | 'check' | 'nutri' | 'treino' | 'sono' | 'mente' | 'corpo' | 'cuidados' | 'ciclo' | 'saude' | 'coach' | 'evo' | 'recipes' | 'pros' | 'perfil' | 'conta' | 'social' | 'pro';
 export type Nav = (t: Tab) => void;
 
 /** 5 separadores (especificação v2, secção 3): o Coach fica ao centro, em destaque. */
@@ -265,7 +266,7 @@ export function App() {
     else if (quiz && quiz.qi < QUIZ.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social' && tab !== 'coach' && tab !== 'sono') {
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social' && tab !== 'coach' && tab !== 'sono' && tab !== 'pro') {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
@@ -275,6 +276,7 @@ export function App() {
       recipes: <Nutrition initial="receitas" />,
       nutri: <Nutrition />,
       treino: <Training openHealth={openHealth} />,
+      pro: <Pro go={go} openAccount={() => openAccount('perfil', 'entrar')} />,
       sono: <Sleep />,
       ciclo: <Women go={go} />,
       mente: <Mind go={go} />,
@@ -298,7 +300,7 @@ export function App() {
           }}
         />
       ),
-      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} openTour={() => { go('home'); setTour('full'); }} />,
+      perfil: <Profile startQuiz={() => startQuiz()} replayIntro={() => setShowIntro(true)} openBottle={openBottle} openReport={() => setReportOpen(true)} printReport={printReport} openAccount={() => openAccount('perfil')} syncNow={cloud.syncNow} openHealth={openHealth} openTour={() => { go('home'); setTour('full'); }} openPro={() => go('pro')} />,
     }[tab];
   }
 
