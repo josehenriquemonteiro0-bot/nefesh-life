@@ -4,6 +4,7 @@ import type { ShareDay, ShareSummary } from '../domain/proShare';
 
 const fmt = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '—' : String(Math.round(n * 10 ** d) / 10 ** d).replace('.', ','));
 const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const dmy = (d: string) => `${dm(d)}/${d.slice(2, 4)}`;
 const GOAL: Record<string, string> = { energia: 'mais energia', desporto: 'desempenho no desporto', imunidade: 'imunidade', foco: 'foco', nutricao: 'nutrição', peso: 'controlo do peso' };
 
 /** Barras de 14 dias para uma métrica. */
@@ -47,6 +48,24 @@ export function ShareReport({ student, onClose }: { student: ProStudent; onClose
             <section className="card"><p className="small mute">🌿 Spirulina</p><b className="big">{x.spirulinaDays}<small>/14</small></b><p className="small" style={{ margin: '4px 0 0' }}>dias</p></section>
             {x.weight && <section className="card"><p className="small mute">⚖️ Peso</p><b className="big">{fmt(x.weight.last)}<small> kg</small></b><p className="small" style={{ margin: '4px 0 0' }}>{x.weight.last - x.weight.first >= 0 ? '+' : ''}{fmt(x.weight.last - x.weight.first)} kg desde {dm(x.weight.from)}</p></section>}
           </div>
+          {x.body && x.body.length > 0 && (
+            <section className="card" style={{ marginTop: 10 }}>
+              <p className="small mute" style={{ marginTop: 0 }}>📏 Corpo: medidas e avaliações</p>
+              <table className="cmp">
+                <thead><tr><th /><th>início</th><th>agora</th><th>diferença</th></tr></thead>
+                <tbody>
+                  {x.body.map((r) => (
+                    <tr key={r.label}>
+                      <td>{r.label}</td>
+                      <td>{r.diff === null ? '—' : <>{fmt(r.first, 3)}{r.unit === '%' ? '%' : r.unit ? ` ${r.unit}` : ''}<br /><span className="small mute">{dmy(r.from)}</span></>}</td>
+                      <td><b>{fmt(r.last, 3)}{r.unit === '%' ? '%' : r.unit ? ` ${r.unit}` : ''}</b><br /><span className="small mute">{dmy(r.to)}</span></td>
+                      <td>{r.diff === null ? '—' : r.diff === 0 ? '=' : `${r.diff > 0 ? '+' : ''}${fmt(r.diff, 3)}`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
           <p className="small mute">Valores registados pelo aluno na NEFESH Life. Médias só dos dias com registo. Atualizado a {new Date(r!.updated).toLocaleDateString('pt-PT')}.</p>
         </>
       )}

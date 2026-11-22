@@ -1,7 +1,9 @@
 /**
  * NEFESH Life Pro: relatório de bem-estar que o aluno partilha com o personal (só com autorização,
  * revogável a qualquer momento). Só números dos últimos 14 dias — sem diário, notas, ciclo, medicação.
+ * As medidas e avaliações do corpo só vão com uma segunda autorização (proShare.body).
  */
+import { bodyEvolution, bodySeries } from './bodyLog';
 import { keyDaysAgo } from './dates';
 import { planFor } from './plan';
 import { tookOn } from './stats';
@@ -16,7 +18,10 @@ export interface ShareSummary {
   waterDays: number; foodDays: number; spirulinaDays: number; trainMin: number;
   train: { done: number; planned: number } | null;
   weight: { first: number; last: number; from: string; to: string } | null;
+  /** medidas e avaliações do corpo (só com autorização própria) */
+  body?: ShareBody[];
 }
+export interface ShareBody { label: string; unit: string; first: number; last: number; from: string; to: string; diff: number | null }
 
 const avg = (a: (number | undefined)[]) => {
   const v = a.filter((x): x is number => typeof x === 'number' && x > 0);
@@ -56,5 +61,6 @@ export function shareSummary(S: AppState, now = new Date()): ShareSummary {
     trainMin: days.reduce((s, x) => s + (x.train ?? 0), 0),
     train: tr ? { done: tr.done, planned: tr.planned } : null,
     weight: bl.length ? { first: bl[0].peso!, last: bl[bl.length - 1].peso!, from: bl[0].date, to: bl[bl.length - 1].date } : null,
+    ...(S.proShare?.body ? { body: bodyEvolution(bodySeries(S)).slice(0, 40).map((r) => ({ label: r.label, unit: r.unit, first: r.first, last: r.last, from: r.firstDate, to: r.lastDate, diff: r.diff })) } : {}),
   };
 }

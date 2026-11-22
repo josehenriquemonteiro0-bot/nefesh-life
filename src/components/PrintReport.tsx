@@ -1,3 +1,4 @@
+import { BodyEvolution } from './BodyEvolution';
 import { AREAS, GOAL_LABEL } from '../domain/content';
 import { fmtNum, keyDaysAgo, shortDate } from '../domain/dates';
 import { BODY_GOAL_LABEL, bodyOf, targetsFor } from '../domain/body';
@@ -105,7 +106,7 @@ export function PrintReport() {
           <div>
             <h3>Corpo</h3>
             <p className="pr-big">{fmtNum(S.ans.peso!)}<small> kg</small></p>
-            <p className="pr-small">IMC {fmtNum(b.bmi)} ({b.bmiLabel}) · gordura {fmtNum(b.fat)}%{S.ans.cintura ? ` · cintura ${fmtNum(S.ans.cintura)} cm` : ''}</p>
+            <p className="pr-small">IMC {fmtNum(b.bmi)} ({b.bmiLabel}) · gordura {fmtNum(b.fat)}%{b.fatMethod === 'avaliacao' ? ' (medida)' : ''}{S.ans.cintura ? ` · cintura ${fmtNum(S.ans.cintura)} cm` : ''}</p>
           </div>
         )}
         {b && (
@@ -116,6 +117,8 @@ export function PrintReport() {
           </div>
         )}
       </section>
+
+      <BodyEvolution S={S} print />
 
       {cmp && (
         <section>

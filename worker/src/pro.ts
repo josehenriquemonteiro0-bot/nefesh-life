@@ -415,6 +415,11 @@ export function cleanShare(x: unknown) {
     waterDays: n1(o.waterDays, 14) ?? 0, foodDays: n1(o.foodDays, 14) ?? 0, spirulinaDays: n1(o.spirulinaDays, 14) ?? 0, trainMin: n1(o.trainMin, 6000) ?? 0,
     train: t ? { done: n1(t.done, 30) ?? 0, planned: n1(t.planned, 30) ?? 0 } : null,
     weight: w && n1(w.first, 300) && n1(w.last, 300) ? { first: n1(w.first, 300)!, last: n1(w.last, 300)!, from: iso(w.from), to: iso(w.to) } : null,
+    ...(Array.isArray(o.body) ? { body: o.body.slice(0, 40).map((x) => {
+      const y = (x ?? {}) as Record<string, unknown>;
+      const v = (z: unknown) => (typeof z === 'number' && Number.isFinite(z) && Math.abs(z) <= 10000 ? Math.round(z * 1000) / 1000 : null);
+      return { label: str(y.label, 40), unit: str(y.unit, 10), first: v(y.first), last: v(y.last), from: iso(y.from), to: iso(y.to), diff: v(y.diff) };
+    }).filter((r) => r.label && r.first !== null && r.last !== null && r.first >= 0 && r.last >= 0) } : {}),
   };
 }
 

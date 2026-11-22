@@ -3,7 +3,7 @@
  * gráfico mensal e fotos de progresso privadas (só no telemóvel).
  */
 import { dayKey } from './dates';
-import type { MeasureKey } from './proProfile';
+import { MEASURES as PERIMETERS, type MeasureKey } from './proProfile';
 import type { AppState } from './types';
 
 export type Measure = 'peso' | 'cintura' | 'anca' | 'pescoco' | 'gordura' | 'magra';
@@ -32,10 +32,41 @@ export interface FullEval {
 }
 
 /** Chave de gráfico: uma medida conhecida ou "x:<nome>" para os outros dados do relatório. */
-export type ChartKey = Measure | `x:${string}`;
+export type ChartKey = Measure | `x:${string}` | `p:${MeasureKey}`;
 export function valueOf(e: BodyEntry, k: ChartKey): number | undefined {
-  return k.startsWith('x:') ? e.extra?.[k.slice(2)]?.v : e[k as Measure];
+  if (k.startsWith('x:')) return e.extra?.[k.slice(2)]?.v;
+  if (k.startsWith('p:')) return e.medidas?.[k.slice(2) as MeasureKey];
+  return e[k as Measure];
 }
+/** Perímetros da avaliação completa que não estão no registo rápido. */
+const EXTRA_PERIMETERS = PERIMETERS.filter(([k]) => !['cintura', 'quadril', 'pescoco'].includes(k));
+
+/** Todas as medidas que existem no histórico: [chave, nome, unidade]. Peso sempre. */
+export function bodyKeys(series: BodyEntry[]): [ChartKey, string, string][] {
+  const any = (k: ChartKey) => series.some((e) => valueOf(e, k) !== undefined);
+  return [
+    ...CHART_MEASURES.filter(([k]) => k === 'peso' || any(k)),
+    ...EXTRA_PERIMETERS.map(([k, t]) => [`p:${k}`, t, 'cm'] as [ChartKey, string, string]).filter(([k]) => any(k)),
+    ...extraKeys(series),
+  ];
+}
+
+export interface BodyEvoRow { key: ChartKey; label: string; unit: string; first: number; firstDate: string; last: number; lastDate: string; diff: number | null }
+/** Primeira e última medição de cada medida (diferença só com duas datas diferentes). */
+export function bodyEvolution(series: BodyEntry[]): BodyEvoRow[] {
+  return bodyKeys(series).flatMap(([key, label, unit]) => {
+    const vals = series.filter((e) => valueOf(e, key) !== undefined);
+    if (!vals.length) return [];
+    const a = vals[0];
+    const b = vals[vals.length - 1];
+    const first = valueOf(a, key)!;
+    const last = valueOf(b, key)!;
+    const d = Math.round((last - first) * 1000) / 1000;
+    return [{ key, label, unit, first, firstDate: a.date, last, lastDate: b.date, diff: vals.length > 1 && a.date !== b.date ? d : null }];
+  });
+}
+/** Última avaliação completa (ajuste manual ou relatório). */
+export const lastAssessment = (series: BodyEntry[]) => [...series].reverse().find((e) => e.fonte);
 /** Outros dados que aparecem no histórico (para os gráficos), com a unidade. */
 export function extraKeys(series: BodyEntry[]): [ChartKey, string, string][] {
   const m = new Map<string, string>();
@@ -148,3 +179,16 @@ export function change(series: BodyEntry[], m: ChartKey, now = new Date()) {
 
 export const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 export const photoKey = (id: string) => `progresso-${id}`;
+
+const n = (v: number) => String(v).replace('.', ',');
+const dmy = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(2, 4)}`;
+/** Uma linha para a IA e para o relatório em texto: cada medida da primeira à última medição. */
+export function bodyContext(S: Pick<AppState, 'bodyLog' | 'evals'>, max = 16): string {
+  const series = bodySeries(S);
+  const rows = bodyEvolution(series);
+  if (!rows.length) return '';
+  const u = (r: BodyEvoRow) => (r.unit === '%' ? '%' : r.unit ? ` ${r.unit}` : '');
+  const parts = rows.slice(0, max).map((r) => (r.diff === null ? `${r.label} ${n(r.last)}${u(r)} (${dmy(r.lastDate)})` : `${r.label} ${n(r.first)} → ${n(r.last)}${u(r)} (${dmy(r.firstDate)} → ${dmy(r.lastDate)})`));
+  const last = lastAssessment(series);
+  return `Medidas do corpo: ${parts.join('; ')}.${last ? ` Última avaliação completa em ${dmy(last.date)}${last.por ? ` (${last.por})` : ''}.` : ''}`;
+}

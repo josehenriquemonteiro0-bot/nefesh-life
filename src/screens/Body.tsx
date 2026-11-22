@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DecimalInput } from '../components/DecimalInput';
 import { bodyOf } from '../domain/body';
 import { BodyAdjust } from '../components/BodyAdjust';
-import { CHART_MEASURES, MEASURES, MONTHS, bodySeries, change, extraKeys, monthly, photoKey, type ChartKey, type Measure } from '../domain/bodyLog';
+import { CHART_MEASURES, MEASURES, MONTHS, bodyKeys, bodySeries, change, monthly, photoKey, type ChartKey, type Measure } from '../domain/bodyLog';
 import { newId } from '../domain/care';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { deleteFile, loadFile, saveFile } from '../domain/files';
@@ -133,7 +133,7 @@ export function Body() {
   const w = change(series, 'peso');
   const latest = Object.fromEntries(MEASURES.map(([k]) => [k, change(series, k)?.last])) as Record<Measure, number | undefined>;
   const b = S.ans ? bodyOf({ ...S.ans, ...(latest.peso ? { peso: latest.peso } : {}), ...(latest.cintura ? { cintura: latest.cintura } : {}), ...(latest.anca ? { anca: latest.anca } : {}), ...(latest.pescoco ? { pescoco: latest.pescoco } : {}) }) : null;
-  const charts: [ChartKey, string, string][] = [...CHART_MEASURES.filter(([k]) => k === 'peso' || series.some((e) => e[k] !== undefined)), ...extraKeys(series)];
+  const charts = bodyKeys(series);
   const unit = charts.find((x) => x[0] === m)?.[2] ?? '';
   const c = change(series, m);
   return (

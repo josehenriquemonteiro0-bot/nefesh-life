@@ -25,7 +25,7 @@ export function ProCodeCard() {
       .then((r) => {
         setUnread(r.unread ?? 0);
         // relatório partilhado: atualiza uma vez por dia
-        if (S.proShare?.on && S.proShare.at !== todayKey()) syncShare(S, true).then(() => update((d) => { d.proShare = { on: true, at: todayKey() }; })).catch(() => undefined);
+        if (S.proShare?.on && S.proShare.at !== todayKey()) syncShare(S, true).then(() => update((d) => { d.proShare = { ...d.proShare, on: true, at: todayKey() }; })).catch(() => undefined);
         if (r.version > link.version || (r.plan && !S.trainPlan)) {
           update((d) => applyProPlan(d, r));
           toast(link.version === 0 || !S.trainPlan ? `O treino de ${r.pro} chegou. 💪` : `${r.pro} atualizou o seu treino. 💪`);
@@ -72,6 +72,21 @@ export function ProCodeCard() {
               <span className="mute">Últimos 14 dias, só números: energia, sono, stress, passos, água, alimentação (calorias e proteína), treino, peso e dias de Spirulina. Nunca o diário, notas, ciclo ou medicação. Pode desligar quando quiser e o que estava partilhado é apagado.</span>
             </span>
           </label>
+          {S.proShare?.on && (
+            <label className="row" style={{ gap: 10, flexWrap: 'nowrap', alignItems: 'flex-start', cursor: 'pointer', marginTop: 10 }}>
+              <input type="checkbox" checked={!!S.proShare.body} style={{ marginTop: 2, width: 22, height: 22, flex: '0 0 22px', accentColor: 'var(--neon)' }} aria-label="Incluir as medidas do corpo" onChange={async (e) => {
+                const body = e.target.checked;
+                try {
+                  await syncShare({ ...S, proShare: { ...S.proShare!, body } }, true);
+                  update((d) => { d.proShare = { on: true, at: todayKey(), body }; });
+                  toast(body ? `${link.pro} passa a ver as suas medidas e avaliações.` : `${link.pro} deixou de ver as suas medidas.`);
+                } catch (err) { toast((err as Error).message); }
+              }} />
+              <span className="small"><b>Incluir as medidas e avaliações do corpo</b><br />
+                <span className="mute">% de gordura, massa magra, perímetros e os dados dos relatórios que anexou (dobras, RCQ…), da primeira à última medição.</span>
+              </span>
+            </label>
+          )}
         </div>
         <br />
         <button

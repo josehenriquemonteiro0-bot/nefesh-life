@@ -58,6 +58,17 @@ export function timeline(S: AppState, now = new Date()): TimelineEvent[] {
     ev.push({ date: e.date, cat: 'corpo', icon: '⚖️', title: `Peso: ${fmtN(e.peso)} kg`, detail: prevKg !== null ? `${e.peso - prevKg >= 0 ? '+' : ''}${fmtN(e.peso - prevKg)} kg` : undefined });
     prevKg = e.peso;
   }
+  // avaliações completas (ajuste manual ou relatório anexado)
+  for (const e of S.bodyLog ?? []) {
+    if (!e.fonte) continue;
+    const parts = [
+      e.gordura !== undefined ? `${fmtN(e.gordura)}% de gordura` : '',
+      e.magra !== undefined ? `${fmtN(e.magra)} kg de massa magra` : '',
+      e.cintura !== undefined ? `cintura ${fmtN(e.cintura)} cm` : '',
+      ...Object.entries(e.extra ?? {}).slice(0, 4).map(([k, x]) => `${k.toLowerCase()} ${fmtN(x.v)} ${x.u}`.trim()),
+    ].filter(Boolean);
+    ev.push({ date: e.date, cat: 'corpo', icon: '📋', title: e.fonte === 'relatorio' ? `Avaliação física${e.por ? ` (${e.por})` : ' (relatório)'}` : 'Avaliação física (os seus dados)', detail: parts.join(' · ') || undefined });
+  }
   for (const p of S.progressPhotos ?? []) ev.push({ date: p.date, cat: 'corpo', icon: '📸', title: `Foto de progresso (${p.pose})` });
   // marcos do ritual: dias com a Spirulina tomada (acumulados)
   let n = 0;

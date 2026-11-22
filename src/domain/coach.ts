@@ -5,6 +5,7 @@
  * Os cálculos (calorias, macros) são feitos aqui, com a tabela de alimentos da app;
  * o modelo só escolhe os alimentos e as quantidades.
  */
+import { bodyContext } from './bodyLog';
 import { GOAL_LABEL, QUESTIONS, TRAINING } from './content';
 import { daysSince, fmtNum, keyDaysAgo, shortDate, todayKey } from './dates';
 import { foodById, entryOf, MEALS, totals, type FoodEntry, type MealKey } from './foods';
@@ -118,6 +119,8 @@ export function buildContext(S: AppState, now = new Date(), extra: { friends?: s
       `Plano de Spirulina: ${doseText(c.caps, c.format)} por dia (${fmtNum(c.g)} g)${S.proDose ? `, indicado por ${S.proDose.by || 'um profissional'}` : ''}; tomas: ${sl.map((s, i) => `${s.l} ${doseText(s.n, c.format)} ${(l.doses || [])[i] ? '(tomada hoje)' : '(por tomar)'}`).join(', ')}; lembrete às ${S.reminder}.`,
     );
     lines.push(`Ritual: ${streak(S, now)} dias seguidos; aderência ${adherence(S, 14, now)}% nos últimos 14 dias.`);
+    const bc = bodyContext(S);
+    if (bc) lines.push(bc);
     const flags = (a.safe || []).filter((x) => x !== 'nenhuma');
     if (flags.length) {
       const q = QUESTIONS.find((x) => x.id === 'safe');

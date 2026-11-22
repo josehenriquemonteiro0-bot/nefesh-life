@@ -1,3 +1,4 @@
+import { BodyEvolution } from '../components/BodyEvolution';
 import { liveIndex } from '../domain/liveIndex';
 import { useEffect, useState } from 'react';
 import { MICRO, insightProgress } from '../domain/firstWeek';
@@ -238,6 +239,7 @@ export function Evolution({ openReport, go }: { openReport: () => void; go?: (t:
       )}
 
       <Comparison />
+      <BodyEvolution S={S} />
 
       <section className="card">
         <div className="row"><h2 style={{ margin: 0 }}>Índice NEFESH</h2><span className="small mute">hoje: <b className="ink">{liveIndex(S)}</b></span></div>

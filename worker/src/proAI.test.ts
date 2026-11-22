@@ -127,3 +127,20 @@ describe('relatório de acompanhamento do utilizador', () => {
     expect(cleanReport({ is_report: false })).toEqual({ found: false });
   });
 });
+
+describe('relatório partilhado com o personal: medidas do corpo', () => {
+  it('limpa as linhas das medidas', async () => {
+    const { cleanShare } = await import('./pro');
+    const r = cleanShare({ from: '2026-11-01', to: '2026-11-14', days: [], avg: {}, body: [
+      { label: 'Dobra tricipital', unit: 'mm', first: 15, last: 4.5, from: '2026-03-05', to: '2026-10-08', diff: -10.5 },
+      { label: 'Densidade corporal', unit: 'g/mL', first: 1.051, last: 1.051, from: '2026-10-08', to: '2026-10-08', diff: null },
+      { label: '', unit: 'x', first: 1, last: 2 },
+      { label: 'Mau', unit: '', first: 'texto', last: 2 },
+    ] }) as { body: unknown[] };
+    expect(r.body).toEqual([
+      { label: 'Dobra tricipital', unit: 'mm', first: 15, last: 4.5, from: '2026-03-05', to: '2026-10-08', diff: -10.5 },
+      { label: 'Densidade corporal', unit: 'g/mL', first: 1.051, last: 1.051, from: '2026-10-08', to: '2026-10-08', diff: null },
+    ]);
+    expect(cleanShare({})).not.toHaveProperty('body');
+  });
+});

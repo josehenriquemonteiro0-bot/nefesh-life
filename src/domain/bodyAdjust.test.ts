@@ -57,3 +57,37 @@ describe('ajuste dos dados do corpo', () => {
     expect(b.muscleNote).toBeUndefined();
   });
 });
+
+describe('as medidas aparecem na evolução, nos relatórios e na IA', () => {
+  const S = () => {
+    const s = base();
+    saveEvals(s, [
+      { date: '2026-03-05', peso: 86, gordura: 27, medidas: { cintura: 90, braco_d: 33 }, extra: [{ label: 'Dobra tricipital', v: 15, u: 'mm' }] },
+      { date: '2026-10-08', peso: 81, gordura: 20, medidas: { cintura: 82, braco_d: 34.8 }, extra: [{ label: 'Dobra tricipital', v: 4.5, u: 'mm' }, { label: 'Densidade corporal', v: 1.051, u: 'g/mL' }] },
+    ], 'relatorio', 'Nutricionista Exemplo');
+    return s;
+  };
+  it('evolução: primeira e última medição de cada medida', async () => {
+    const { bodyEvolution } = await import('./bodyLog');
+    const rows = bodyEvolution(bodySeries(S()));
+    const by = Object.fromEntries(rows.map((r) => [r.label, r]));
+    expect(by['% gordura']).toMatchObject({ first: 27, last: 20, diff: -7 });
+    expect(by['Braço dir.']).toMatchObject({ first: 33, last: 34.8, diff: 1.8, unit: 'cm' });
+    expect(by['Dobra tricipital']).toMatchObject({ first: 15, last: 4.5, diff: -10.5 });
+    expect(by['Densidade corporal']).toMatchObject({ last: 1.051, diff: null });
+  });
+  it('contexto da IA e relatório em texto', async () => {
+    const { bodyContext } = await import('./bodyLog');
+    const t = bodyContext(S());
+    expect(t).toContain('% gordura 27 → 20%');
+    expect(t).toContain('Dobra tricipital 15 → 4,5 mm');
+    expect(t).toContain('Nutricionista Exemplo');
+  });
+  it('relatório para o personal: as medidas só vão com a segunda autorização', async () => {
+    const { shareSummary } = await import('./proShare');
+    const s = { ...S(), logs: {}, evals: [], proShare: { on: true } } as unknown as AppState;
+    expect(shareSummary(s).body).toBeUndefined();
+    const withBody = shareSummary({ ...s, proShare: { on: true, body: true } });
+    expect(withBody.body!.find((r) => r.label === 'Dobra tricipital')).toMatchObject({ first: 15, last: 4.5 });
+  });
+});
