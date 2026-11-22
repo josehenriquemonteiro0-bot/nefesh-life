@@ -19,6 +19,21 @@ const keys = { get: async () => null, put: async () => undefined } as never;
 const NOW = new Date('2026-11-22T15:00:00Z');
 
 describe('NEFESH Life Pro', () => {
+  it('perfil do aluno: criado com o aluno, aparece no painel, edita-se, limpa-se e sai ao apagar', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    const r = await pro.newStudent(db, 'isa', { name: 'Maria', profile: { sexo: 'f', idade: '34', altura: 165, peso: '62,5', nivel: 'iniciante', objetivo: 'Hipertrofia', lesoes: 'dor no joelho direito' } }, NOW);
+    const code = r.body.code as string;
+    const st = await pro.proState(db, 'isa', NOW);
+    const s0 = (st.body.students as { profile: Record<string, unknown> }[])[0];
+    expect(s0.profile).toMatchObject({ sexo: 'f', idade: 34, peso: 63, nivel: 'iniciante', lesoes: 'dor no joelho direito' });
+    expect((await pro.saveProfile(db, 'isa', { code, profile: { idade: 35 } }, NOW)).body.profile).toMatchObject({ idade: 35, sexo: '' });
+    expect((await pro.saveProfile(db, 'outro', { code, profile: { idade: 35 } }, NOW)).status).toBe(404);
+    expect((await pro.saveProfile(db, 'isa', { code, profile: {} }, NOW)).body.profile).toBeNull();
+    await pro.saveProfile(db, 'isa', { code, profile: { idade: 40 } }, NOW);
+    await pro.removeStudent(db, 'isa', { code });
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM pro_profiles').first<{ n: number }>()).toEqual({ n: 0 });
+  });
   it('no servidor de teste o profissional fica aprovado logo (também quem já estava pendente)', async () => {
     const db = memoryDB();
     expect((await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true)).body.pro).toMatchObject({ status: 'aprovado', reg: 'teste' });

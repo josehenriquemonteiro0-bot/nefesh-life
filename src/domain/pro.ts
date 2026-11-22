@@ -9,6 +9,8 @@ import { PHOTO_API, deviceId } from './photo';
 import type { ParsedWorkoutPlan, PlanWorkout } from './planRead';
 import type { AppState } from './types';
 
+import type { StudentProfile } from './proProfile';
+
 export interface ProStudent {
   code: string;
   name: string;
@@ -19,6 +21,7 @@ export interface ProStudent {
   updated: string;
   last: { day: string; workout: string; status: string; minutes: number; note: string } | null;
   week: number;
+  profile?: StudentProfile | null;
 }
 export interface ProInfo { uid: string; name: string; kind: string; reg: string; status: 'pendente' | 'aprovado' | 'recusado' }
 export interface ProLog { day: string; workout: string; at: string; status: string; minutes: number; note: string; changes: string[]; exercises: { name: string; sets: number; of: number; reps: string; load: string }[] }

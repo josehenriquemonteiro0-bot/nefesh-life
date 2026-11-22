@@ -98,6 +98,7 @@ CREATE INDEX IF NOT EXISTS pro_students_pro ON pro_students (pro);
 CREATE INDEX IF NOT EXISTS pro_students_uid ON pro_students (uid);
 CREATE TABLE IF NOT EXISTS pro_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, day TEXT NOT NULL, workout TEXT NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS pro_logs_code ON pro_logs (code, day);
+CREATE TABLE IF NOT EXISTS pro_profiles (code TEXT PRIMARY KEY, data TEXT NOT NULL, updated TEXT NOT NULL);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */

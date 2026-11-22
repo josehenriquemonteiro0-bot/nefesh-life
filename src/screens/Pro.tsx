@@ -9,6 +9,8 @@ import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/
 import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
 import { DictationCard, ReviewCard } from '../components/ProAI';
+import { ProfileEditor } from '../components/ProProfile';
+import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
@@ -86,6 +88,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
     }
   };
   const templates = others.filter((o) => o.plan && o.code !== student.code);
+  const about = profileText(student.profile);
   const sugg = w ? searchExercises('', w.focus, [], 60) : [];
   const has = (name: string) => !!w?.exercises.some((e) => e.name === name);
   const showSugg = !!sugOpen;
@@ -95,6 +98,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
     <>
       <button className="btn ghost sm" onClick={onClose}>← Alunos</button>
       <h1 style={{ marginBottom: 4 }}>Treino de {student.name}</h1>
+      {about && <p className="small mute" style={{ marginTop: 0 }}>👤 {about}</p>}
       {templates.length > 0 && (
         <label className="small" style={{ display: 'block', margin: '0 0 12px' }}>
           Partir do treino de outro aluno:{' '}
@@ -108,7 +112,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
         <button role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}><b>✍️ Manual</b><span>escrever e escolher</span></button>
         <button role="tab" aria-selected={mode === 'voz'} className={mode === 'voz' ? 'on' : ''} onClick={() => setMode('voz')}><b>🎙️ Por voz</b><span>ditar, a IA monta</span></button>
       </div>
-      {mode === 'voz' && <DictationCard plan={plan} current={i} setCurrent={setCur} onPlan={(p) => { setPlan(p); setErr(''); }} />}
+      {mode === 'voz' && <DictationCard plan={plan} current={i} setCurrent={setCur} about={about} onPlan={(p) => { setPlan(p); setErr(''); }} />}
       {n > 0 && !setupOpen ? (
         <section className="card pro-setup">
           <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
@@ -153,9 +157,9 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
               <input className="field sm" style={{ width: 90 }} value={w.day} maxLength={30} placeholder="Dia (seg)" onChange={(e) => setW((x) => ({ ...x, day: e.target.value }))} aria-label="Dia" />
             </div>
             <input className="field sm" style={{ width: '100%', boxSizing: 'border-box', marginTop: 6 }} value={w.focus} maxLength={80} placeholder="Foco (ex.: inferior, peito e tríceps)" onChange={(e) => setW((x) => ({ ...x, focus: e.target.value }))} aria-label="Foco" />
-            <div className="chips" style={{ marginTop: 6 }}>
+            {mode === 'manual' && <div className="chips" style={{ marginTop: 6 }}>
               {FOCUS_PRESETS.map((p) => <button key={p.label} className={`chip sm ${w.focus === p.label ? 'on' : ''}`} onClick={() => setW((x) => ({ ...x, focus: p.label }))}>{p.label}</button>)}
-            </div>
+            </div>}
             {w.exercises.map((e, k) => (
               <div className="pro-ex" key={k}>
                 <div className="row" style={{ gap: 6, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
@@ -180,7 +184,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
               </div>
             ))}
             <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>
-            {sugg.length > 0 && (
+            {mode === 'manual' && sugg.length > 0 && (
               <div className="pro-sugg">
                 <button className="link small inline" onClick={() => setSugOpen(!showSugg)} aria-expanded={showSugg}>{showSugg ? '▾ Fechar a lista' : `+ Juntar da lista · ${w.focus.toLowerCase()}`}</button>
                 {showSugg && (
@@ -197,7 +201,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
               </div>
             )}
           </section>
-          {(mode === 'voz' || i === n - 1) && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
+          {(mode === 'voz' || i === n - 1) && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} profile={about} /><p /></>}
           {mode === 'voz' ? (
             <button className="btn full" disabled={busy || !plan.workouts.some(filled)} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar ao aluno'}</button>
           ) : i < n - 1 ? (
@@ -252,7 +256,7 @@ function StudentLogs({ student, onClose }: { student: ProStudent; onClose: () =>
 
 /** NEFESH Life Pro: o profissional monta treinos e acompanha os alunos. */
 export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
-  const { S, toast } = useStore();
+  const { S } = useStore();
   const auth = getAuth();
   const [pro, setPro] = useState<ProInfo | null | undefined>(undefined);
   const [students, setStudents] = useState<ProStudent[]>([]);
@@ -260,6 +264,9 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [form, setForm] = useState({ name: '', reg: '', kind: 'personal' });
   const [newName, setNewName] = useState('');
   const [edit, setEdit] = useState<ProStudent | null>(null);
+  const [profileOf, setProfileOf] = useState<ProStudent | null>(null);
+  const [askPlan, setAskPlan] = useState<ProStudent | null>(null);
+  const [askProfile, setAskProfile] = useState<{ code: string; name: string } | null>(null);
   const [logs, setLogs] = useState<ProStudent | null>(null);
   const load = () => proApi<{ pro: ProInfo | null; students?: ProStudent[] }>('estado').then((r) => { setPro(r.pro); setStudents(r.students ?? []); setErr(''); }).catch((e) => setErr((e as Error).message));
   useEffect(() => { if (auth) load(); }, [auth?.token]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -277,6 +284,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       </>
     );
   if (edit) return <PlanEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
+  if (profileOf) return <ProfileEditor student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
   if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} />;
 
   return (
@@ -317,8 +325,27 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             <h2 style={{ marginTop: 0 }}>Novo aluno</h2>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
               <input className="field sm" style={{ flex: 1 }} value={newName} maxLength={40} placeholder="Nome do aluno" onChange={(e) => setNewName(e.target.value)} aria-label="Nome do aluno" />
-              <button className="btn sm" disabled={newName.trim().length < 2} onClick={() => proApi<{ code: string }>('aluno/novo', { name: newName }).then((r) => { toast(`Código criado: ${r.code}`); setNewName(''); load(); }).catch((e) => setErr((e as Error).message))}>Criar código</button>
+              <button className="btn sm" disabled={newName.trim().length < 2} onClick={() => proApi<{ code: string; name: string }>('aluno/novo', { name: newName }).then((r) => { setAskProfile({ code: r.code, name: r.name }); setAskPlan(null); setNewName(''); load(); }).catch((e) => setErr((e as Error).message))}>Criar código</button>
             </div>
+            {askProfile && (
+              <div className="pro-ask">
+                <p className="small" style={{ margin: 0 }}><b>✓ Código de {askProfile.name}: {askProfile.code}</b></p>
+                <p className="small" style={{ margin: '6px 0 8px' }}>Quer registar um perfil mais detalhado de {askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.</p>
+                <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
+                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code) ?? ({ code: askProfile.code, name: askProfile.name, profile: null } as ProStudent); setAskProfile(null); setProfileOf(st); }}>Registar perfil</button>
+                  <button className="btn ghost sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code); setAskProfile(null); if (st) setEdit(st); }}>Agora não, montar treino</button>
+                </div>
+              </div>
+            )}
+            {askPlan && !askProfile && (
+              <div className="pro-ask">
+                <p className="small" style={{ margin: '0 0 8px' }}>Perfil de {askPlan.name} guardado. Montar o treino agora?</p>
+                <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
+                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askPlan.code) ?? askPlan; setAskPlan(null); setEdit(st); }}>Montar treino</button>
+                  <button className="link small inline" onClick={() => setAskPlan(null)}>Depois</button>
+                </div>
+              </div>
+            )}
           </section>
           {students.length === 0 && <p className="small mute">Ainda sem alunos. Crie um código para cada aluno e monte o treino dele.</p>}
           {students.map((s) => (
@@ -329,9 +356,11 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
                 {s.plan ? ` · ${s.plan.workouts.length} ${s.plan.workouts.length === 1 ? 'treino' : 'treinos'}` : ' · treino por montar'}
                 {s.linked ? ` · ${s.week} esta semana` : ''}
               </p>
+              {s.profile && profileText(s.profile) && <p className="small mute pro-prof-line" style={{ margin: '0 0 6px' }}>👤 {profileText(s.profile)}</p>}
               {s.last && <p className="small mute" style={{ margin: '0 0 6px' }}>Último: {s.last.workout}, {shortDate(s.last.day)} · {STATUS[s.last.status] ?? s.last.status}{s.last.note ? ` · "${s.last.note}"` : ''}</p>}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                 <button className="btn sm" onClick={() => setEdit(s)}>{s.plan ? 'Editar treino' : 'Montar treino'}</button>
+                <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{s.profile ? 'Perfil' : '+ Perfil'}</button>
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
                 {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appUrl))} target="_blank" rel="noreferrer">Enviar código</a>}
                 <button className="link small inline" onClick={() => confirm(`Apagar ${s.name} e os registos?`) && proApi('aluno/apagar', { code: s.code }).then(load)}>Apagar</button>

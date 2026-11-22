@@ -30,7 +30,7 @@ const MAX_MS = 120000;
  * 2) um treino de cada vez — os exercícios desse treino.
  * O microfone não corta nas pausas: ouve até tocar para parar (máx. 2 min).
  */
-export function DictationCard({ plan, current, setCurrent, onPlan }: { plan: ParsedWorkoutPlan; current: number; setCurrent: (i: number) => void; onPlan: (p: ParsedWorkoutPlan) => void }) {
+export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }: { plan: ParsedWorkoutPlan; current: number; setCurrent: (i: number) => void; onPlan: (p: ParsedWorkoutPlan) => void; about?: string }) {
   const { S } = useStore();
   const [text, setText] = useState('');
   const [partial, setPartial] = useState('');
@@ -111,7 +111,7 @@ export function DictationCard({ plan, current, setCurrent, onPlan }: { plan: Par
     setBusy('montar');
     setMsg({});
     try {
-      const r = await proApi<{ plan: ParsedWorkoutPlan; summary: string; doubts: string }>('ia/ditado', { text, plan, current, stage });
+      const r = await proApi<{ plan: ParsedWorkoutPlan; summary: string; doubts: string }>('ia/ditado', { text, plan, current, stage, about });
       onPlan({ ...plan, ...r.plan, is_workout: true, professional: plan.professional });
       setText('');
       if (stage === 'estrutura') {
@@ -168,7 +168,7 @@ export function DictationCard({ plan, current, setCurrent, onPlan }: { plan: Par
 }
 
 /** Revisão técnica com IA no fim: observações para o profissional e notas sugeridas para o aluno. */
-export function ReviewCard({ plan, onPlan }: { plan: ParsedWorkoutPlan; onPlan: (p: ParsedWorkoutPlan) => void }) {
+export function ReviewCard({ plan, onPlan, profile = '' }: { plan: ParsedWorkoutPlan; onPlan: (p: ParsedWorkoutPlan) => void; profile?: string }) {
   const [about, setAbout] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -179,7 +179,7 @@ export function ReviewCard({ plan, onPlan }: { plan: ParsedWorkoutPlan; onPlan: 
     setBusy(true);
     setErr('');
     try {
-      const r = await proApi<{ general: string[]; notes: ReviewNote[] }>('ia/rever', { plan, about });
+      const r = await proApi<{ general: string[]; notes: ReviewNote[] }>('ia/rever', { plan, about: [profile, about.trim()].filter(Boolean).join('; ') });
       setRes(r);
       setPick(new Set(r.notes.map((_, k) => k)));
     } catch (e) {
@@ -194,7 +194,8 @@ export function ReviewCard({ plan, onPlan }: { plan: ParsedWorkoutPlan; onPlan: 
     <section className="card pro-review">
       <div className="row"><h3 style={{ margin: 0 }}>✨ Revisão técnica com IA</h3><button className="x" aria-label="Fechar" onClick={() => setOpen(false)}>×</button></div>
       <p className="small mute">A IA olha para o plano todo (equilíbrio, volume, ordem, descansos) e sugere notas de execução para os exercícios sem nota. Você decide o que fica.</p>
-      <input className="field sm" style={{ width: '100%', boxSizing: 'border-box' }} value={about} maxLength={300} onChange={(e) => setAbout(e.target.value)} placeholder="Sobre o aluno (opcional): ex. iniciante, quer hipertrofia, dor no joelho" aria-label="Sobre o aluno" />
+      <input className="field sm" style={{ width: '100%', boxSizing: 'border-box' }} value={about} maxLength={300} onChange={(e) => setAbout(e.target.value)} placeholder={profile ? 'Mais alguma coisa sobre o aluno (opcional)' : 'Sobre o aluno (opcional): ex. iniciante, quer hipertrofia, dor no joelho'} aria-label="Sobre o aluno" />
+      {profile && <p className="small mute" style={{ margin: '6px 0 0' }}>Usa também o perfil: {profile}</p>}
       <button className="btn sm" style={{ marginTop: 8 }} disabled={busy} onClick={run}>{busy ? 'A rever…' : res ? 'Rever outra vez' : 'Rever o plano'}</button>
       {err && <p className="small warn-t">{err}</p>}
       {res && (

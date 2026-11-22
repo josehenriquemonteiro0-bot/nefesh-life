@@ -8,6 +8,7 @@
 import { localNow, sendPush, type KeyStore } from './push';
 import type { DB } from './social';
 import { isQuiet } from './notify';
+import { cleanProfile, profileEmpty, type StudentProfile } from '../../src/domain/proProfile';
 
 type R = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown> = { ok: true }): R => ({ status: 200, body });
@@ -83,7 +84,10 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const wk = await db.prepare('SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ?').bind(s.code, weekAgo(now)).first<{ n: number }>();
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = s.plan ? (JSON.parse(s.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
-    students.push({ code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
+    const pr = await db.prepare('SELECT data FROM pro_profiles WHERE code = ?').bind(s.code).first<{ data: string }>();
+    let profile: StudentProfile | null = null;
+    try { profile = pr ? cleanProfile(JSON.parse(pr.data)) : null; } catch { profile = null; }
+    students.push({ profile, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
   }
   return ok({ pro, students });
 }
@@ -107,6 +111,7 @@ export async function newStudent(db: DB, uid: string, b: Record<string, unknown>
     const code = studentCode();
     if (await db.prepare('SELECT 1 FROM pro_students WHERE code = ?').bind(code).first()) continue;
     await db.prepare("INSERT INTO pro_students (code, pro, name, version, status, created, updated) VALUES (?, ?, ?, 0, 'convite', ?, ?)").bind(code, uid, name, at, at).run();
+    if (b.profile && !profileEmpty(cleanProfile(b.profile))) await putProfile(db, code, b.profile, now);
     return ok({ code, name });
   }
   return bad('Não foi possível criar o código. Tente outra vez.', 500);
@@ -123,6 +128,20 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   return ok({ version: s.version + 1 });
 }
 
+async function putProfile(db: DB, code: string, p: unknown, now: Date) {
+  const prof = cleanProfile(p);
+  if (profileEmpty(prof)) await db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(code).run();
+  else await db.prepare('INSERT INTO pro_profiles (code, data, updated) VALUES (?, ?, ?) ON CONFLICT(code) DO UPDATE SET data = excluded.data, updated = excluded.updated').bind(code, JSON.stringify(prof), now.toISOString()).run();
+  return profileEmpty(prof) ? null : prof;
+}
+
+/** Perfil do aluno (sexo, idade, medidas, objetivo, nível, lesões): guardado pelo profissional. */
+export async function saveProfile(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  return ok({ profile: await putProfile(db, s.code, b.profile, now) });
+}
+
 export async function studentLogs(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
@@ -133,7 +152,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 

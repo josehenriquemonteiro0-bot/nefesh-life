@@ -124,11 +124,12 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
   const target = shape[current]?.name ?? 'Treino A';
   const step =
     stage === 'estrutura'
-      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa; mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos.`
+      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa; mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
       : stage === 'treino'
         ? `ETAPA 2 — EXERCÍCIOS do ${target}${shape[current]?.focus ? ` (foco: ${shape[current].focus})` : ''}. Tudo o que foi ditado é para o ${target}, mesmo que não diga o nome. Não mudes os outros treinos.`
         : `Treino que está a ser montado agora: ${target}`;
-  const user = `Plano atual:\n${JSON.stringify({ ...plan, workouts: shape })}\n\n${step}\n\nO que o profissional ditou:\n"""${text}"""`;
+  const about = String(b.about ?? '').trim().slice(0, 600);
+  const user = `${about ? `Sobre o aluno (perfil registado pelo profissional; usa-o para escolhas por omissão, sem contrariar o que foi ditado): ${about}\n\n` : ''}Plano atual:\n${JSON.stringify({ ...plan, workouts: shape })}\n\n${step}\n\nO que o profissional ditou:\n"""${text}"""`;
   const r = await ask<Plan & { summary: string; doubts: string }>(client, model, DICTATE_SYSTEM, user, PLAN_SCHEMA, 'medium');
   if (!r) return { status: 502, body: { error: 'A IA não conseguiu montar. Tente dizer de outra forma.' } };
   await count(store, DICTATE_LIMITS, uid, ip, new Date(), 'pd');
@@ -157,7 +158,7 @@ export async function review(client: Anthropic, model: string, store: CounterSto
   if (!plan.workouts.length) return { status: 400, body: { error: 'Junte exercícios antes de pedir a revisão.' } };
   const allowed = await check(store, REVIEW_LIMITS, uid, ip, new Date(), 'pr');
   if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de revisões por hoje. Tente amanhã.' } };
-  const about = String(b.about ?? '').trim().slice(0, 300);
+  const about = String(b.about ?? '').trim().slice(0, 600);
   const user = `${about ? `Sobre o aluno: ${about}\n\n` : ''}Plano:\n${JSON.stringify(plan.workouts.map((w, i) => ({ i, name: w.name, focus: w.focus, exercises: w.exercises.map((e, k) => ({ k, ...e })) })))}\nObservações gerais do plano: ${plan.notes || '—'}; treinos por semana: ${plan.per_week}`;
   const r = await ask<{ general: string[]; notes: { workout: number; exercise: number; note: string }[] }>(client, model, REVIEW_SYSTEM, user, REVIEW_SCHEMA, 'medium');
   if (!r) return { status: 502, body: { error: 'A IA não conseguiu rever agora. Tente outra vez.' } };

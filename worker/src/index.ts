@@ -324,6 +324,7 @@ export default {
         'aluno/guardar': () => pro.savePlan(db, uid, b),
         'aluno/registos': () => pro.studentLogs(db, uid, b),
         'aluno/apagar': () => pro.removeStudent(db, uid, b),
+        'aluno/perfil': () => pro.saveProfile(db, uid, b),
       };
       // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
       if (action === 'ia/ditado' || action === 'ia/rever') {
