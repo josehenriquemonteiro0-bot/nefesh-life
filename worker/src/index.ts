@@ -31,6 +31,7 @@ import { checkSpirulinaPhoto } from './spirulinaPhoto';
 import { acceptShot, readHealthShot } from './healthShot';
 import * as admin from './admin';
 import * as proAI from './proAI';
+import * as exv from './exvideos';
 import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
@@ -190,6 +191,15 @@ export default {
       }
       return html(admin.marketingPage(key, rows.sort((a, b) => b.at.localeCompare(a.at))));
     }
+    if ((url.pathname === '/admin/videos' || url.pathname === '/admin/video') && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html(admin.adminLogin(true), 403);
+      const f = await req.formData();
+      if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      const saved = url.pathname === '/admin/video' ? await exv.saveVideos(env.DB, f) : undefined;
+      return html(admin.videosPage(key, exv.allExercises(), await exv.videoMap(env.DB), exv.exKey, saved));
+    }
     if ((url.pathname === '/admin/profissionais' || url.pathname === '/admin/profissional') && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
       const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
@@ -288,6 +298,12 @@ export default {
       else if (action === 'lembretes') r = await push.setReminders(env.DB, b);
       else r = { status: 404, body: { error: 'rota desconhecida' } };
       return json(r.body, r.status, h);
+    }
+
+    // biblioteca de vídeos de demonstração (pública: só nomes de exercícios e links)
+    if (url.pathname === '/videos') {
+      if (!env.DB) return json({ videos: {} }, 200, h);
+      return json({ videos: await exv.videoMap(env.DB) }, 200, h);
     }
 
     // NEFESH Life Pro: o profissional monta o treino; o aluno liga-se com um código

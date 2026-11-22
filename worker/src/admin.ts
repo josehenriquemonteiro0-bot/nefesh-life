@@ -72,6 +72,7 @@ export function adminForm(key: string) {
 <label>E-mail (opcional)<input name="email" type="email"></label>
 <button>Gerar códigos</button>
 </form>
+<form method="post" action="/admin/videos" class="card"><input type="hidden" name="key" value="${esc(key)}"><h2>Vídeos de demonstração</h2><p class="m">Um vídeo por exercício (YouTube, Instagram…). O aluno vê-o quando o personal não pôs um vídeo seu.</p><button>Abrir a biblioteca de vídeos</button></form>
 <form method="post" action="/admin/profissionais" class="card"><input type="hidden" name="key" value="${esc(key)}"><h2>NEFESH Life Pro</h2><p class="m">Aprovar os profissionais (personal) que pedem acesso para montar treinos.</p><button>Ver profissionais</button></form>
 <form method="post" action="/admin/premios" class="card">
 <input type="hidden" name="key" value="${esc(key)}">
@@ -156,4 +157,22 @@ export function adminResult(key: string, product: string, codes: string[], name:
 ${email ? `<a class="btn" href="${esc(mail)}">Enviar por e-mail</a>` : ''}
 <button class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('msg').value).then(()=>this.textContent='Copiada ✓')">Copiar mensagem</button></div>
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Gerar mais códigos</button></form>`);
+}
+
+/** Biblioteca de vídeos: um campo por exercício, agrupados; "Procurar" abre a pesquisa no YouTube. */
+export function videosPage(key: string, list: { name: string; group: string }[], map: Record<string, string>, keyOf: (n: string) => string, saved?: number) {
+  const done = list.filter((e) => map[keyOf(e.name)]).length;
+  const groups = [...new Set(list.map((e) => e.group))];
+  const rows = groups.map((g) => `<div class="card"><h2>${esc(g)}</h2>${list.filter((e) => e.group === g).map((e) => {
+    const v = map[keyOf(e.name)] ?? '';
+    const q = encodeURIComponent(`${e.name} execução correta`);
+    return `<label style="display:block;margin:10px 0 0">${v ? '✅' : '⬜'} <b>${esc(e.name)}</b> <a class="m" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">procurar ↗</a>${v ? ` · <a class="m" href="${esc(v)}" target="_blank" rel="noopener">ver ↗</a>` : ''}
+<input name="v:${esc(e.name)}" value="${esc(v)}" placeholder="https://www.youtube.com/watch?v=…" inputmode="url" style="width:100%"></label>`;
+  }).join('')}</div>`).join('');
+  return page(`<h1>Vídeos de demonstração</h1>
+<div class="card"><p style="margin:0"><b>${done} de ${list.length}</b> exercícios com vídeo.${saved !== undefined ? ` <span style="color:#00fe8a">Guardado (${saved}).</span>` : ''}</p>
+<p class="m">Cole o link de um vídeo com a técnica correta (YouTube, Shorts, Instagram, Vimeo). Apague o link para tirar. Mais tarde, os vídeos próprios da NEFESH substituem estes links aqui.</p></div>
+<form method="post" action="/admin/video"><input type="hidden" name="key" value="${esc(key)}">${rows}
+<button style="position:sticky;bottom:12px;width:100%">Guardar</button></form>
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }

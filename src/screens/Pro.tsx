@@ -10,6 +10,7 @@ import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
 import { DictationCard, ReviewCard } from '../components/ProAI';
 import { ProfileEditor } from '../components/ProProfile';
+import { libraryVideo, loadVideos } from '../domain/exVideos';
 import { StudentAssessments } from '../components/ProAssess';
 import { ChatThread } from '../components/ProChat';
 import { ShareReport } from '../components/ProReport';
@@ -91,6 +92,8 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const [err, setErr] = useState('');
   // lista de sugestões: fechada por omissão; abre sozinha só no treino vazio, no modo manual
   const [sugOpen, setSugOpen] = useState<boolean | null>(null);
+  const [, setVids] = useState(0);
+  useEffect(() => { loadVideos().then(() => setVids((x) => x + 1)); }, []);
   const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
   const setMode = (m: 'manual' | 'voz') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* sem armazenamento */ } };
   const top = () => document.querySelector('.pro-tabs, .pro-workout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -263,6 +266,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
                   <button className="x" aria-label="Apagar exercício" onClick={() => setW((x) => ({ ...x, exercises: x.exercises.filter((_, j) => j !== k) }))}>×</button>
                 </div>
                 <input className="field sm pro-video" type="url" inputMode="url" value={e.video ?? ''} maxLength={300} placeholder="🎬 Link do vídeo (YouTube, Instagram…) — opcional" onChange={(ev) => setE(k, { video: ev.target.value.trim() || undefined })} aria-label={`Vídeo do exercício ${k + 1}`} />
+                {!e.video && e.name.trim() && libraryVideo(e.name) && <span className="pro-video-lib">🎬 Vídeo NEFESH disponível: o aluno vê este se não puser o seu.</span>}
               </div>
             ))}
             <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>

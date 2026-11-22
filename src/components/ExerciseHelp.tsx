@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { embedUrl, libraryVideo, loadVideos } from '../domain/exVideos';
 import { animFor } from '../domain/exerciseAnims';
 import type { PhotoError } from '../domain/photo';
 import { fetchTip, tipKey, videoSearchUrl } from '../domain/tips';
@@ -13,6 +14,12 @@ export function ExerciseHelp({ name, notes, video }: { name: string; notes?: str
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, setV] = useState(0);
+  const [player, setPlayer] = useState<string | null>(null);
+  useEffect(() => { loadVideos().then(() => setV((x) => x + 1)); }, []);
+  const proVideo = video && /^https:\/\//.test(video) ? video : undefined;
+  const demo = proVideo ?? libraryVideo(name);
+  const play = (url: string) => { const e = embedUrl(url); if (e) setPlayer(e); else window.open(url, '_blank', 'noopener'); };
 
   const load = async () => {
     setOpen(true);
@@ -36,9 +43,18 @@ export function ExerciseHelp({ name, notes, video }: { name: string; notes?: str
         <button className="btn ghost sm" onClick={() => (open && tip ? setOpen(false) : load())} disabled={busy}>
           {busy ? 'A preparar dicas…' : open && tip ? 'Fechar dicas' : 'Como fazer'}
         </button>
-        {video && /^https:\/\//.test(video) && <a className="btn sm" href={video} target="_blank" rel="noopener noreferrer">▶ Vídeo do personal</a>}
-        <a className="btn ghost sm" href={videoSearchUrl(name)} target="_blank" rel="noopener">{video ? 'Outros vídeos ↗' : 'Ver vídeos ↗'}</a>
+        {demo && <button className="btn sm" onClick={() => play(demo)}>{proVideo ? '▶ Vídeo do personal' : '▶ Ver demonstração'}</button>}
+        <a className="btn ghost sm" href={videoSearchUrl(name)} target="_blank" rel="noopener">{demo ? 'Outros vídeos ↗' : 'Ver vídeos ↗'}</a>
       </div>
+      {player && (
+        <div className="video-player">
+          <iframe src={player} title={`Vídeo: ${name}`} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" />
+          <div className="row" style={{ marginTop: 6 }}>
+            <span className="small mute">{proVideo ? 'Vídeo escolhido pelo seu personal' : 'Demonstração NEFESH'}</span>
+            <button className="link small inline" onClick={() => setPlayer(null)}>Fechar vídeo</button>
+          </div>
+        </div>
+      )}
       {error && <p className="small warn-t" style={{ margin: '6px 0 0' }}>{error}</p>}
       {open && tip && (
         <div className="tipbox small">

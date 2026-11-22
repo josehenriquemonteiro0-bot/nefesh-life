@@ -242,3 +242,20 @@ describe('Pro: profissional já verificado', () => {
     expect((await pro.proState(db, 'outro', NOW)).body.pro).toMatchObject({ status: 'pendente' });
   });
 });
+
+describe('Biblioteca de vídeos NEFESH', () => {
+  it('guarda pelo nome (sem acentos/maiúsculas), só https; vazio apaga', async () => {
+    const exv = await import('./exvideos');
+    const db = memoryDB();
+    expect(exv.allExercises().length).toBeGreaterThan(100);
+    const f = new FormData();
+    f.set('v:Agachamento búlgaro', 'https://youtu.be/abc');
+    f.set('v:Prancha', 'javascript:alert(1)');
+    f.set('key', 'x');
+    expect(await exv.saveVideos(db, f, NOW)).toBe(1);
+    expect(await exv.videoMap(db)).toEqual({ 'agachamento bulgaro': 'https://youtu.be/abc' });
+    const g = new FormData(); g.set('v:Agachamento búlgaro', '');
+    await exv.saveVideos(db, g, NOW);
+    expect(await exv.videoMap(db)).toEqual({});
+  });
+});
