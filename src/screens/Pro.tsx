@@ -278,7 +278,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
                   {OUTRO.map((x) => <button key={x.label} className={`chip sm ${hasBookend(w, x) ? 'on' : ''}`} aria-pressed={hasBookend(w, x)} onClick={() => setBook(x)}>{x.label}</button>)}
                 </div>
                 <div className="row" style={{ marginTop: 6, gap: 8 }}>
-                  <span className="small mute" style={{ flex: 1 }}>Toque outra vez para tirar. Outra duração: mude no exercício.</span>
+                  <span className="small mute" style={{ flex: 1 }}>🧍 O aluno vê cada um explicado com o bonequinho animado. Toque outra vez para tirar; outra duração: mude no exercício.</span>
                   {w.exercises.some((e) => isWarmup(e) || isFinal(e)) && <button className="link small inline" onClick={() => setBookOpen(false)}>Fechar</button>}
                 </div>
               </div>

@@ -775,6 +775,7 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .video-player{margin:8px 0 4px}
 .video-player iframe{width:100%;aspect-ratio:9/16;max-height:62vh;border:0;border-radius:12px;background:#000}
 .pro-video-lib{display:block;margin-top:4px;font-size:12px;color:var(--neon)}
+.routine{display:grid;gap:6px;margin:4px 0 8px}
 .pro-warmup{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px dashed rgba(255,170,90,.45);background:rgba(255,170,90,.05)}
 .pro-video{width:100%;box-sizing:border-box;margin-top:6px;font-size:13px}
 .pro-savebar{display:flex;gap:10px;align-items:center;margin:10px 0}

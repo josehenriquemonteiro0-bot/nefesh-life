@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ANIMS, complete, type Joint, type Pose } from '../domain/exerciseAnims';
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -74,5 +75,27 @@ export function ExerciseAnim({ id, size = 'md' }: { id: string; size?: 'sm' | 'm
       </svg>
       {size === 'md' && <figcaption className="small mute">{anim.cue}</figcaption>}
     </figure>
+  );
+}
+
+/** Rotina de vários movimentos (mobilidade, alongamento): um bonequinho de cada vez, avança sozinho. */
+export function RoutineAnim({ steps }: { steps: { anim: string; label: string }[] }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (reduceMotion()) return;
+    const t = window.setTimeout(() => setI((x) => (x + 1) % steps.length), 6000);
+    return () => window.clearTimeout(t);
+  }, [i, steps.length]);
+  const s = steps[i];
+  return (
+    <div className="routine">
+      <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+        <button className="btn ghost sm" aria-label="Movimento anterior" onClick={() => setI((i - 1 + steps.length) % steps.length)}>‹</button>
+        <p className="small" style={{ margin: 0, flex: 1, textAlign: 'center' }}><b>{i + 1} de {steps.length}</b> · {s.label}</p>
+        <button className="btn ghost sm" aria-label="Movimento seguinte" onClick={() => setI((i + 1) % steps.length)}>›</button>
+      </div>
+      <ExerciseAnim key={s.anim + i} id={s.anim} />
+      <div className="plan-dots" style={{ justifyContent: 'center' }}>{steps.map((_, k) => <i key={k} className={k === i ? 'now' : k < i ? 'done' : ''} />)}</div>
+    </div>
   );
 }

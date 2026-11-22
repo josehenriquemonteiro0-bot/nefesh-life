@@ -65,3 +65,16 @@ describe('NEFESH Life Pro: biblioteca e divisão', () => {
     expect(w.exercises.map((e) => e.name)).toEqual(['Passadeira / esteira (caminhada)', 'Leg press 45°', 'Alongamento final (volta à calma)']);
   });
 });
+
+describe('rotinas animadas do início e fim do treino', () => {
+  it('cada rotina é um exercício da biblioteca e só usa animações que existem', async () => {
+    const { ROUTINES, ANIMS, animFor } = await import('./exerciseAnims');
+    const names = new Set(LIBRARY.map((e) => e.name));
+    for (const [name, steps] of Object.entries(ROUTINES)) {
+      expect(names.has(name)).toBe(true);
+      for (const s of steps) expect(ANIMS[s.anim]).toBeTruthy();
+    }
+    expect(animFor('Relaxamento e respiração')).toBe('crianca');
+    expect(animFor('Alongamento de posteriores')).toBe('posterior');
+  });
+});

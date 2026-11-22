@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { embedUrl, libraryVideo, loadVideos } from '../domain/exVideos';
-import { animFor } from '../domain/exerciseAnims';
+import { ROUTINES, animFor } from '../domain/exerciseAnims';
 import type { PhotoError } from '../domain/photo';
 import { fetchTip, tipKey, videoSearchUrl } from '../domain/tips';
 import { useStore } from '../state/store';
-import { ExerciseAnim } from './ExerciseAnim';
+import { ExerciseAnim, RoutineAnim } from './ExerciseAnim';
 
 /** "Como fazer": animação (se houver), dicas da IA (guardadas) e vídeos no YouTube. */
 export function ExerciseHelp({ name, notes, video }: { name: string; notes?: string; video?: string }) {
   const { S, update } = useStore();
-  const anim = animFor(name);
+  const routine = ROUTINES[name];
+  const anim = routine ? null : animFor(name);
   const tip = S.exerciseTips?.[tipKey(name)];
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -38,6 +39,7 @@ export function ExerciseHelp({ name, notes, video }: { name: string; notes?: str
 
   return (
     <div className="exhelp">
+      {routine && <RoutineAnim steps={routine} />}
       {anim && <ExerciseAnim id={anim} />}
       <div className="row" style={{ justifyContent: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={() => (open && tip ? setOpen(false) : load())} disabled={busy}>

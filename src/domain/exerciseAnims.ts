@@ -111,6 +111,80 @@ export const ANIMS: Record<string, Anim> = {
     props: ['door'],
     cue: 'Avança o corpo até sentir o peito a alongar',
   },
+  posterior: {
+    a: { head: [60, 16], neck: [60, 27], hip: [60, 54], kN: [61, 73], aN: [60, 92], eN: [62, 40], hN: [63, 53] },
+    b: { head: [78, 80], neck: [71, 71], hip: [57, 52], kN: [58, 72], aN: [58, 92], eN: [72, 82], hN: [67, 91] },
+    dur: 5,
+    cue: 'Desce devagar com as costas longas e segura 30 s',
+  },
+  quadriceps: {
+    a: { head: [58, 16], neck: [58, 27], hip: [58, 54], kN: [59, 72], aN: [47, 62], kF: [57, 73], aF: [57, 92], eN: [52, 44], hN: [47, 60], eF: [67, 35], hF: [77, 31] },
+    b: { head: [60, 16], neck: [60, 27], hip: [61, 54], kN: [58, 73], aN: [45, 60], kF: [59, 73], aF: [57, 92], eN: [53, 44], hN: [45, 58], eF: [69, 35], hF: [79, 31] },
+    dur: 4,
+    cue: 'Puxa o calcanhar ao glúteo, joelhos juntos, 30 s por lado',
+  },
+  circ_bracos: {
+    a: { head: [60, 15], neck: [60, 26], hip: [60, 54], kN: [57, 73], aN: [56, 92], kF: [63, 73], aF: [64, 92], eN: [47, 30], hN: [35, 30], eF: [73, 30], hF: [85, 30] },
+    b: { head: [60, 15], neck: [60, 26], hip: [60, 54], kN: [57, 73], aN: [56, 92], kF: [63, 73], aF: [64, 92], eN: [51, 15], hN: [47, 4], eF: [69, 15], hF: [73, 4] },
+    dur: 1.6,
+    cue: 'Círculos grandes e lentos, para a frente e para trás',
+  },
+  marcha: {
+    a: { head: [60, 16], neck: [60, 27], hip: [60, 54], kN: [61, 73], aN: [60, 92], kF: [59, 73], aF: [58, 92], eN: [66, 40], hN: [71, 50], eF: [54, 40], hF: [50, 50] },
+    b: { head: [60, 16], neck: [60, 27], hip: [60, 54], kN: [74, 57], aN: [72, 75], kF: [59, 73], aF: [58, 92], eN: [54, 40], hN: [50, 50], eF: [66, 40], hF: [71, 50] },
+    dur: 1.2,
+    cue: 'Joelho à altura da anca, alterna em ritmo',
+  },
+  balanco_perna: {
+    a: { head: [58, 16], neck: [58, 27], hip: [58, 54], kN: [70, 71], aN: [80, 87], kF: [57, 73], aF: [57, 92], eN: [64, 40], hN: [70, 50], eF: [52, 38], hF: [46, 46] },
+    b: { head: [60, 16], neck: [60, 27], hip: [59, 54], kN: [50, 72], aN: [41, 89], kF: [58, 73], aF: [57, 92], eN: [64, 40], hN: [70, 50], eF: [52, 38], hF: [46, 46] },
+    dur: 1.6,
+    cue: 'Balança a perna à frente e atrás, tronco direito, 10 por lado',
+  },
+  deadbug: {
+    a: { head: [24, 84], neck: [32, 86], hip: [58, 88], kN: [60, 70], aN: [75, 70], kF: [60, 70], aF: [75, 70], eN: [34, 72], hN: [34, 59], eF: [34, 72], hF: [34, 59] },
+    b: { head: [24, 84], neck: [32, 86], hip: [58, 88], kN: [77, 82], aN: [95, 86], kF: [60, 70], aF: [75, 70], eN: [22, 80], hN: [10, 83], eF: [34, 72], hF: [34, 59] },
+    dur: 3,
+    props: ['mat'],
+    cue: 'Estica braço e perna opostos, lombar colada ao chão',
+  },
+  crianca: {
+    a: { head: [82, 86], neck: [72, 83], hip: [42, 79], kN: [58, 90], aN: [36, 91], eN: [88, 86], hN: [101, 89] },
+    b: { head: [82, 84], neck: [72, 80], hip: [42, 76], kN: [58, 90], aN: [36, 91], eN: [88, 85], hN: [101, 89] },
+    dur: 6,
+    props: ['mat'],
+    cue: 'Inspira em 4 s, expira em 6 s, ombros soltos',
+  },
+};
+
+/** Rotinas de vários movimentos (início e fim do treino): o aluno vê-as passo a passo. */
+export const ROUTINES: Record<string, { anim: string; label: string }[]> = {
+  'Mobilidade articular geral': [
+    { anim: 'circ_bracos', label: 'Círculos de braços · 30 s' },
+    { anim: 'anca', label: 'Abertura de anca · 30 s por lado' },
+    { anim: 'gato_vaca', label: 'Gato-vaca · 8 vezes' },
+    { anim: 'agachamento', label: 'Agachamento lento · 8 vezes' },
+  ],
+  'Alongamento dinâmico': [
+    { anim: 'marcha', label: 'Joelhos ao peito · 20 s' },
+    { anim: 'balanco_perna', label: 'Balanço de perna · 10 por lado' },
+    { anim: 'afundos', label: 'Afundo lento · 6 por lado' },
+    { anim: 'circ_bracos', label: 'Círculos de braços · 30 s' },
+  ],
+  'Ativação de core': [
+    { anim: 'deadbug', label: 'Dead bug · 10 por lado' },
+    { anim: 'prancha', label: 'Prancha · 30 s' },
+  ],
+  'Ativação de glúteos (mini band)': [
+    { anim: 'ponte', label: 'Ponte de glúteos · 15 vezes' },
+    { anim: 'agachamento', label: 'Agachamento com elástico nos joelhos · 15 vezes' },
+  ],
+  'Alongamento final (volta à calma)': [
+    { anim: 'posterior', label: 'Posterior da coxa · 30 s' },
+    { anim: 'quadriceps', label: 'Quadríceps em pé · 30 s por lado' },
+    { anim: 'peito_porta', label: 'Peito na parede · 30 s' },
+    { anim: 'crianca', label: 'Postura da criança · 40 s' },
+  ],
 };
 
 /** Palavras-chave para reconhecer exercícios de planos de personal (ex.: MyFit). */
@@ -124,6 +198,14 @@ const MATCH: [RegExp, string][] = [
   [/super.?(man|homem)|hiperextens[aã]o de lombar solo/i, 'superman'],
   [/escalador|mountain climber/i, 'escalador'],
   [/polichinelo|jumping jack/i, 'polichinelos'],
+  [/relaxamento|respira[cç][aã]o|postura da crian[cç]a|child.?s pose/i, 'crianca'],
+  [/alongamento (de )?posterior|isquiotibia/i, 'posterior'],
+  [/alongamento (de )?quadr[ií]ceps/i, 'quadriceps'],
+  [/alongamento (de )?peit/i, 'peito_porta'],
+  [/mobilidade de ombro|c[ií]rculos de bra[cç]o/i, 'circ_bracos'],
+  [/mobilidade de anca|mobilidade de quadril/i, 'anca'],
+  [/gato|camelo|cat.?cow/i, 'gato_vaca'],
+  [/dead.?bug/i, 'deadbug'],
 ];
 
 /** Animação para um nome de exercício qualquer, se houver correspondência. */
