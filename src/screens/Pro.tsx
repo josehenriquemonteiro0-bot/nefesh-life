@@ -4,7 +4,7 @@ import { shortDate } from '../domain/dates';
 import { GYM } from '../domain/gymData';
 import { EXERCISES } from '../domain/training';
 import { inviteText, proApi, type ProInfo, type ProLog, type ProStudent } from '../domain/pro';
-import { FOCUS_PRESETS, GROUP_NAME, addFromLibrary, applySplit, letter, searchExercises, splitName, type LibExercise } from '../domain/proLibrary';
+import { FOCUS_PRESETS, GROUP_NAME, WARMUPS, addFromLibrary, addWarmup, applySplit, isWarmup, letter, searchExercises, splitName, type LibExercise } from '../domain/proLibrary';
 import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/planRead';
 import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
@@ -92,6 +92,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const [err, setErr] = useState('');
   // lista de sugestões: fechada por omissão; abre sozinha só no treino vazio, no modo manual
   const [sugOpen, setSugOpen] = useState<boolean | null>(null);
+  const [warmAll, setWarmAll] = useState(false);
   const [, setVids] = useState(0);
   useEffect(() => { loadVideos().then(() => setVids((x) => x + 1)); }, []);
   const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
@@ -244,6 +245,21 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             {mode === 'manual' && <div className="chips" style={{ marginTop: 6 }}>
               {FOCUS_PRESETS.map((p) => <button key={p.label} className={`chip sm ${w.focus === p.label ? 'on' : ''}`} onClick={() => setW((x) => ({ ...x, focus: p.label }))}>{p.label}</button>)}
             </div>}
+            {mode === 'manual' && (
+              <div className="pro-warmup">
+                <div className="row" style={{ gap: 8 }}>
+                  <span className="small" style={{ fontWeight: 700 }}>🔥 Aquecimento{w.exercises.some(isWarmup) ? ' ✓' : ''}</span>
+                  {n > 1 && <label className="small mute" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={warmAll} onChange={(e) => setWarmAll(e.target.checked)} /> em todos os treinos</label>}
+                </div>
+                <div className="chips" style={{ marginTop: 6 }}>
+                  {WARMUPS.map((wu) => (
+                    <button key={wu.label} className={`chip sm ${w.exercises[0]?.name === wu.name && isWarmup(w.exercises[0]) ? 'on' : ''}`}
+                      onClick={() => setPlan({ ...plan, workouts: plan.workouts.map((x, j) => (j === i || warmAll ? addWarmup(x, wu.name, wu.min) : x)) })}>{wu.label}</button>
+                  ))}
+                </div>
+                <p className="small mute" style={{ margin: '6px 0 0' }}>Entra no início do treino. Outro aeróbico ou outra duração: escreva no exercício (ex.: “esteira”, “15 min”).</p>
+              </div>
+            )}
             {w.exercises.map((e, k) => (
               <div className="pro-ex" key={k}>
                 <div className="row" style={{ gap: 6, flexWrap: 'nowrap', alignItems: 'flex-start' }}>

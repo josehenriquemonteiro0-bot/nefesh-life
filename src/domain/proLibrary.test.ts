@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, addFromLibrary, applySplit, focusGroups, searchExercises, splitName } from './proLibrary';
+import { LIBRARY, addFromLibrary, addWarmup, applySplit, focusGroups, isWarmup, searchExercises, splitName } from './proLibrary';
 
 describe('NEFESH Life Pro: biblioteca e divisão', () => {
   it('divisão ABC cria 3 treinos com foco sugerido e mantém o que já existe', () => {
@@ -42,5 +42,13 @@ describe('NEFESH Life Pro: biblioteca e divisão', () => {
     expect(searchExercises('avanço', '')[0].name).toMatch(/Afundo/);
     expect(focusGroups('Aeróbico')).toContain('cardio');
     expect(searchExercises('', 'Cardio').every((e) => e.group === 'cardio')).toBe(true);
+  });
+  it('aquecimento: entra no início, substitui o anterior e tira linhas vazias', () => {
+    const [w] = applySplit([], 1);
+    const a = addWarmup({ ...w, exercises: [...w.exercises, { name: 'Supino reto com barra', sets: 4, reps: '10', load: '', rest: '90 s', notes: '' }] }, 'Bicicleta ergométrica', 10);
+    expect(a.exercises.map((e) => `${e.name} ${e.sets}x${e.reps}`)).toEqual(['Bicicleta ergométrica 1x10 min', 'Supino reto com barra 4x10']);
+    expect(isWarmup(a.exercises[0])).toBe(true);
+    const b = addWarmup(a, 'Passadeira / esteira (caminhada)', 10);
+    expect(b.exercises.map((e) => e.name)).toEqual(['Passadeira / esteira (caminhada)', 'Supino reto com barra']);
   });
 });

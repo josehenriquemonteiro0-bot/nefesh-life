@@ -77,6 +77,8 @@ Devolves o plano COMPLETO atualizado:
 - Aplica só o que foi pedido; mantém tudo o resto exatamente como está (inclusive a ordem).
 - "Treino A", "treino B"… referem-se aos treinos pela ordem; se pedir um treino que ainda não existe, cria-o com o nome "Treino X". Se disser a divisão ("ABC", "3 treinos"), cria esses treinos.
 - Junta os exercícios ao fim do treino indicado, pela ordem em que foram ditos. "Tira", "remove", "troca" mudam o que já existe.
+- Aeróbico de aquecimento ("10 minutos de bicicleta no início", "aquecer 5 min na esteira", "começa com elíptico"): vai para o INÍCIO do treino, com sets 1, reps com a duração ("10 min"), rest "" e notes a começar por "Aquecimento" (ex.: "Aquecimento" ou "Aquecimento, ritmo leve"). Só um aquecimento por treino: um novo substitui o anterior.
+- Aeróbico no fim ("15 minutos de esteira no fim", "fecha com bicicleta"): vai para o FIM do treino, com sets 1, reps com a duração e notes a começar por "Cardio final".
 - Usa, quando corresponder, o nome desta lista (corrige a transcrição e os nomes do Brasil: "extensora" → "Cadeira extensora", "búlgaro" → "Agachamento búlgaro", "esteira" → "Passadeira / esteira (caminhada)", "elíptico" ou "transport" → "Elíptica / elíptico (transport)", "pulley" → "Puxada à frente", "avanço" → "Afundo (passada)"): ${NAMES}. Se não houver correspondência, escreve o nome como o profissional disse, com maiúscula inicial.
 - "4 de 10", "4 por 10", "4x10" = 4 séries de 10 repetições. Sem séries/repetições ditas: usa 3 séries e "12" (ou "8-10" nos exercícios compostos pesados). Descanso por omissão "60 s" (compostos "90 s"); "1 minuto" = "60 s". Carga só se for dita ("20 quilos" = "20 kg").
 - As observações para o aluno vão em "notes" desse exercício, reescritas de forma curta e clara, dirigidas ao aluno (ex.: "Desça devagar, 3 s na descida").
@@ -126,7 +128,7 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
   const target = shape[current]?.name ?? 'Treino A';
   const step =
     stage === 'estrutura'
-      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana), "weeks" (duração do plano, se for dita) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa; mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
+      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana), "weeks" (duração do plano, se for dita) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa, com UMA exceção: um aquecimento dito para todos os treinos (ex.: "todos começam com 10 minutos de bicicleta") entra no início de cada treino, com as regras do aquecimento. Mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
       : stage === 'treino'
         ? `ETAPA 2 — EXERCÍCIOS do ${target}${shape[current]?.focus ? ` (foco: ${shape[current].focus})` : ''}. Tudo o que foi ditado é para o ${target}, mesmo que não diga o nome. Não mudes os outros treinos.`
         : `Treino que está a ser montado agora: ${target}`;
@@ -152,8 +154,12 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
     per_week = plan.per_week;
     notes = r.notes ? out.notes : plan.notes;
   } else if (stage === 'estrutura') {
-    // sem exercícios novos: os treinos que já existiam guardam os seus
-    workouts = all.map((w, k) => ({ ...w, exercises: (shape.find((x) => x.name === w.name) ?? shape[k])?.exercises ?? [] }));
+    // sem exercícios novos (os treinos que já existiam guardam os seus), exceto o aquecimento dito para todos
+    workouts = all.map((w, k) => {
+      const kept = (shape.find((x) => x.name === w.name) ?? shape[k])?.exercises ?? [];
+      const warm = w.exercises.find((e) => /^aquecimento/i.test(e.notes.trim()));
+      return { ...w, exercises: warm ? [warm, ...kept.filter((e) => !/^aquecimento/i.test(e.notes.trim()))].slice(0, 20) : kept };
+    });
   }
   // periodização: duração só muda na etapa da estrutura (ou no modo livre) se for dita; início e fases ficam
   const weeks = stage !== 'treino' && Number(r.weeks) > 0 ? Math.min(52, Math.round(Number(r.weeks))) : plan.weeks;

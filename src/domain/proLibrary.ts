@@ -212,3 +212,20 @@ export function addFromLibrary(w: PlanWorkout, e: LibExercise): PlanWorkout {
   else list.push(ex);
   return { ...w, exercises: list.slice(0, 20) };
 }
+
+/** Aquecimentos rápidos (aeróbico no início do treino). */
+export const WARMUPS: { name: string; min: number; label: string }[] = [
+  { name: 'Bicicleta ergométrica', min: 10, label: 'Bicicleta 10 min' },
+  { name: 'Passadeira / esteira (caminhada)', min: 10, label: 'Esteira 10 min' },
+  { name: 'Elíptica / elíptico (transport)', min: 10, label: 'Elíptica 10 min' },
+  { name: 'Remo ergómetro (remo indoor)', min: 5, label: 'Remo 5 min' },
+  { name: 'Corda de saltar / pular corda', min: 5, label: 'Corda 5 min' },
+];
+export const isWarmup = (e: { notes: string }) => /^aquecimento/i.test(e.notes.trim());
+
+/** Põe (ou troca) o aquecimento no início do treino; tira linhas vazias. */
+export function addWarmup(w: PlanWorkout, name: string, min: number): PlanWorkout {
+  const ex: WorkoutExercise = { name, sets: 1, reps: `${min} min`, load: '', rest: '', notes: 'Aquecimento' };
+  const rest = w.exercises.filter((e) => e.name.trim() && !isWarmup(e));
+  return { ...w, exercises: [ex, ...rest].slice(0, 20) };
+}

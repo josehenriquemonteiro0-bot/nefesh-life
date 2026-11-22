@@ -31,6 +31,12 @@ describe('NEFESH Life Pro com IA', () => {
     const p1 = r1.body.plan as { per_week: number; workouts: { name: string; focus: string; exercises: unknown[] }[] };
     expect(p1.per_week).toBe(5);
     expect(p1.workouts.map((w) => [w.name, w.focus, w.exercises.length])).toEqual([['Treino A', 'Superior', 0], ['Treino B', 'Inferior', 0]]);
+    // exceção: aquecimento dito para todos os treinos entra no início de cada um
+    const warm = { ...ex('Bicicleta ergométrica'), sets: 1, reps: '10 min', notes: 'Aquecimento' };
+    const est2 = { ...est, workouts: est.workouts.map((w) => ({ ...w, exercises: [warm, ex('Supino reto com barra')] })) };
+    const r1b = await dictate(fake(est2), 'm', kv(), 'isa', 'ip', { text: 'todos começam com 10 minutos de bicicleta', plan: { workouts: [] }, stage: 'estrutura' });
+    const p1b = r1b.body.plan as { workouts: { exercises: { name: string; reps: string }[] }[] };
+    expect(p1b.workouts.map((w) => w.exercises.map((e) => `${e.name} ${e.reps}`))).toEqual([['Bicicleta ergométrica 10 min'], ['Bicicleta ergométrica 10 min']]);
     const plan = { workouts: [{ name: 'Treino A', focus: 'Superior', day: '', exercises: [ex('Supino reto com barra')] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [] }], per_week: 5, notes: 'x' };
     const out = { workouts: [{ name: 'Treino A', focus: 'Mudado', day: '', exercises: [] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [ex('Agachamento livre'), ex('Mesa flexora')] }], per_week: 2, notes: '', summary: 'ok', doubts: '' };
     const r2 = await dictate(fake(out, calls), 'm', kv(), 'isa', 'ip', { text: 'agachamento livre e mesa flexora', plan, stage: 'treino', current: 1 });
