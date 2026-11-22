@@ -170,6 +170,8 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const showSugg = !!sugOpen;
   // ao entrar num treino: abre a lista só se estiver vazio e for o modo manual
   useEffect(() => { setSugOpen(mode === 'manual' && !!w && !filled(w)); }, [i, n, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // treino ainda sem nenhuma linha (ex.: criado na etapa 1 por voz): no modo manual mostra já uma linha para escrever
+  useEffect(() => { if (mode === 'manual' && w && !w.exercises.length) setW((x) => ({ ...x, exercises: [newEx()] })); }, [i, n, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <button className="btn ghost sm" onClick={leave}>← Alunos</button>
