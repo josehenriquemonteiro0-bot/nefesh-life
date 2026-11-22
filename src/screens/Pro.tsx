@@ -46,7 +46,8 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const [cur, setCur] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [sugOpen, setSugOpen] = useState(true);
+  // lista de sugestões: fechada por omissão; abre sozinha só no treino vazio, no modo manual
+  const [sugOpen, setSugOpen] = useState<boolean | null>(null);
   const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
   const setMode = (m: 'manual' | 'voz') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* sem armazenamento */ } };
   const top = () => document.querySelector('.pro-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -86,6 +87,9 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const templates = others.filter((o) => o.plan && o.code !== student.code);
   const sugg = w ? searchExercises('', w.focus, [], 60) : [];
   const has = (name: string) => !!w?.exercises.some((e) => e.name === name);
+  const showSugg = !!sugOpen;
+  // ao entrar num treino: abre a lista só se estiver vazio e for o modo manual
+  useEffect(() => { setSugOpen(mode === 'manual' && !!w && !filled(w)); }, [i, n, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <button className="btn ghost sm" onClick={onClose}>← Alunos</button>
@@ -143,22 +147,6 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             <div className="chips" style={{ marginTop: 6 }}>
               {FOCUS_PRESETS.map((p) => <button key={p.label} className={`chip sm ${w.focus === p.label ? 'on' : ''}`} onClick={() => setW((x) => ({ ...x, focus: p.label }))}>{p.label}</button>)}
             </div>
-            {sugg.length > 0 && (
-              <div className="pro-sugg">
-                <button className="link small inline" onClick={() => setSugOpen(!sugOpen)}>{sugOpen ? '▾' : '▸'} Sugestões para {w.focus.toLowerCase()} ({sugg.length})</button>
-                {sugOpen && (
-                  <ul>
-                    {sugg.map((e) => (
-                      <li key={e.name}>
-                        <button disabled={has(e.name) || w.exercises.length >= 20} onClick={() => setW((x) => addFromLibrary(x, e))}>
-                          <span>{has(e.name) ? '✓' : '+'} {e.name}</span><span className="small mute">{GROUP_NAME[e.group]} · {e.sets} × {e.reps}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
             {w.exercises.map((e, k) => (
               <div className="pro-ex" key={k}>
                 <div className="row" style={{ gap: 6, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
@@ -171,7 +159,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
                 <div className="pro-ex-grid">
                   <label className="small">Séries<input className="field sm" type="number" min={1} max={10} value={e.sets} onChange={(ev) => setE(k, { sets: Math.max(1, Math.min(10, Number(ev.target.value) || 1)) })} /></label>
                   <label className="small">Repetições<input className="field sm" value={e.reps} maxLength={30} placeholder="10 ou 8-12" onChange={(ev) => setE(k, { reps: ev.target.value })} /></label>
-                  <label className="small">Carga<input className="field sm" value={e.load} maxLength={30} placeholder="20 kg" onChange={(ev) => setE(k, { load: ev.target.value })} /></label>
+                  <label className="small">Carga<input className="field sm" value={e.load} maxLength={30} placeholder="kg" onChange={(ev) => setE(k, { load: ev.target.value })} /></label>
                   <label className="small">Descanso<input className="field sm" value={e.rest} maxLength={30} placeholder="60 s" onChange={(ev) => setE(k, { rest: ev.target.value })} /></label>
                 </div>
                 <div className="row" style={{ gap: 6, flexWrap: 'nowrap', marginTop: 6 }}>
@@ -183,11 +171,27 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
               </div>
             ))}
             <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>
+            {sugg.length > 0 && (
+              <div className="pro-sugg">
+                <button className="link small inline" onClick={() => setSugOpen(!showSugg)} aria-expanded={showSugg}>{showSugg ? '▾ Fechar a lista' : `+ Juntar da lista · ${w.focus.toLowerCase()}`}</button>
+                {showSugg && (
+                  <ul>
+                    {sugg.map((e) => (
+                      <li key={e.name}>
+                        <button disabled={has(e.name) || w.exercises.length >= 20} onClick={() => setW((x) => addFromLibrary(x, e))}>
+                          <span>{has(e.name) ? '✓' : '+'} {e.name}</span><span className="small mute">{GROUP_NAME[e.group]} · {e.sets} × {e.reps}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </section>
           {i === n - 1 && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
           {i < n - 1 ? (
             <>
-              <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); setSugOpen(true); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>
+              <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>
               <p />
               <button className="btn ghost full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar já'}</button>
             </>
