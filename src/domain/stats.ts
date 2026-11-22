@@ -199,7 +199,7 @@ export function report(S: AppState, now = new Date()) {
       const b = bodyOf(S.ans!);
       if (!b) return null;
       const tg = targetsFor(S);
-      return `Corpo: IMC ${fmtNum(b.bmi)} (${b.bmiLabel}) · gordura ${fmtNum(b.fat)}% (${b.fatMethod === 'medidas' ? 'medidas' : 'estimada pelo IMC'})\nObjetivo para o corpo: ${BODY_GOAL_LABEL[b.corpo]} · meta ${tg.kcal} kcal e ${tg.protein} g de proteína/dia (${tg.source === 'pro' ? `definida por ${tg.by}` : 'referência geral da app'})`;
+      return `Corpo: IMC ${fmtNum(b.bmi)} (${b.bmiLabel}) · gordura ${fmtNum(b.fat)}% (${b.fatMethod === 'avaliacao' ? 'medida em avaliação' : b.fatMethod === 'medidas' ? 'medidas' : 'estimada pelo IMC'})\nObjetivo para o corpo: ${BODY_GOAL_LABEL[b.corpo]} · meta ${tg.kcal} kcal e ${tg.protein} g de proteína/dia (${tg.source === 'pro' ? `definida por ${tg.by}` : 'referência geral da app'})`;
     })(),
     (() => {
       const days = Array.from({ length: 7 }, (_, i) => S.logs[keyDaysAgo(i, now)]?.meals).filter((m) => m && Object.values(m).some((x) => x?.length));

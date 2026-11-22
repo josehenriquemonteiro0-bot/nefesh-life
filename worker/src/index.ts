@@ -329,6 +329,18 @@ export default {
         'aluno/partilha': () => pro.studentShare(db, key!, b),
       };
       const key = pro.studentKey(uid, b.device);
+      // relatório de acompanhamento do próprio utilizador (Corpo): a IA lê as medidas; o documento não é guardado
+      if (action === 'corpo/relatorio') {
+        if (!key) return json({ error: 'pedido inválido' }, 400, h);
+        try {
+          const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+          const model = env.MODEL?.trim() || 'claude-opus-5-5';
+          const r = await proAI.readHealthReport(client, model, env.LIMITS, key, req.headers.get('CF-Connecting-IP') ?? 'sem-ip', b);
+          return json(r.body, r.status, h);
+        } catch (err) {
+          return apiError(err, h);
+        }
+      }
       if (student[action]) {
         if (!key) return json({ error: 'pedido inválido' }, 400, h);
         const r = await student[action]();

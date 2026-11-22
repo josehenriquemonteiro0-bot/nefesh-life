@@ -583,6 +583,9 @@ ul.plain li.row{gap:8px}
 .breath-circle b{font:700 34px Sora,sans-serif;color:var(--neon)}
 /* corpo */
 .body-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.body-inputs.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.body-inputs.three .hin input{font-size:16px}
+.hin input[type=date]{font-size:16px}
 .month-chart{width:100%;height:auto;margin-top:8px;color:var(--ink)}
 .photo-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .photo-compare figure{margin:0;display:grid;gap:4px;justify-items:center}

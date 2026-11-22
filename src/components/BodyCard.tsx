@@ -90,6 +90,7 @@ export function BodyCard({ a, onReassess }: { a: Answers; onReassess?: () => voi
           <span className="small mute">kcal/dia com atividade</span>
         </div>
       </div>
+      {b.muscleNote && <p className="small neon" style={{ margin: '12px 0 0' }}>💪 {b.muscleNote}</p>}
       {b.whtr !== undefined && (
         <p className="small" style={{ margin: '12px 0 0' }}>
           Relação cintura/altura: <b>{fmtNum(b.whtr)}</b>{' '}
@@ -127,10 +128,12 @@ export function BodyCard({ a, onReassess }: { a: Answers; onReassess?: () => voi
         Esta é uma referência geral, calculada por fórmulas. Para um plano feito para si, fale com um nutricionista: em <b>Acompanhamento profissional</b>, no Início, encontra a rede NEFESH.
       </p>
       <p className="small mute" style={{ margin: '10px 0 0' }}>
-        {b.fatMethod === 'medidas'
+        {b.fatMethod === 'avaliacao'
+          ? `% de gordura da sua avaliação de ${a.medidaData ? a.medidaData.split('-').reverse().join('/') : ''}${a.medidaPor ? ` (${a.medidaPor})` : ''}; metabolismo pela massa magra (Katch-McArdle).`
+          : b.fatMethod === 'medidas'
           ? '% de gordura pelas suas medidas (fórmula da Marinha dos EUA, margem de cerca de ±3%).'
           : '% de gordura estimada pelo IMC, idade e sexo. Com medidas de cintura e pescoço fica mais rigorosa.'}{' '}
-        Metabolismo pela fórmula de Mifflin-St Jeor. São estimativas, não um diagnóstico.
+        {b.fatMethod === 'avaliacao' ? '' : 'Metabolismo pela fórmula de Mifflin-St Jeor. '}São estimativas, não um diagnóstico.
       </p>
     </section>
   );

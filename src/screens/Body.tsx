@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { DecimalInput } from '../components/DecimalInput';
 import { bodyOf } from '../domain/body';
-import { MEASURES, MONTHS, bodySeries, change, monthly, photoKey, type Measure } from '../domain/bodyLog';
+import { BodyAdjust } from '../components/BodyAdjust';
+import { CHART_MEASURES, MEASURES, MONTHS, bodySeries, change, monthly, photoKey, type Measure } from '../domain/bodyLog';
 import { newId } from '../domain/care';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { deleteFile, loadFile, saveFile } from '../domain/files';
 import { compressImage } from '../domain/photo';
+import { MEASURES as PERIMETERS } from '../domain/proProfile';
 import { useStore } from '../state/store';
 
 /** Gráfico de linha mensal (pontos ligados; meses sem registo ficam vazios). */
@@ -131,7 +133,7 @@ export function Body() {
   const w = change(series, 'peso');
   const latest = Object.fromEntries(MEASURES.map(([k]) => [k, change(series, k)?.last])) as Record<Measure, number | undefined>;
   const b = S.ans ? bodyOf({ ...S.ans, ...(latest.peso ? { peso: latest.peso } : {}), ...(latest.cintura ? { cintura: latest.cintura } : {}), ...(latest.anca ? { anca: latest.anca } : {}), ...(latest.pescoco ? { pescoco: latest.pescoco } : {}) }) : null;
-  const unit = MEASURES.find((x) => x[0] === m)![2];
+  const unit = CHART_MEASURES.find((x) => x[0] === m)![2];
   const c = change(series, m);
   return (
     <>
@@ -145,13 +147,16 @@ export function Body() {
               {w.sinceStart ? `${w.sinceStart > 0 ? '+' : ''}${fmtNum(w.sinceStart)} kg desde ${shortDate(w.firstDate)}` : 'Sem variação desde o início'}
               {w.since30 !== null ? ` · ${w.since30 > 0 ? '+' : ''}${fmtNum(w.since30)} kg em 30 dias` : ''}
             </p>
-            {b && <p className="small" style={{ margin: '6px 0 0', opacity: 0.85 }}>IMC {fmtNum(b.bmi)} ({b.bmiLabel}) · gordura estimada {fmtNum(b.fat)}%</p>}
+            {b && <p className="small" style={{ margin: '6px 0 0', opacity: 0.85 }}>IMC {fmtNum(b.bmi)} ({b.bmiLabel}) · gordura {b.fatMethod === 'avaliacao' ? 'medida' : 'estimada'} {fmtNum(b.fat)}%</p>}
+            {b?.muscleNote && <p className="small" style={{ margin: '6px 0 0' }}>💪 {b.muscleNote}</p>}
           </>
         ) : (
           <h2 style={{ margin: 0 }}>Registe o seu peso e as medidas</h2>
         )}
         <p className="small" style={{ margin: '10px 0 0', opacity: 0.85 }}>Uma vez por semana, à mesma hora (de manhã, em jejum), é o suficiente. O que conta é a tendência, não o dia.</p>
       </section>
+
+      <BodyAdjust />
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Novo registo</h2>
@@ -192,7 +197,7 @@ export function Body() {
 
       <section className="card">
         <div className="chips" role="group" aria-label="Medida">
-          {MEASURES.map(([k, t]) => (
+          {CHART_MEASURES.filter(([k]) => k === 'peso' || series.some((e) => e[k] !== undefined)).map(([k, t]) => (
             <button key={k} className={`chip sm ${m === k ? 'on' : ''}`} aria-pressed={m === k} onClick={() => setM(k)}>{t}</button>
           ))}
         </div>
@@ -204,7 +209,8 @@ export function Body() {
             <summary>Histórico ({series.length})</summary>
             {[...series].reverse().slice(0, 24).map((e) => (
               <p key={e.date} style={{ margin: '6px 0 0' }}>
-                <b>{shortDate(e.date)}</b> · {MEASURES.filter(([k]) => e[k] !== undefined).map(([k, t, u]) => `${t.toLowerCase()} ${fmtNum(e[k]!)} ${u}`).join(' · ')}
+                <b>{shortDate(e.date)}</b> · {CHART_MEASURES.filter(([k]) => e[k] !== undefined).map(([k, t, u]) => `${t.toLowerCase()} ${fmtNum(e[k]!)} ${u === '%' ? '' : u}`.trim()).concat(PERIMETERS.filter(([k]) => e.medidas?.[k]).map(([k, t]) => `${t.toLowerCase()} ${fmtNum(e.medidas![k]!)} cm`)).join(' · ')}
+                {e.fonte && <span className="mute"> · {e.fonte === 'relatorio' ? 'relatório' : 'avaliação'}{e.por ? ` (${e.por})` : ''}</span>}
               </p>
             ))}
           </details>

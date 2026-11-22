@@ -137,6 +137,24 @@ export const inviteText = (student: string, code: string, pro: string, appUrl: s
 
 /** Avaliação física (PDF ou foto) → medidas para o perfil do aluno. O documento não é guardado. */
 export async function readAssessmentFile(file: File): Promise<{ found: boolean; profile?: StudentProfile }> {
+  return proApi('ia/avaliacao', await fileBody(file));
+}
+
+/** Relatório de acompanhamento do próprio utilizador (nutricionista, médico, academia). O documento não é guardado. */
+export interface HealthReport {
+  found: boolean;
+  sexo?: '' | 'f' | 'm';
+  idade?: number | null;
+  by?: string;
+  evals?: { date: string; altura: number | null; peso: number | null; gordura: number | null; magra: number | null; fc: number | null; medidas: Partial<Record<import('./proProfile').MeasureKey, number | null>> }[];
+  kcal?: number | null;
+  protein?: number | null;
+}
+export async function readHealthReport(file: File): Promise<HealthReport> {
+  return proApi('corpo/relatorio', await fileBody(file));
+}
+
+async function fileBody(file: File): Promise<{ file: string; media_type: string }> {
   const isPdf = file.type === 'application/pdf';
   if (isPdf && file.size > 6 * 1024 * 1024) throw new Error('O PDF é demasiado grande (máximo 6 MB).');
   let body: { file: string; media_type: string };
@@ -152,7 +170,7 @@ export async function readAssessmentFile(file: File): Promise<{ found: boolean; 
     const i = await compressImage(file, 1800);
     body = { file: i.data, media_type: i.media_type };
   } else throw new Error('Use um PDF ou uma fotografia.');
-  return proApi('ia/avaliacao', body);
+  return body;
 }
 
 /** Em que semana do plano periodizado está o aluno (e em que fase). null sem periodização. */

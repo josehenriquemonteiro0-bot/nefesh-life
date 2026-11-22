@@ -3,21 +3,85 @@
  * gráfico mensal e fotos de progresso privadas (só no telemóvel).
  */
 import { dayKey } from './dates';
+import type { MeasureKey } from './proProfile';
 import type { AppState } from './types';
 
-export type Measure = 'peso' | 'cintura' | 'anca' | 'pescoco';
+export type Measure = 'peso' | 'cintura' | 'anca' | 'pescoco' | 'gordura' | 'magra';
+/** Medidas do registo rápido. */
 export const MEASURES: [Measure, string, string][] = [
   ['peso', 'Peso', 'kg'],
   ['cintura', 'Cintura', 'cm'],
   ['anca', 'Anca', 'cm'],
   ['pescoco', 'Pescoço', 'cm'],
 ];
-export interface BodyEntry {
+/** Medidas com gráfico (as do registo rápido e as da avaliação completa). */
+export const CHART_MEASURES: [Measure, string, string][] = [...MEASURES, ['gordura', '% gordura', '%'], ['magra', 'Massa magra', 'kg']];
+export type BodyEntry = NonNullable<AppState['bodyLog']>[number];
+
+/** Uma avaliação completa (ajuste manual ou lida de um relatório). */
+export interface FullEval {
   date: string;
-  peso?: number;
-  cintura?: number;
-  anca?: number;
-  pescoco?: number;
+  altura?: number | null;
+  peso?: number | null;
+  gordura?: number | null;
+  magra?: number | null;
+  fc?: number | null;
+  medidas?: Partial<Record<MeasureKey, number | null>>;
+}
+
+const has = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+/**
+ * Guarda avaliações completas no histórico do corpo e atualiza o perfil (Answers) com a mais recente:
+ * cintura/quadril/pescoço passam para as medidas do dia a dia; a % de gordura medida passa a valer no cálculo.
+ */
+export function saveEvals(d: AppState, evals: FullEval[], fonte: 'manual' | 'relatorio', por = '', updateWeight = true) {
+  const valid = evals.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
+  const before = bodySeries(d);
+  const lastBefore = before[before.length - 1]?.date ?? '';
+  let log = [...(d.bodyLog ?? [])];
+  for (const e of valid) {
+    const m = e.medidas ?? {};
+    const rest = Object.fromEntries(Object.entries(m).filter(([k, v]) => has(v) && !['cintura', 'quadril', 'pescoco'].includes(k))) as Partial<Record<MeasureKey, number>>;
+    const entry: BodyEntry = {
+      ...(log.find((x) => x.date === e.date) ?? {}),
+      date: e.date,
+      ...(has(e.peso) ? { peso: e.peso } : {}),
+      ...(has(m.cintura) ? { cintura: m.cintura } : {}),
+      ...(has(m.quadril) ? { anca: m.quadril } : {}),
+      ...(has(m.pescoco) ? { pescoco: m.pescoco } : {}),
+      ...(has(e.altura) ? { altura: e.altura } : {}),
+      ...(has(e.gordura) ? { gordura: e.gordura } : {}),
+      ...(has(e.magra) ? { magra: e.magra } : {}),
+      ...(has(e.fc) ? { fc: e.fc } : {}),
+      ...(Object.keys(rest).length ? { medidas: rest } : {}),
+      fonte,
+      ...(por.trim() ? { por: por.trim().slice(0, 80) } : {}),
+    };
+    log = [...log.filter((x) => x.date !== e.date), entry];
+  }
+  d.bodyLog = log.sort((a, b) => a.date.localeCompare(b.date));
+  if (!d.ans || !valid.length) return;
+  const sorted = [...valid].sort((a, b) => a.date.localeCompare(b.date));
+  const newest = sorted[sorted.length - 1];
+  const ans = { ...d.ans };
+  const heightFrom = [...sorted].reverse().find((e) => has(e.altura));
+  if (heightFrom) ans.altura = heightFrom.altura!;
+  if (newest.date >= lastBefore) {
+    const m = newest.medidas ?? {};
+    if (updateWeight && has(newest.peso)) ans.peso = newest.peso;
+    if (has(m.cintura)) ans.cintura = m.cintura;
+    if (has(m.quadril)) ans.anca = m.quadril;
+    if (has(m.pescoco)) ans.pescoco = m.pescoco;
+  }
+  const fatFrom = [...sorted].reverse().find((e) => has(e.gordura));
+  if (fatFrom && fatFrom.date >= (ans.medidaData ?? '')) {
+    ans.gorduraMedida = fatFrom.gordura!;
+    ans.magraMedida = has(fatFrom.magra) ? fatFrom.magra : undefined;
+    ans.medidaData = fatFrom.date;
+    ans.medidaPor = por.trim().slice(0, 80) || undefined;
+  }
+  d.ans = ans;
 }
 
 /** Todas as medições por data (as do registo do corpo e as das reavaliações). */

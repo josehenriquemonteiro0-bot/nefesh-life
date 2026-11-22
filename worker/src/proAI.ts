@@ -248,3 +248,84 @@ export async function readAssessment(client: Anthropic, model: string, store: Co
   });
   return { status: 200, body: { found: true, profile } };
 }
+
+/* ───────── relatório de acompanhamento do próprio utilizador (nutricionista, médico, academia) ───────── */
+
+export const REPORT_LIMITS: Limits = { device: 6, ip: 20, global: 600 };
+const evalItem = {
+  type: 'object',
+  properties: {
+    data: { type: 'string', description: 'data desta avaliação AAAA-MM-DD; "" se não aparecer' },
+    altura_cm: n, peso_kg: n, gordura_pct: n, massa_magra_kg: n, fc_repouso: n,
+    ...Object.fromEntries(MEASURE_KEYS.map((k) => [k, n])),
+  },
+  required: ['data', 'altura_cm', 'peso_kg', 'gordura_pct', 'massa_magra_kg', 'fc_repouso', ...MEASURE_KEYS],
+  additionalProperties: false,
+} as const;
+const REPORT_SCHEMA = {
+  type: 'object',
+  properties: {
+    is_report: { type: 'boolean', description: 'true se o documento tem medidas corporais ou metas de um acompanhamento de saúde' },
+    sexo: { type: 'string', enum: ['f', 'm', ''] },
+    idade: n,
+    profissional: { type: 'string', description: 'quem fez o acompanhamento (nome e/ou clínica e profissão); "" se não aparecer' },
+    avaliacoes: { type: 'array', items: evalItem, description: 'uma por data/coluna, da mais antiga para a mais recente' },
+    kcal_dia: { ...n, description: 'meta de calorias por dia prescrita; -1 se não houver' },
+    proteina_g: { ...n, description: 'meta de proteína em g por dia prescrita; -1 se não houver' },
+  },
+  required: ['is_report', 'sexo', 'idade', 'profissional', 'avaliacoes', 'kcal_dia', 'proteina_g'],
+  additionalProperties: false,
+} as const;
+
+export const REPORT_SYSTEM = `Transcreves relatórios de acompanhamento de saúde que a própria pessoa anexa (nutricionista, médico, academia, bioimpedância; Portugal e Brasil).
+- Cada avaliação com data própria (ex.: colunas de um quadro de evolução) é um item de "avaliacoes", da mais antiga para a mais recente (no máximo 12).
+- Perímetros em centímetros: pescoço, ombros, peito/tórax, cintura, abdómen, quadril (anca), braço direito/esquerdo (se só houver um, braco_d; prefere relaxado), antebraço, coxa direita/esquerda (se só houver uma, coxa_d), panturrilha.
+- % de gordura, massa magra ou "massa livre de gordura" (kg), FC em repouso, peso (kg), altura (cm; em metros multiplica por 100).
+- Metas diárias (calorias, proteína) só se o profissional as prescreveu.
+- Converte vírgulas decimais. Não inventes valores: -1 quando não aparecer. Não interpretes nem comentes. Ignora análises de sangue e outros dados que não estão no esquema.`;
+
+export async function readHealthReport(client: Anthropic, model: string, store: CounterStore, key: string, ip: string, b: Record<string, unknown>): Promise<R> {
+  const data = String(b.file ?? '');
+  const media = String(b.media_type ?? '');
+  if (!data || data.length > MAX_FILE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(data)) return { status: 400, body: { error: 'Ficheiro inválido ou demasiado grande (máximo 6 MB).' } };
+  const content: Anthropic.Beta.BetaContentBlockParam[] = [];
+  if (media === 'application/pdf') content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
+  else if (['image/jpeg', 'image/png', 'image/webp'].includes(media)) content.push({ type: 'image', source: { type: 'base64', media_type: media as 'image/jpeg', data } });
+  else return { status: 400, body: { error: 'Use um PDF ou uma fotografia.' } };
+  const allowed = await check(store, REPORT_LIMITS, key, ip, new Date(), 'ur');
+  if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de leituras de hoje. Tente amanhã.' } };
+  content.push({ type: 'text', text: 'Transcreve as medidas e metas deste relatório.' });
+  const response = await client.beta.messages.create({
+    model,
+    max_tokens: 8000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    system: REPORT_SYSTEM,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: REPORT_SCHEMA as never } },
+    messages: [{ role: 'user', content }],
+  });
+  if (response.stop_reason === 'refusal') return { status: 422, body: { error: 'Não foi possível ler este documento.' } };
+  const text = response.content.find((x) => x.type === 'text');
+  if (!text || text.type !== 'text') return { status: 502, body: { error: 'resposta vazia' } };
+  await count(store, REPORT_LIMITS, key, ip, new Date(), 'ur');
+  return { status: 200, body: cleanReport(JSON.parse(text.text)) };
+}
+
+/** Passa a resposta da IA pelas regras do perfil (limites, arredondamentos) e ordena por data. */
+export function cleanReport(r: Record<string, unknown>) {
+  if (!r.is_report) return { found: false };
+  const v = (o: Record<string, unknown>, k: string) => (typeof o[k] === 'number' && (o[k] as number) >= 0 ? o[k] : null);
+  const evals = (Array.isArray(r.avaliacoes) ? r.avaliacoes : []).slice(0, 12).map((x) => {
+    const o = x as Record<string, unknown>;
+    const p = cleanProfile({
+      altura: v(o, 'altura_cm'), peso: v(o, 'peso_kg'), gordura: v(o, 'gordura_pct'), magra: v(o, 'massa_magra_kg'), fc: v(o, 'fc_repouso'), dataAval: o.data,
+      medidas: Object.fromEntries(MEASURE_KEYS.map((k) => [k, v(o, k)])),
+    });
+    return { date: p.dataAval, altura: p.altura, peso: p.peso, gordura: p.gordura, magra: p.magra, fc: p.fc, medidas: p.medidas };
+  }).filter((e) => e.peso || e.gordura || e.magra || Object.keys(e.medidas ?? {}).length)
+    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+  const top = cleanProfile({ sexo: r.sexo, idade: v(r, 'idade') });
+  const kcal = typeof r.kcal_dia === 'number' && r.kcal_dia >= 800 && r.kcal_dia <= 6000 ? Math.round(r.kcal_dia) : null;
+  const protein = typeof r.proteina_g === 'number' && r.proteina_g >= 20 && r.proteina_g <= 400 ? Math.round(r.proteina_g) : null;
+  return { found: evals.length > 0 || !!kcal, sexo: top.sexo, idade: top.idade, by: String(r.profissional ?? '').replace(/\s+/g, ' ').trim().slice(0, 80), evals, kcal, protein };
+}

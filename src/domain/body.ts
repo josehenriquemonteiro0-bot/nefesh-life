@@ -33,7 +33,9 @@ export interface BodyResult {
   bmiLabel: string;
   bmiLevel: 'baixo' | 'normal' | 'excesso' | 'obesidade';
   fat: number;
-  fatMethod: 'medidas' | 'imc';
+  fatMethod: 'avaliacao' | 'medidas' | 'imc';
+  /** quando o IMC sobe por causa da massa muscular (gordura medida não elevada) */
+  muscleNote?: string;
   fatLabel: string;
   /** relação cintura/altura, se houver medida de cintura */
   whtr?: number;
@@ -101,6 +103,13 @@ export function mifflin(sex: 'f' | 'm', kg: number, cm: number, age: number) {
   return 10 * kg + 6.25 * cm - 5 * age + (sex === 'm' ? 5 : -161);
 }
 
+/** % de gordura medida (avaliação ou relatório) ainda válida: até 1 ano. */
+export function measuredFat(a: Answers, now = new Date()): number | null {
+  if (!a.gorduraMedida || !a.medidaData) return null;
+  const age = (now.getTime() - new Date(`${a.medidaData}T00:00:00`).getTime()) / 864e5;
+  return age >= -1 && age <= 365 ? a.gorduraMedida : null;
+}
+
 /** Composição corporal e metas diárias. Precisa de peso e altura. */
 export function bodyOf(a: Answers): BodyResult | null {
   const kg = a.peso;
@@ -111,10 +120,17 @@ export function bodyOf(a: Answers): BodyResult | null {
   const bmi = bmiOf(kg, cm);
   const [bmiLevel, bmiLabel] = bmiCategory(bmi);
 
-  const navy = a.cintura && a.pescoco ? navyFat(sex, cm, a.cintura, a.pescoco, a.anca) : null;
-  const fat = Math.max(3, Math.min(60, navy ?? bmiFat(bmi, age, sex)));
+  const measured = measuredFat(a);
+  const navy = !measured && a.cintura && a.pescoco ? navyFat(sex, cm, a.cintura, a.pescoco, a.anca) : null;
+  const fat = Math.max(3, Math.min(60, measured ?? navy ?? bmiFat(bmi, age, sex)));
+  const label = fatLabel(fat, sex);
+  const muscleNote = measured !== null && (bmiLevel === 'excesso' || bmiLevel === 'obesidade') && label !== 'Elevada'
+    ? `O IMC diz "${bmiLabel.toLowerCase()}", mas a sua gordura medida (${r1(fat).toString().replace('.', ',')}%) está ${label === 'Média' ? 'na média' : 'em boa forma'}: parte do peso é massa muscular. Para si, conta mais a % de gordura do que o IMC.`
+    : undefined;
 
-  const bmr = mifflin(sex, kg, cm, age);
+  // com a massa magra conhecida, o metabolismo basal é mais certo pela fórmula de Katch-McArdle
+  const lean = measured !== null ? (a.magraMedida && Math.abs(a.magraMedida - kg * (1 - fat / 100)) < 8 ? a.magraMedida : kg * (1 - fat / 100)) : null;
+  const bmr = lean ? 370 + 21.6 * lean : mifflin(sex, kg, cm, age);
   const tdee = bmr * (ACTIVITY[a.ativ ?? ''] ?? 1.375);
   const goal: Goal = a.goal ?? 'energia';
   const corpo = bodyGoalOf(a, bmiLevel);
@@ -153,8 +169,9 @@ export function bodyOf(a: Answers): BodyResult | null {
     bmiLabel,
     bmiLevel,
     fat: r1(fat),
-    fatMethod: navy !== null ? 'medidas' : 'imc',
-    fatLabel: fatLabel(fat, sex),
+    fatMethod: measured !== null ? 'avaliacao' : navy !== null ? 'medidas' : 'imc',
+    fatLabel: label,
+    muscleNote,
     whtr: a.cintura ? Math.round((a.cintura / cm) * 100) / 100 : undefined,
     bmr: Math.round(bmr),
     tdee: Math.round(tdee),

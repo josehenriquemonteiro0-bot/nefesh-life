@@ -29,6 +29,11 @@ export interface Answers {
   pescoco?: number;
   anca?: number;
   peso?: number;
+  /** % de gordura e massa magra medidas (avaliação física, bioimpedância, relatório), com a data e quem mediu */
+  gorduraMedida?: number;
+  magraMedida?: number;
+  medidaData?: string;
+  medidaPor?: string;
   ativ?: string;
   sonoh?: string;
   sonoq?: number;
@@ -216,7 +221,13 @@ export interface AppState {
   memory?: { facts?: { id: string; text: string; at: string }[]; hidden?: string[] };
   reminders?: { id: string; date: string; time: string; text: string }[];
   /** peso e medidas ao longo do tempo (cm, kg) */
-  bodyLog?: { date: string; peso?: number; cintura?: number; anca?: number; pescoco?: number }[];
+  bodyLog?: {
+    date: string; peso?: number; cintura?: number; anca?: number; pescoco?: number;
+    /** avaliação mais completa (ajuste manual ou relatório anexado) */
+    altura?: number; gordura?: number; magra?: number; fc?: number;
+    medidas?: Partial<Record<import('./proProfile').MeasureKey, number>>;
+    fonte?: 'manual' | 'relatorio'; por?: string;
+  }[];
   /** fotos de progresso (só neste telemóvel, na base de ficheiros local) */
   progressPhotos?: { id: string; date: string; pose: 'frente' | 'lado' | 'costas' }[];
   /** saúde da mulher: modo, ciclo e menstruação habituais, data prevista do parto */
