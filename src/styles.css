@@ -742,6 +742,12 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .pro-mic.on{background:#ff6b6b;color:#fff;animation:micPulse 1.2s ease-out infinite}
 .pro-mic:disabled{opacity:.5}
 .pro-voice textarea{width:100%;box-sizing:border-box}
+.pro-steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pro-steps>*{font:inherit;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--mute)}
+.pro-steps button{cursor:pointer}
+.pro-steps .done{color:var(--neon);border-color:rgba(0,254,138,.35)}
+.pro-steps .on{background:var(--neon);color:#00140d;border-color:var(--neon)}
+.pro-q{margin:0 0 10px;font-size:15.5px;line-height:1.35}
 .pro-review-list{margin:0;padding-left:18px;display:grid;gap:4px}
 .pro-review-note{display:flex;gap:8px;align-items:flex-start;margin:6px 0}
 .pro-review-note input{margin-top:3px}

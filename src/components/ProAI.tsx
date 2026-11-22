@@ -22,34 +22,48 @@ export function applyReviewNotes(plan: ParsedWorkoutPlan, notes: ReviewNote[]): 
   };
 }
 
-const EXAMPLES = [
-  '“Treino A: agachamento búlgaro 4 de 10, cadeira extensora 3 de 12 com 2 segundos parado em cima, leg press 4 de 10 com 80 quilos.”',
-  '“No treino B quero puxada à frente 4 de 10, remada baixa e rosca martelo. Na remada, avisa para não balançar o tronco.”',
-  '“Divisão ABC, três vezes por semana. Aquecer 10 minutos na esteira antes.”',
-];
+const MAX_MS = 120000;
 
-/** Ditar o treino por voz (ou escrever): a IA monta e o profissional confere em baixo. */
-export function DictationCard({ plan, current, onPlan }: { plan: ParsedWorkoutPlan; current: number; onPlan: (p: ParsedWorkoutPlan) => void }) {
+/**
+ * Ditado guiado por etapas:
+ * 1) estrutura — quantos dias e o que treina em cada dia (cria Treino A, B, C… com o foco);
+ * 2) um treino de cada vez — os exercícios desse treino.
+ * O microfone não corta nas pausas: ouve até tocar para parar (máx. 2 min).
+ */
+export function DictationCard({ plan, current, setCurrent, onPlan }: { plan: ParsedWorkoutPlan; current: number; setCurrent: (i: number) => void; onPlan: (p: ParsedWorkoutPlan) => void }) {
   const { S } = useStore();
   const [text, setText] = useState('');
   const [partial, setPartial] = useState('');
   const [on, setOn] = useState(false);
+  const [secs, setSecs] = useState(0);
   const [busy, setBusy] = useState<'' | 'ouvir' | 'montar'>('');
-  const [msg, setMsg] = useState<{ ok?: string; doubt?: string; err?: string }>({});
+  const [msg, setMsg] = useState<{ ok?: string; doubt?: string; err?: string; next?: boolean }>({});
+  const [restructure, setRestructure] = useState(false);
   const rec = useRef<Listening | null>(null);
-  useEffect(() => () => rec.current?.abort(), []);
+  const userStop = useRef(false);
+  useEffect(() => () => { userStop.current = true; rec.current?.abort(); }, []);
+  useEffect(() => {
+    if (!on) return;
+    setSecs(0);
+    const t0 = Date.now();
+    const id = window.setInterval(() => setSecs(Math.round((Date.now() - t0) / 1000)), 500);
+    return () => window.clearInterval(id);
+  }, [on]);
+  const n = plan.workouts.length;
+  const stage: 'estrutura' | 'treino' = !n || restructure ? 'estrutura' : 'treino';
+  const w = plan.workouts[current];
   const add = (t: string) => setText((x) => `${x}${x && !/\s$/.test(x) ? ' ' : ''}${t.trim()}`);
-  const stop = () => rec.current?.stop();
+  const stop = () => { userStop.current = true; rec.current?.stop(); };
   const start = () => {
     setMsg({});
     primeAudio();
+    userStop.current = false;
     if (shouldRecord(isIOS())) {
       setOn(true);
       rec.current = record({
-        onDone: async (audio, spoke) => {
+        onDone: async (audio) => {
           setOn(false);
           rec.current = null;
-          if (!spoke) return setMsg({ err: 'Não ouvi nada. Toque no microfone e fale perto do telemóvel.' });
           setBusy('ouvir');
           try {
             const t = await transcribe(audio, PHOTO_API, deviceId());
@@ -62,57 +76,93 @@ export function DictationCard({ plan, current, onPlan }: { plan: ParsedWorkoutPl
           }
         },
         onError: (m) => { setOn(false); rec.current = null; setMsg({ err: m }); },
-      }, { silenceMs: 4000, maxMs: 90000 });
+      }, { manual: true, maxMs: MAX_MS });
       return;
     }
     if (!speechSupported()) return setMsg({ err: 'Aqui o microfone da app não está disponível: toque no campo de texto e use o 🎤 do teclado para ditar.' });
-    const r = listen(voiceLang(S), {
-      onText: (t) => setPartial(t),
-      onDone: (t) => { setOn(false); setPartial(''); rec.current = null; if (t) add(t); },
-      onError: (m) => { setOn(false); setPartial(''); rec.current = null; setMsg({ err: m }); },
-    }, { continuous: true });
-    if (!r) return setMsg({ err: 'Não foi possível usar o microfone. Use o 🎤 do teclado no campo de texto.' });
-    rec.current = r;
+    const t0 = Date.now();
+    // o reconhecimento do navegador pára sozinho nas pausas: volta a ouvir até a pessoa tocar para parar
+    const go = (): boolean => {
+      const r = listen(voiceLang(S), {
+        onText: (t) => setPartial(t),
+        onDone: (t) => {
+          setPartial('');
+          if (t) add(t);
+          if (!userStop.current && Date.now() - t0 < MAX_MS && go()) return;
+          setOn(false);
+          rec.current = null;
+        },
+        onError: (m, code) => {
+          setPartial('');
+          if (code === 'no-speech' && !userStop.current && Date.now() - t0 < MAX_MS && go()) return;
+          setOn(false);
+          rec.current = null;
+          setMsg({ err: m });
+        },
+      }, { continuous: true });
+      if (!r) return false;
+      rec.current = r;
+      return true;
+    };
+    if (!go()) return setMsg({ err: 'Não foi possível usar o microfone. Use o 🎤 do teclado no campo de texto.' });
     setOn(true);
   };
   const build = async () => {
     setBusy('montar');
     setMsg({});
     try {
-      const r = await proApi<{ plan: ParsedWorkoutPlan; summary: string; doubts: string }>('ia/ditado', { text, plan, current });
+      const r = await proApi<{ plan: ParsedWorkoutPlan; summary: string; doubts: string }>('ia/ditado', { text, plan, current, stage });
       onPlan({ ...plan, ...r.plan, is_workout: true, professional: plan.professional });
       setText('');
-      setMsg({ ok: r.summary || 'Treino atualizado. Confira em baixo.', doubt: r.doubts || undefined });
+      if (stage === 'estrutura') {
+        setRestructure(false);
+        setCurrent(0);
+        setMsg({ ok: r.summary || 'Estrutura feita.', doubt: r.doubts || undefined });
+      } else setMsg({ ok: r.summary || 'Treino atualizado. Confira em baixo.', doubt: r.doubts || undefined, next: true });
     } catch (e) {
       setMsg({ err: (e as Error).message });
     } finally {
       setBusy('');
     }
   };
-  const wname = plan.workouts[current]?.name;
+  const question = stage === 'estrutura'
+    ? { n: '1', t: 'Quantos dias o aluno vai treinar e o que treina em cada dia?', ex: '“5 vezes por semana. Treino A superior, treino B inferior, treino C peito e tríceps, treino D costas e bíceps, treino E pernas e glúteos.”' }
+    : { n: '2', t: `${w?.name ?? 'Treino'}${w?.focus ? ` · ${w.focus.toLowerCase()}` : ''}: diga os exercícios, séries, repetições, carga e observações.`, ex: '“Agachamento livre 4 de 10 com 40 quilos. Cadeira extensora 3 de 12, segurar 2 segundos em cima. Mesa flexora 3 de 12.”' };
+  const last = current >= n - 1;
   return (
     <section className="card pro-voice">
-      <h3 style={{ marginTop: 0 }}>🎙️ Ditar o treino{wname ? <span className="small mute" style={{ fontWeight: 400 }}> · agora no {wname}</span> : null}</h3>
-      <p className="small mute" style={{ marginTop: 0 }}>Fale como falaria com o aluno: o treino, os exercícios, séries e repetições, carga, descanso e as observações. A IA monta e você confere em baixo.</p>
+      <div className="pro-steps" aria-label="Etapas">
+        <span className={stage === 'estrutura' ? 'on' : n ? 'done' : ''}>{n && stage !== 'estrutura' ? '✓ ' : ''}Estrutura</span>
+        {plan.workouts.map((x, k) => (
+          <button key={k} className={stage === 'treino' && k === current ? 'on' : x.exercises.some((e) => e.name.trim()) ? 'done' : ''} onClick={() => { setRestructure(false); setCurrent(k); setMsg({}); }}>
+            {x.exercises.some((e) => e.name.trim()) ? '✓ ' : ''}{String.fromCharCode(65 + k)}
+          </button>
+        ))}
+      </div>
+      <p className="pro-q"><b>{question.n === '1' ? 'Etapa 1' : 'Etapa 2'}</b> · {question.t}</p>
       <div className="row" style={{ gap: 10, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
         <button className={`pro-mic ${on ? 'on' : ''}`} onClick={on ? stop : start} disabled={!!busy} aria-label={on ? 'Parar de ouvir' : 'Começar a ditar'}>{on ? '■' : '🎙️'}</button>
-        <span className="small">{on ? 'A ouvir… toque para parar (pode fazer pausas).' : busy === 'ouvir' ? 'A passar a texto…' : 'Toque e fale. Pode ditar várias vezes antes de montar.'}</span>
+        <span className="small">{on ? <>A ouvir… <b>{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, '0')}</b><br />Fale à vontade, com pausas. Toque em ■ quando acabar.</> : busy === 'ouvir' ? 'A passar a texto…' : 'Toque no microfone e responda.'}</span>
       </div>
       <textarea className="field" rows={4} style={{ marginTop: 10 }} maxLength={4000} value={on && partial ? `${text}${text ? ' ' : ''}${partial}` : text} onChange={(e) => setText(e.target.value)}
-        placeholder="O que ditar aparece aqui; também pode escrever ou corrigir." aria-label="Texto do ditado" />
+        placeholder="O que disser aparece aqui; também pode escrever ou corrigir." aria-label="Texto do ditado" />
       <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
-        <button className="btn sm" disabled={!text.trim() || !!busy || on} onClick={build}>{busy === 'montar' ? 'A montar…' : '✨ Montar com IA'}</button>
-        {text && !busy && <button className="link small inline" onClick={() => setText('')}>Limpar</button>}
+        <button className="btn sm" disabled={!text.trim() || !!busy || on} onClick={build}>{busy === 'montar' ? 'A montar…' : stage === 'estrutura' ? '✨ Criar os treinos' : `✨ Montar o ${w?.name ?? 'treino'}`}</button>
+        {text && !busy && !on && <button className="link small inline" onClick={() => setText('')}>Limpar</button>}
       </div>
       {msg.ok && <p className="small neon" style={{ marginBottom: 0 }}>✓ {msg.ok}</p>}
       {msg.doubt && <p className="small gold" style={{ marginBottom: 0 }}>Confira: {msg.doubt}</p>}
       {msg.err && <p className="small warn-t" style={{ marginBottom: 0 }}>{msg.err}</p>}
-      {!text && !msg.ok && (
-        <details className="small" style={{ marginTop: 8 }}>
-          <summary className="mute">Exemplos do que pode dizer</summary>
-          {EXAMPLES.map((x) => <p key={x} className="mute" style={{ margin: '6px 0' }}>{x}</p>)}
-        </details>
+      {msg.next && !text && (
+        <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
+          {!last && <button className="btn sm" onClick={() => { setCurrent(current + 1); setMsg({}); }}>Próximo: {plan.workouts[current + 1].name} →</button>}
+          {last && <button className="btn sm" onClick={() => { setMsg({}); document.querySelector('.pro-end')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Rever e enviar ao aluno ↓</button>}
+          <span className="small mute">ou dite mais para o {w?.name}</span>
+        </div>
       )}
+      {!text && !msg.ok && !on && <p className="small mute" style={{ margin: '8px 0 0' }}>Exemplo: {question.ex}</p>}
+      {stage === 'treino' && !on && <button className="link small inline" style={{ marginTop: 8 }} onClick={() => { setRestructure(true); setMsg({}); }}>Refazer a etapa 1 (dias e divisão)</button>}
+      {restructure && n > 0 && <button className="link small inline" style={{ marginTop: 8 }} onClick={() => setRestructure(false)}>Manter a estrutura atual</button>}
     </section>
   );
 }

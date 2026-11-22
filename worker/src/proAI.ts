@@ -119,15 +119,36 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
   // os treinos vazios também contam (a divisão já escolhida)
   const raw = (b.plan as { workouts?: { name?: string; focus?: string }[] } | undefined)?.workouts ?? [];
   const shape = raw.slice(0, 10).map((w, i) => plan.workouts.find((x) => x.name === w.name) ?? { name: String(w.name ?? `Treino ${String.fromCharCode(65 + i)}`), focus: String(w.focus ?? ''), day: '', exercises: [] });
-  const current = Number(b.current) || 0;
-  const user = `Plano atual:\n${JSON.stringify({ ...plan, workouts: shape })}\n\nTreino que está a ser montado agora: ${shape[current]?.name ?? 'Treino A'}\n\nO que o profissional ditou:\n"""${text}"""`;
+  const current = Math.max(0, Math.min(shape.length - 1, Number(b.current) || 0));
+  const stage = b.stage === 'estrutura' ? 'estrutura' : b.stage === 'treino' && shape.length ? 'treino' : 'livre';
+  const target = shape[current]?.name ?? 'Treino A';
+  const step =
+    stage === 'estrutura'
+      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa; mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos.`
+      : stage === 'treino'
+        ? `ETAPA 2 — EXERCÍCIOS do ${target}${shape[current]?.focus ? ` (foco: ${shape[current].focus})` : ''}. Tudo o que foi ditado é para o ${target}, mesmo que não diga o nome. Não mudes os outros treinos.`
+        : `Treino que está a ser montado agora: ${target}`;
+  const user = `Plano atual:\n${JSON.stringify({ ...plan, workouts: shape })}\n\n${step}\n\nO que o profissional ditou:\n"""${text}"""`;
   const r = await ask<Plan & { summary: string; doubts: string }>(client, model, DICTATE_SYSTEM, user, PLAN_SCHEMA, 'medium');
   if (!r) return { status: 502, body: { error: 'A IA não conseguiu montar. Tente dizer de outra forma.' } };
   await count(store, DICTATE_LIMITS, uid, ip, new Date(), 'pd');
   const out = cleanPlan({ ...r, professional: plan.professional });
   // mantém treinos vazios que a IA devolveu (divisão escolhida, ainda por preencher)
-  const workouts = r.workouts.slice(0, 10).map((w) => out.workouts.find((x) => x.name === w.name) ?? { name: String(w.name).slice(0, 60) || 'Treino', focus: String(w.focus ?? '').slice(0, 80), day: String(w.day ?? '').slice(0, 30), exercises: [] });
-  return { status: 200, body: { plan: { ...out, workouts }, summary: String(r.summary ?? '').slice(0, 300), doubts: String(r.doubts ?? '').slice(0, 300) } };
+  const all = r.workouts.slice(0, 10).map((w) => out.workouts.find((x) => x.name === w.name) ?? { name: String(w.name).slice(0, 60) || 'Treino', focus: String(w.focus ?? '').slice(0, 80), day: String(w.day ?? '').slice(0, 30), exercises: [] });
+  let workouts = all;
+  let per_week = out.per_week;
+  let notes = out.notes;
+  if (stage === 'treino') {
+    // só o treino desta etapa muda; o resto fica exatamente como estava
+    const mine = all.find((w) => w.name === target) ?? all[current];
+    workouts = shape.map((w, k) => (k === current && mine ? { ...mine, name: w.name } : w));
+    per_week = plan.per_week;
+    notes = r.notes ? out.notes : plan.notes;
+  } else if (stage === 'estrutura') {
+    // sem exercícios novos: os treinos que já existiam guardam os seus
+    workouts = all.map((w, k) => ({ ...w, exercises: (shape.find((x) => x.name === w.name) ?? shape[k])?.exercises ?? [] }));
+  }
+  return { status: 200, body: { plan: { ...out, per_week, notes, workouts }, summary: String(r.summary ?? '').slice(0, 300), doubts: String(r.doubts ?? '').slice(0, 300) } };
 }
 
 /** Revisão técnica: observações gerais + notas por exercício. */

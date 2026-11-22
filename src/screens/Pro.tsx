@@ -103,7 +103,8 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
         <button role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}><b>✍️ Manual</b><span>escrever e escolher</span></button>
         <button role="tab" aria-selected={mode === 'voz'} className={mode === 'voz' ? 'on' : ''} onClick={() => setMode('voz')}><b>🎙️ Por voz</b><span>ditar, a IA monta</span></button>
       </div>
-      {mode === 'voz' && <DictationCard plan={plan} current={i} onPlan={(p) => { setPlan(p); setErr(''); }} />}
+      {mode === 'voz' && <DictationCard plan={plan} current={i} setCurrent={setCur} onPlan={(p) => { setPlan(p); setErr(''); }} />}
+      {(mode === 'manual' || n > 0) && (
       <section className="card">
         <h3 style={{ marginTop: 0 }}>{n ? 'Divisão do treino' : 'Quantos treinos diferentes?'}</h3>
         <div className="chips">
@@ -123,6 +124,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
           </>
         )}
       </section>
+      )}
       {w && (
         <>
           <div className="pro-tabs" role="tablist">
@@ -182,7 +184,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             ))}
             <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>
           </section>
-          {i === n - 1 && plan.workouts.some(filled) && <><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
+          {i === n - 1 && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
           {i < n - 1 ? (
             <>
               <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); setSugOpen(true); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>

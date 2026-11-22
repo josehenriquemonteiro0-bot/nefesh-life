@@ -219,9 +219,10 @@ const SILENCE_MS = 1600;
 
 /**
  * Grava a frase da pessoa e para sozinha quando ela se cala (ou ao fim de 60 s).
+ * Com `manual` (ditados longos) só para ao tocar ou ao fim de maxMs: as pausas não cortam.
  * onDone recebe o áudio e se houve fala.
  */
-export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string, code?: string) => void; onLevel?: (rms: number) => void }, opts: { silenceMs?: number; maxMs?: number } = {}): Listening {
+export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string, code?: string) => void; onLevel?: (rms: number) => void }, opts: { silenceMs?: number; maxMs?: number; manual?: boolean } = {}): Listening {
   const silenceMs = opts.silenceMs ?? SILENCE_MS;
   let rec: MediaRecorder | null = null;
   let stream: MediaStream | null = null;
@@ -268,7 +269,7 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
     };
     rec.onstop = () => {
       cleanup();
-      if (!aborted) h.onDone(new Blob(chunks, { type: rec?.mimeType || mime || 'audio/mp4' }), spoke || !ctx);
+      if (!aborted) h.onDone(new Blob(chunks, { type: rec?.mimeType || mime || 'audio/mp4' }), !!opts.manual || spoke || !ctx);
     };
     rec.start(250);
     timer = window.setTimeout(finish, opts.maxMs ?? 60000);
@@ -297,10 +298,10 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
           quietSince = 0;
         } else if (spoke) {
           quietSince ||= now;
-          if (now - quietSince > silenceMs) return finish();
+          if (!opts.manual && now - quietSince > silenceMs) return finish();
         }
         // 8 s sem falar: desiste
-        if (!spoke && now - t0 > 8000) return finish();
+        if (!opts.manual && !spoke && now - t0 > 8000) return finish();
         raf = requestAnimationFrame(tick);
       };
       tick();

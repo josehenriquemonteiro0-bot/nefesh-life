@@ -23,6 +23,24 @@ describe('NEFESH Life Pro com IA', () => {
     expect(r.body.summary).toMatch(/Juntei/);
     expect((await dictate(fake(out), 'm', kv(), 'isa', 'ip', { text: '' })).status).toBe(400);
   });
+  it('por etapas: a estrutura só cria os treinos; a etapa do treino B só muda o B', async () => {
+    const calls: { messages: { content: string }[] }[] = [];
+    const est = { workouts: [{ name: 'Treino A', focus: 'Superior', day: 'seg', exercises: [ex('Supino reto com barra')] }, { name: 'Treino B', focus: 'Inferior', day: 'ter', exercises: [] }], per_week: 5, notes: '', summary: 'Criei A e B.', doubts: '' };
+    const r1 = await dictate(fake(est, calls), 'm', kv(), 'isa', 'ip', { text: '5 vezes por semana, A superior, B inferior', plan: { workouts: [] }, stage: 'estrutura' });
+    expect(calls[0].messages[0].content).toContain('ETAPA 1');
+    const p1 = r1.body.plan as { per_week: number; workouts: { name: string; focus: string; exercises: unknown[] }[] };
+    expect(p1.per_week).toBe(5);
+    expect(p1.workouts.map((w) => [w.name, w.focus, w.exercises.length])).toEqual([['Treino A', 'Superior', 0], ['Treino B', 'Inferior', 0]]);
+    const plan = { workouts: [{ name: 'Treino A', focus: 'Superior', day: '', exercises: [ex('Supino reto com barra')] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [] }], per_week: 5, notes: 'x' };
+    const out = { workouts: [{ name: 'Treino A', focus: 'Mudado', day: '', exercises: [] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [ex('Agachamento livre'), ex('Mesa flexora')] }], per_week: 2, notes: '', summary: 'ok', doubts: '' };
+    const r2 = await dictate(fake(out, calls), 'm', kv(), 'isa', 'ip', { text: 'agachamento livre e mesa flexora', plan, stage: 'treino', current: 1 });
+    expect(calls[1].messages[0].content).toContain('ETAPA 2 — EXERCÍCIOS do Treino B (foco: Inferior)');
+    const p2 = r2.body.plan as { per_week: number; notes: string; workouts: { focus: string; exercises: { name: string }[] }[] };
+    expect(p2.workouts[0]).toMatchObject({ focus: 'Superior', exercises: [{ name: 'Supino reto com barra' }] });
+    expect(p2.workouts[1].exercises.map((e) => e.name)).toEqual(['Agachamento livre', 'Mesa flexora']);
+    expect(p2.per_week).toBe(5);
+    expect(p2.notes).toBe('x');
+  });
   it('revisão: observações gerais e notas só para exercícios que existem', async () => {
     const plan = { workouts: [{ name: 'Treino A', focus: 'Inferior', day: '', exercises: [ex('Leg press 45°'), ex('Mesa flexora')] }], per_week: 2, notes: '' };
     const out = { general: ['Falta trabalho de panturrilha.'], notes: [{ workout: 0, exercise: 1, note: 'Quadril colado ao banco.' }, { workout: 3, exercise: 0, note: 'x' }] };
