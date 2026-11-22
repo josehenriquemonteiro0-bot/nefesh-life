@@ -18,7 +18,14 @@ export interface TrainSessionLog {
   minutes?: number;
   note?: string;
   changes?: string[];
+  /** como correu: no treino todo e por exercício (índice) — vai para o personal (NEFESH Life Pro) */
+  effort?: Effort;
+  pain?: boolean;
+  fx?: Record<number, { effort?: Effort; pain?: boolean }>;
 }
+
+export type Effort = 'facil' | 'ok' | 'dificil';
+export const EFFORT_NAME: Record<Effort, string> = { facil: 'Fácil', ok: 'Na medida', dificil: 'Difícil' };
 
 /** Última vez que um exercício foi feito (para mostrar a progressão). */
 export function lastPerformance(S: AppState, exName: string, now = new Date(), skipToday = true) {

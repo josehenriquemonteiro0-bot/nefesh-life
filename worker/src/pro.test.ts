@@ -107,3 +107,25 @@ describe('NEFESH Life Pro', () => {
     expect(((await pro.studentLogs(db, 'isa', { code })).body.logs as unknown[]).length).toBe(1);
   });
 });
+
+describe('Pro: precisa de atenção', () => {
+  const NOW2 = new Date('2026-11-22T15:00:00Z');
+  const ex = (name: string, effort: string, sets = 3, pain = false) => ({ name, sets, of: 3, load: '', effort: effort as never, pain });
+  const log = (day: string, exercises: ReturnType<typeof ex>[], extra: Record<string, unknown> = {}) => ({ day, data: { status: 'seguido', minutes: 40, note: '', exercises, ...extra } as never });
+  it('dor, parado, difícil, pronto para subir e fim do plano', () => {
+    const logs = [
+      log('2026-11-15', [ex('Leg press 45°', 'facil'), ex('Mesa flexora', 'dificil', 3, true)], { pain: true, note: 'joelho' }),
+      log('2026-11-12', [ex('Leg press 45°', 'facil'), ex('Mesa flexora', 'dificil')]),
+    ];
+    const a = pro.attention(logs, { linked: true, hasPlan: true, endsInDays: 3 }, NOW2);
+    expect(a.map((x) => x.kind)).toEqual(['dor', 'parado', 'dificil', 'subir', 'fim']);
+    expect(a[0].text).toBe('Relatou dor em Mesa flexora (15/11): "joelho"');
+    expect(a[1].text).toBe('Sem treinar há 7 dias');
+    expect(a[3].text).toBe('Pronto para subir a carga: Leg press 45°');
+  });
+  it('sem alertas quando treina bem; não sobe carga se não fez as séries todas', () => {
+    const logs = [log('2026-11-21', [ex('Supino', 'facil', 2)]), log('2026-11-19', [ex('Supino', 'facil')])];
+    expect(pro.attention(logs, { linked: true, hasPlan: true }, NOW2)).toEqual([]);
+    expect(pro.attention([log('2026-11-21', [], { status: 'saltado' }), log('2026-11-20', [], { status: 'saltado' })], { linked: true, hasPlan: true }, NOW2).map((x) => x.kind)).toEqual(['saltou']);
+  });
+});

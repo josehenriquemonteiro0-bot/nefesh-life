@@ -23,6 +23,11 @@ describe('NEFESH Life Pro na app', () => {
   it('resumo do treino para o personal: séries feitas, cargas e alterações', () => {
     const r = workoutReport(plan.workouts[0], { status: 'alterado', minutes: 50, note: 'Joelho bem', changes: ['Agachamento: 42,5 kg'], sets: [{ ex: 0, done: true, load: '42,5 kg', reps: '10' }, { ex: 0, done: true, load: '42,5 kg', reps: '10' }, { ex: 0, done: false }, { ex: 1, done: true, reps: '30 s' }] });
     expect(r).toMatchObject({ workout: 'Treino A', status: 'alterado', minutes: 50, note: 'Joelho bem' });
-    expect(r.exercises).toEqual([{ name: 'Agachamento', sets: 2, of: 3, reps: '10', load: '42,5 kg' }, { name: 'Prancha', sets: 1, of: 2, reps: '30 s', load: '' }]);
+    expect(r.exercises).toEqual([{ name: 'Agachamento', sets: 2, of: 3, reps: '10', load: '42,5 kg', effort: '', pain: false }, { name: 'Prancha', sets: 1, of: 2, reps: '30 s', load: '', effort: '', pain: false }]);
+  });
+  it('como correu: esforço do treino vale para todos os exercícios; dor num exercício marca o treino', () => {
+    const r = workoutReport(plan.workouts[0], { status: 'seguido', sets: [], effort: 'ok', fx: { 1: { effort: 'dificil', pain: true } } });
+    expect(r).toMatchObject({ effort: 'ok', pain: true });
+    expect(r.exercises.map((e) => [e.effort, e.pain])).toEqual([['ok', false], ['dificil', true]]);
   });
 });

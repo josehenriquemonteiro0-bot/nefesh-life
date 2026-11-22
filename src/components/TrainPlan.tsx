@@ -4,7 +4,7 @@ import { loadFile } from '../domain/files';
 import type { PhotoError } from '../domain/photo';
 import { readWorkoutPlan, type PlanWorkout } from '../domain/planRead';
 import { sendWorkout, workoutReport } from '../domain/pro';
-import { describeTrainChanges, lastPerformance, perSet, weekTrainAdherence, type TrainSessionLog, type TrainSetLog } from '../domain/trainAdherence';
+import { EFFORT_NAME, describeTrainChanges, lastPerformance, perSet, weekTrainAdherence, type Effort, type TrainSessionLog, type TrainSetLog } from '../domain/trainAdherence';
 import type { DayLog } from '../domain/types';
 import { useStore } from '../state/store';
 import { Bar } from './Charts';
@@ -41,6 +41,11 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
   const [minutes, setMinutes] = useState<number | undefined>(current?.minutes ?? 45);
   const [note, setNote] = useState(current?.note ?? '');
   const [open, setOpen] = useState<number | null>(0);
+  const [effort, setEffort] = useState<Effort | undefined>(current?.effort);
+  const [pain, setPain] = useState(!!current?.pain);
+  const [fx, setFx] = useState<NonNullable<TrainSessionLog['fx']>>(current?.fx ?? {});
+  const setEx = (i: number, v: { effort?: Effort; pain?: boolean }) => setFx({ ...fx, [i]: { ...fx[i], ...v } });
+  const isPro = !!S.proLink;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -52,7 +57,12 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
 
   const save = (status: TrainSessionLog['status'], list: TrainSetLog[], changes?: string[]) => {
     const m = Math.max(1, Math.round(minutes ?? 45));
-    const log: TrainSessionLog = { status, sets: list, ...(status !== 'saltado' ? { minutes: m } : {}), ...(changes?.length ? { changes } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
+    const fxClean = Object.fromEntries(Object.entries(fx).filter(([, v]) => v.effort || v.pain));
+    const log: TrainSessionLog = {
+      status, sets: list, ...(status !== 'saltado' ? { minutes: m } : {}), ...(changes?.length ? { changes } : {}), ...(note.trim() ? { note: note.trim() } : {}),
+      ...(status !== 'saltado' && effort ? { effort } : {}), ...(status !== 'saltado' && (pain || Object.values(fxClean).some((v) => v.pain)) ? { pain: true } : {}),
+      ...(status !== 'saltado' && Object.keys(fxClean).length ? { fx: fxClean } : {}),
+    };
     // treino do NEFESH Life Pro: o personal recebe o aviso com o que foi feito
     if (S.proLink) sendWorkout(S.proLink.code, todayKey(), workoutReport(w, log));
     updateToday((d) => {
@@ -92,6 +102,14 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
           </div>
         )}
 
+        <div className="feelrow">
+          <span className="small"><b>Como foi?</b></span>
+          <div className="chips">
+            {(Object.keys(EFFORT_NAME) as Effort[]).map((k) => <button key={k} className={`chip sm ${effort === k ? 'on' : ''}`} aria-pressed={effort === k} onClick={() => setEffort(effort === k ? undefined : k)}>{EFFORT_NAME[k]}</button>)}
+            <button className={`chip sm pain ${pain ? 'on' : ''}`} aria-pressed={pain} onClick={() => setPain(!pain)}>😣 Senti dor</button>
+          </div>
+          {isPro && pain && <p className="small mute" style={{ margin: '4px 0 0' }}>O seu personal é avisado. Diga onde na nota em baixo, ou marque no exercício.</p>}
+        </div>
         <div className="plan-actions" style={{ margin: '12px 0' }}>
           <button className="btn full" onClick={asPlanned}>✓ Concluí tal como está no plano</button>
           <button className="btn ghost full" onClick={() => save('saltado', [])}>Não fiz este treino</button>
@@ -120,6 +138,10 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
                         Da última vez ({shortDate(last[i]!.date)}): {[last[i]!.load, last[i]!.reps && `× ${last[i]!.reps}`].filter(Boolean).join(' ')} · {last[i]!.sets} {last[i]!.sets === 1 ? 'série' : 'séries'}
                       </p>
                     )}
+                    <div className="chips feel-ex">
+                      {(Object.keys(EFFORT_NAME) as Effort[]).map((k) => <button key={k} className={`chip sm ${fx[i]?.effort === k ? 'on' : ''}`} aria-pressed={fx[i]?.effort === k} onClick={() => setEx(i, { effort: fx[i]?.effort === k ? undefined : k })}>{EFFORT_NAME[k]}</button>)}
+                      <button className={`chip sm pain ${fx[i]?.pain ? 'on' : ''}`} aria-pressed={!!fx[i]?.pain} onClick={() => setEx(i, { pain: !fx[i]?.pain })}>😣 Dor</button>
+                    </div>
                     {mine.map((s) => (
                       <div key={s.set} className={`setrow ${s.done ? 'on' : ''}`}>
                         <label className="row" style={{ gap: 8, flexWrap: 'nowrap', cursor: 'pointer' }}>

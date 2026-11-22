@@ -25,9 +25,11 @@ export interface ProStudent {
   /** treino guardado e ainda não enviado ao aluno */
   draft?: ParsedWorkoutPlan | null;
   draftAt?: string | null;
+  /** precisa de atenção (calculado no servidor) */
+  alerts?: { kind: 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }[];
 }
 export interface ProInfo { uid: string; name: string; kind: string; reg: string; status: 'pendente' | 'aprovado' | 'recusado' }
-export interface ProLog { day: string; workout: string; at: string; status: string; minutes: number; note: string; changes: string[]; exercises: { name: string; sets: number; of: number; reps: string; load: string }[] }
+export interface ProLog { day: string; workout: string; at: string; status: string; minutes: number; note: string; changes: string[]; effort?: string; pain?: boolean; exercises: { name: string; sets: number; of: number; reps: string; load: string; effort?: string; pain?: boolean }[] }
 
 export async function proApi<T = Record<string, unknown>>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   let res: Response;
@@ -73,19 +75,22 @@ export async function checkProPlan(code: string) {
 }
 
 /** Resumo do treino feito, para o personal. */
-export function workoutReport(w: PlanWorkout, log: { status: string; minutes?: number; note?: string; changes?: string[]; sets: { ex: number; done: boolean; reps?: string; load?: string }[] }) {
+export function workoutReport(w: PlanWorkout, log: { status: string; minutes?: number; note?: string; changes?: string[]; sets: { ex: number; done: boolean; reps?: string; load?: string }[]; effort?: string; pain?: boolean; fx?: Record<number, { effort?: string; pain?: boolean }> }) {
+  const fx = log.fx ?? {};
   return {
     workout: w.name,
     status: log.status,
     minutes: log.minutes ?? 0,
     note: log.note ?? '',
     changes: log.changes ?? [],
+    effort: log.effort ?? '',
+    pain: !!log.pain || Object.values(fx).some((x) => x.pain),
     exercises: w.exercises.map((e, i) => {
       const s = log.sets.filter((x) => x.ex === i);
       const done = s.filter((x) => x.done);
       const loads = [...new Set(done.map((x) => x.load).filter(Boolean))];
       const reps = [...new Set(done.map((x) => x.reps).filter(Boolean))];
-      return { name: e.name, sets: done.length, of: e.sets || s.length, reps: reps.join(' / '), load: loads.join(' / ') };
+      return { name: e.name, sets: done.length, of: e.sets || s.length, reps: reps.join(' / '), load: loads.join(' / '), effort: fx[i]?.effort ?? (log.status === 'saltado' ? '' : log.effort ?? ''), pain: !!fx[i]?.pain };
     }),
   };
 }

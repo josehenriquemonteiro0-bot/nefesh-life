@@ -92,7 +92,9 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
   const { results } = await db.prepare('SELECT code, name, uid, plan, version, status, updated FROM pro_students WHERE pro = ? ORDER BY created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string }>();
   const students = [];
   for (const s of results) {
-    const last = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY created DESC LIMIT 1').bind(s.code).first<{ day: string; workout: string; data: string; created: string }>();
+    const { results: recentLogs } = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY day DESC, created DESC LIMIT 12').bind(s.code).all<{ day: string; workout: string; data: string; created: string }>();
+    const last = recentLogs[0] ?? null;
+    const parsed = recentLogs.map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
     const wk = await db.prepare('SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ?').bind(s.code, weekAgo(now)).first<{ n: number }>();
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = s.plan ? (JSON.parse(s.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
@@ -102,7 +104,8 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const dr = await db.prepare('SELECT plan, updated FROM pro_drafts WHERE code = ?').bind(s.code).first<{ plan: string; updated: string }>();
     let draft: ReturnType<typeof cleanPlan> | null = null;
     try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
-    students.push({ profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
+    const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated }, now);
+    students.push({ alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
   }
   return ok({ pro, students });
 }
@@ -232,16 +235,20 @@ export async function logWorkout(db: DB, store: KeyStore, key: string, b: Record
   const status = ['seguido', 'alterado', 'saltado'].includes(String(b.status)) ? String(b.status) : 'seguido';
   const exercises = (Array.isArray(b.exercises) ? b.exercises : []).slice(0, 20).map((e) => {
     const y = (e ?? {}) as Record<string, unknown>;
-    return { name: str(y.name, 80), sets: Math.max(0, Math.min(20, Math.round(Number(y.sets) || 0))), of: Math.max(0, Math.min(20, Math.round(Number(y.of) || 0))), reps: str(y.reps, 60), load: str(y.load, 60) };
+    return { name: str(y.name, 80), sets: Math.max(0, Math.min(20, Math.round(Number(y.sets) || 0))), of: Math.max(0, Math.min(20, Math.round(Number(y.of) || 0))), reps: str(y.reps, 60), load: str(y.load, 60), effort: effortOf(y.effort), pain: y.pain === true };
   });
-  const data = { status, minutes: Math.max(0, Math.min(300, Math.round(Number(b.minutes) || 0))), note: str(b.note, 300), changes: (Array.isArray(b.changes) ? b.changes : []).slice(0, 10).map((c) => str(c, 120)), exercises };
+  const pain = b.pain === true || exercises.some((e) => e.pain);
+  const data = { status, minutes: Math.max(0, Math.min(300, Math.round(Number(b.minutes) || 0))), note: str(b.note, 300), changes: (Array.isArray(b.changes) ? b.changes : []).slice(0, 10).map((c) => str(c, 120)), exercises, effort: effortOf(b.effort), pain };
   // um registo por treino e dia (corrigir substitui)
   await db.batch([
     db.prepare('DELETE FROM pro_logs WHERE code = ? AND day = ? AND workout = ?').bind(s.code, day, workout),
     db.prepare('INSERT INTO pro_logs (code, day, workout, data, created) VALUES (?, ?, ?, ?, ?)').bind(s.code, day, workout, JSON.stringify(data), now.toISOString()),
   ]);
   const verb = status === 'saltado' ? 'não fez' : status === 'alterado' ? 'fez com alterações' : 'concluiu';
-  const msg = { title: `${s.name} ${verb} o treino 💪`, body: `${workout}${data.minutes ? ` · ${data.minutes} min` : ''}${data.note ? ` · "${data.note.slice(0, 80)}"` : ''}`, tag: `nefesh-pro-${s.code}` };
+  const painAt = exercises.filter((e) => e.pain).map((e) => e.name);
+  const msg = pain
+    ? { title: `⚠️ ${s.name} relatou dor no treino`, body: `${workout}${painAt.length ? ` · ${painAt.slice(0, 3).join(', ')}` : ''}${data.note ? ` · "${data.note.slice(0, 80)}"` : ''}`, tag: `nefesh-pro-${s.code}` }
+    : { title: `${s.name} ${verb} o treino 💪`, body: `${workout}${data.minutes ? ` · ${data.minutes} min` : ''}${data.effort ? ` · ${EFFORT_TXT[data.effort]}` : ''}${data.note ? ` · "${data.note.slice(0, 80)}"` : ''}`, tag: `nefesh-pro-${s.code}` };
   const { results: subs } = await db.prepare('SELECT endpoint, tz FROM push_subs WHERE uid = ?').bind(s.pro).all<{ endpoint: string; tz: string | null }>();
   let sent = 0;
   for (const sub of subs) {
@@ -250,6 +257,50 @@ export async function logWorkout(db: DB, store: KeyStore, key: string, b: Record
     sent++;
   }
   return ok({ sent });
+}
+
+type Effort = '' | 'facil' | 'ok' | 'dificil';
+const effortOf = (v: unknown): Effort => (v === 'facil' || v === 'ok' || v === 'dificil' ? v : '');
+const EFFORT_TXT: Record<Exclude<Effort, ''>, string> = { facil: 'achou fácil', ok: 'na medida', dificil: 'achou difícil' };
+
+export interface LogData { status: string; minutes: number; note: string; effort?: Effort; pain?: boolean; exercises: { name: string; sets: number; of: number; load: string; effort?: Effort; pain?: boolean }[] }
+export interface Alert { kind: 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }
+
+const daysBetween = (a: string, b: Date) => Math.floor((b.getTime() - new Date(`${a.slice(0, 10)}T12:00:00Z`).getTime()) / 864e5);
+const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+
+/**
+ * "Precisa de atenção": o que o personal deve olhar neste aluno, do mais importante para o menos.
+ * logs: os mais recentes primeiro.
+ */
+export function attention(logs: { day: string; data: LogData }[], o: { linked: boolean; hasPlan: boolean; planSince?: string; endsInDays?: number | null }, now = new Date()): Alert[] {
+  const out: Alert[] = [];
+  const recent = logs.filter((l) => daysBetween(l.day, now) <= 14);
+  const pained = recent.find((l) => l.data.pain);
+  if (pained) {
+    const where = pained.data.exercises.filter((e) => e.pain).map((e) => e.name);
+    out.push({ kind: 'dor', text: `Relatou dor${where.length ? ` em ${where.slice(0, 2).join(', ')}` : ''} (${dm(pained.day)})${pained.data.note ? `: "${pained.data.note.slice(0, 60)}"` : ''}` });
+  }
+  if (o.linked && o.hasPlan) {
+    const last = logs.find((l) => l.data.status !== 'saltado');
+    const since = last ? daysBetween(last.day, now) : o.planSince ? daysBetween(o.planSince, now) : 0;
+    if (since >= 5) out.push({ kind: 'parado', text: last ? `Sem treinar há ${since} dias` : `Ainda não registou nenhum treino (plano enviado há ${since} dias)` });
+  }
+  if (logs.length >= 2 && logs[0].data.status === 'saltado' && logs[1].data.status === 'saltado') out.push({ kind: 'saltou', text: 'Saltou os 2 últimos treinos' });
+  // por exercício: as 2 últimas vezes
+  const byEx = new Map<string, { effort?: Effort; full: boolean }[]>();
+  for (const l of logs) for (const e of l.data.exercises) {
+    if (!e.name || l.data.status === 'saltado') continue;
+    const a = byEx.get(e.name) ?? [];
+    if (a.length < 2) a.push({ effort: e.effort || l.data.effort, full: e.of > 0 && e.sets >= e.of });
+    byEx.set(e.name, a);
+  }
+  const hard = [...byEx].filter(([, a]) => a.length === 2 && a.every((x) => x.effort === 'dificil')).map(([n]) => n);
+  if (hard.length) out.push({ kind: 'dificil', text: `Achou difícil 2 vezes seguidas: ${hard.slice(0, 3).join(', ')}` });
+  const up = [...byEx].filter(([, a]) => a.length === 2 && a.every((x) => x.effort === 'facil' && x.full)).map(([n]) => n);
+  if (up.length) out.push({ kind: 'subir', text: `Pronto para subir a carga: ${up.slice(0, 3).join(', ')}` });
+  if (o.endsInDays !== undefined && o.endsInDays !== null && o.endsInDays <= 7) out.push({ kind: 'fim', text: o.endsInDays < 0 ? `O plano terminou há ${-o.endsInDays} dias` : o.endsInDays === 0 ? 'O plano termina hoje' : `O plano termina em ${o.endsInDays} dias` });
+  return out;
 }
 
 /** Página da equipa: profissionais pendentes e aprovados. */

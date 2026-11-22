@@ -15,6 +15,8 @@ import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
+const EFFORT: Record<string, string> = { facil: 'fácil', ok: 'na medida', dificil: 'difícil' };
+const ALERT_ICON: Record<string, string> = { dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅' };
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
 
@@ -283,13 +285,13 @@ function StudentLogs({ student, onClose }: { student: ProStudent; onClose: () =>
       {logs?.map((g) => (
         <section className="card" key={`${g.day}-${g.workout}`}>
           <div className="row"><b>{g.workout}</b><span className="small mute">{shortDate(g.day)}</span></div>
-          <p className="small" style={{ margin: '4px 0' }}>{STATUS[g.status] ?? g.status}{g.minutes ? ` · ${g.minutes} min` : ''}</p>
+          <p className="small" style={{ margin: '4px 0' }}>{STATUS[g.status] ?? g.status}{g.minutes ? ` · ${g.minutes} min` : ''}{g.effort ? ` · ${EFFORT[g.effort]}` : ''}{g.pain ? <b className="warn-t"> · 😣 relatou dor</b> : null}</p>
           {g.note && <p className="small" style={{ margin: '4px 0' }}>💬 "{g.note}"</p>}
           {g.changes?.length > 0 && <p className="small mute" style={{ margin: '4px 0' }}>Alterações: {g.changes.join('; ')}</p>}
           {g.exercises?.length > 0 && (
             <table className="mydata small">
               <tbody>
-                {g.exercises.map((e) => <tr key={e.name}><td>{e.name}</td><td>{e.sets}/{e.of} séries{e.reps ? ` · ${e.reps}` : ''}{e.load ? ` · ${e.load}` : ''}</td></tr>)}
+                {g.exercises.map((e) => <tr key={e.name}><td>{e.pain ? '😣 ' : ''}{e.name}</td><td>{e.sets}/{e.of} séries{e.reps ? ` · ${e.reps}` : ''}{e.load ? ` · ${e.load}` : ''}{e.effort ? ` · ${EFFORT[e.effort]}` : ''}</td></tr>)}
               </tbody>
             </table>
           )}
@@ -366,6 +368,17 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
         <>
           <p className="small mute" style={{ marginTop: 0 }}>{pro.name} · {pro.reg}</p>
           {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber quando os alunos concluem um treino.</p>}
+          {students.some((s) => s.alerts?.length) && (
+            <section className="card pro-attn">
+              <h2 style={{ marginTop: 0 }}>Precisa de atenção</h2>
+              {students.filter((s) => s.alerts?.length).map((s) => (
+                <button key={s.code} className="pro-attn-row" onClick={() => setLogs(s)}>
+                  <b>{s.name}</b>
+                  {s.alerts!.map((a) => <span key={a.kind} className={`small a-${a.kind}`}>{ALERT_ICON[a.kind]} {a.text}</span>)}
+                </button>
+              ))}
+            </section>
+          )}
           <section className="card">
             <h2 style={{ marginTop: 0 }}>Novo aluno</h2>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>

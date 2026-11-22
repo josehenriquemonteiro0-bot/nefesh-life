@@ -737,6 +737,14 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .chip.pro-split{display:grid;gap:0;justify-items:center;padding:6px 12px}
 .chip.pro-split span{font-size:12px;font-weight:400;color:var(--mute)}
 .chip.pro-split.on span{color:#00140d;opacity:.75}
+.pro-attn{border:1px solid rgba(255,179,122,.45)}
+.pro-attn-row{display:grid;gap:3px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:10px 0;color:inherit;cursor:pointer;font:inherit}
+.pro-attn-row:first-of-type{border-top:0}
+.pro-attn-row .a-dor{color:#ff8a65;font-weight:700}
+.pro-attn-row .a-subir{color:var(--neon)}
+.feelrow{margin:12px 0 0;display:grid;gap:6px}
+.feel-ex{margin:6px 0 8px}
+.chip.pain.on{background:#ff8a65;border-color:#ff8a65;color:#1a0a05}
 .pro-video{width:100%;box-sizing:border-box;margin-top:6px;font-size:13px}
 .pro-savebar{display:flex;gap:10px;align-items:center;margin:10px 0}
 .pro-savebar .btn{white-space:nowrap;flex:0 0 auto}
