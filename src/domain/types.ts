@@ -142,6 +142,8 @@ export interface AppState {
   proDose?: ProDose | null;
   /** ligação ao personal pelo NEFESH Life Pro (código, nome, versão do plano) */
   proLink?: { code: string; pro: string; version: number; at: string };
+  /** o aluno partilha o resumo de bem-estar com o personal (autorização revogável); at = último envio */
+  proShare?: { on: boolean; at?: string };
   /** a pessoa prefere seguir a recomendação geral do rótulo */
   followLabel?: boolean;
   /** data em que aceitou o aviso de privacidade */

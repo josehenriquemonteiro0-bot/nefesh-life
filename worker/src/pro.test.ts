@@ -196,3 +196,26 @@ describe('Pro: conversa', () => {
     expect((await pro.proWrite(db, keys, 'isa', { code, text: '  ' }, NOW, noFetch)).status).toBe(400);
   });
 });
+
+describe('Pro: relatório partilhado', () => {
+  it('só com autorização; só números; desligar ou sair apaga', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
+    await pro.linkStudent(db, 'd:telemovel-maria', { code }, NOW);
+    expect((await pro.shareReport(db, 'isa', { code })).status).toBe(404);
+    const summary = { from: '2026-11-09', to: '2026-11-22', goal: 'energia', days: [{ d: '2026-11-22', e: 4, sleepH: 7.5, note: 'texto privado' }], avg: { energy: 3.8, sleep: 7.1 }, waterDays: 9, foodDays: 4, spirulinaDays: 12, trainMin: 180, train: { done: 3, planned: 3 }, weight: { first: 64, last: 63.2, from: '2026-10-01', to: '2026-11-20' }, segredo: 'x' };
+    await pro.studentShare(db, 'd:telemovel-maria', { code, on: true, summary }, NOW);
+    const r = (await pro.shareReport(db, 'isa', { code })).body.report as Record<string, unknown>;
+    expect(r).toMatchObject({ goal: 'energia', spirulinaDays: 12, avg: { energy: 3.8, sleep: 7.1 }, weight: { first: 64, last: 63.2 } });
+    expect(JSON.stringify(r)).not.toContain('privado');
+    expect(JSON.stringify(r)).not.toContain('segredo');
+    expect(((await pro.proState(db, 'isa', NOW)).body.students as { shareAt: string }[])[0].shareAt).toBeTruthy();
+    expect((await pro.shareReport(db, 'outro', { code })).status).toBe(404);
+    await pro.studentShare(db, 'd:telemovel-maria', { code, on: false }, NOW);
+    expect((await pro.shareReport(db, 'isa', { code })).status).toBe(404);
+    await pro.studentShare(db, 'd:telemovel-maria', { code, on: true, summary }, NOW);
+    await pro.unlinkStudent(db, 'd:telemovel-maria', { code }, NOW);
+    expect((await pro.shareReport(db, 'isa', { code })).status).toBe(404);
+  });
+});

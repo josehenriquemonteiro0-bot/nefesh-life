@@ -10,6 +10,7 @@ import type { ParsedWorkoutPlan, PlanWorkout } from './planRead';
 import type { AppState } from './types';
 
 import type { StudentProfile } from './proProfile';
+import { shareSummary } from './proShare';
 
 export interface ProStudent {
   code: string;
@@ -25,6 +26,8 @@ export interface ProStudent {
   /** treino guardado e ainda não enviado ao aluno */
   draft?: ParsedWorkoutPlan | null;
   draftAt?: string | null;
+  /** o aluno partilha o relatório de bem-estar (último envio) */
+  shareAt?: string | null;
   /** mensagens do aluno por ler */
   unread?: number;
   /** precisa de atenção (calculado no servidor) */
@@ -165,4 +168,10 @@ export function planWeek(plan: Pick<ParsedWorkoutPlan, 'weeks' | 'start' | 'phas
     acc += f.weeks;
   }
   return { week: Math.max(1, Math.min(week, plan.weeks)), of: plan.weeks, ended, daysLeft: plan.weeks * 7 - days - 1, phase: ended ? null : phase };
+}
+
+/** Envia (ou apaga, com on=false) o relatório de bem-estar partilhado com o personal. */
+export async function syncShare(S: AppState, on: boolean) {
+  if (!S.proLink) return;
+  await proApi('aluno/partilha', on ? { code: S.proLink.code, on: true, summary: shareSummary(S) } : { code: S.proLink.code, on: false });
 }

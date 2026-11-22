@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { applyProPlan, checkProPlan, clearProPlan, codeLooksValid, flushWorkouts, normCode, proApi } from '../domain/pro';
+import { applyProPlan, checkProPlan, clearProPlan, codeLooksValid, flushWorkouts, normCode, proApi, syncShare } from '../domain/pro';
+import { todayKey } from '../domain/dates';
 import { shortDate } from '../domain/dates';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
 import { useStore } from '../state/store';
@@ -22,6 +23,8 @@ export function ProCodeCard() {
     checkProPlan(link.code)
       .then((r) => {
         setUnread(r.unread ?? 0);
+        // relatório partilhado: atualiza uma vez por dia
+        if (S.proShare?.on && S.proShare.at !== todayKey()) syncShare(S, true).then(() => update((d) => { d.proShare = { on: true, at: todayKey() }; })).catch(() => undefined);
         if (r.version > link.version) {
           update((d) => applyProPlan(d, r));
           toast(`${r.pro} atualizou o seu treino. 💪`);
@@ -39,6 +42,21 @@ export function ProCodeCard() {
         {!S.trainPlan && <p className="small warn" style={{ margin: '6px 0 0' }}>{link.pro} ainda não montou o seu treino. Aparece aqui assim que estiver pronto.</p>}
         <button className="btn sm" style={{ marginTop: 10 }} onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
         {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
+        <div className="pro-share">
+          <label className="row" style={{ gap: 10, flexWrap: 'nowrap', alignItems: 'flex-start', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!S.proShare?.on} style={{ marginTop: 2, width: 22, height: 22, flex: "0 0 22px", accentColor: "var(--neon)" }} aria-label="Partilhar o resumo de bem-estar" onChange={async (e) => {
+              const on = e.target.checked;
+              try {
+                await syncShare(S, on);
+                update((d) => { d.proShare = on ? { on: true, at: todayKey() } : { on: false }; });
+                toast(on ? `${link.pro} passa a ver o seu resumo de bem-estar.` : `Deixou de partilhar. ${link.pro} já não vê o resumo.`);
+              } catch (err) { toast((err as Error).message); }
+            }} />
+            <span className="small"><b>Partilhar o meu resumo de bem-estar com {link.pro}</b><br />
+              <span className="mute">Últimos 14 dias, só números: energia, sono, stress, passos, água, alimentação (calorias e proteína), treino, peso e dias de Spirulina. Nunca o diário, notas, ciclo ou medicação. Pode desligar quando quiser e o que estava partilhado é apagado.</span>
+            </span>
+          </label>
+        </div>
         <br />
         <button
           className="link small inline"
@@ -46,7 +64,7 @@ export function ProCodeCard() {
           onClick={async () => {
             if (!confirm(`Deixar de seguir o treino de ${link.pro}? O seu histórico fica na app.`)) return;
             await proApi('aluno/sair', { code: link.code }).catch(() => undefined);
-            update((d) => clearProPlan(d));
+            update((d) => { clearProPlan(d); delete d.proShare; });
           }}
         >
           Desligar do personal

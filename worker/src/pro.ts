@@ -117,7 +117,8 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
     const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now) }, now);
     const unread = await unreadFor(db, s.code, 'pro');
-    students.push({ unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
+    const sh = await db.prepare('SELECT updated FROM pro_share WHERE code = ?').bind(s.code).first<{ updated: string }>();
+    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
   }
   return ok({ pro, students });
 }
@@ -283,7 +284,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 
@@ -318,7 +319,10 @@ export async function studentPlan(db: DB, key: string, b: Record<string, unknown
 export async function unlinkStudent(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
   const s = await linkedStudent(db, key, b.code);
   if (!s) return ok();
-  await db.prepare("UPDATE pro_students SET uid = NULL, status = 'terminado', updated = ? WHERE code = ?").bind(now.toISOString(), s.code).run();
+  await db.batch([
+    db.prepare("UPDATE pro_students SET uid = NULL, status = 'terminado', updated = ? WHERE code = ?").bind(now.toISOString(), s.code),
+    db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code),
+  ]);
   return ok();
 }
 
@@ -360,6 +364,49 @@ async function notify(db: DB, store: KeyStore, who: string, msg: { title: string
     sent++;
   }
   return sent;
+}
+
+/* ───────── relatório de bem-estar partilhado pelo aluno (autorização revogável) ───────── */
+
+const n1 = (v: unknown, max: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max ? Math.round(v * 10) / 10 : undefined);
+const iso = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v ?? '')) ? String(v) : '');
+/** Só os números esperados (nada de texto livre do aluno). */
+export function cleanShare(x: unknown) {
+  const o = (x ?? {}) as Record<string, unknown>;
+  const a = (o.avg ?? {}) as Record<string, unknown>;
+  const w = o.weight as Record<string, unknown> | null;
+  const t = o.train as Record<string, unknown> | null;
+  return {
+    from: iso(o.from), to: iso(o.to), goal: str(o.goal, 20),
+    days: (Array.isArray(o.days) ? o.days : []).slice(0, 14).map((d) => {
+      const y = (d ?? {}) as Record<string, unknown>;
+      return { d: iso(y.d), e: n1(y.e, 5), sleepH: n1(y.sleepH, 16), stress: n1(y.stress, 5), steps: n1(y.steps, 100000), water: y.water === true ? true : y.water === false ? false : undefined, kcal: n1(y.kcal, 10000), prot: n1(y.prot, 500), train: n1(y.train, 600) };
+    }).filter((d) => d.d),
+    avg: { energy: n1(a.energy, 5) ?? null, sleep: n1(a.sleep, 16) ?? null, stress: n1(a.stress, 5) ?? null, steps: n1(a.steps, 100000) ?? null, kcal: n1(a.kcal, 10000) ?? null, prot: n1(a.prot, 500) ?? null },
+    waterDays: n1(o.waterDays, 14) ?? 0, foodDays: n1(o.foodDays, 14) ?? 0, spirulinaDays: n1(o.spirulinaDays, 14) ?? 0, trainMin: n1(o.trainMin, 6000) ?? 0,
+    train: t ? { done: n1(t.done, 30) ?? 0, planned: n1(t.planned, 30) ?? 0 } : null,
+    weight: w && n1(w.first, 300) && n1(w.last, 300) ? { first: n1(w.first, 300)!, last: n1(w.last, 300)!, from: iso(w.from), to: iso(w.to) } : null,
+  };
+}
+
+/** Aluno: liga/desliga a partilha e envia o resumo (desligar apaga o que estava partilhado). */
+export async function studentShare(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  if (b.on !== true) {
+    await db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code).run();
+    return ok({ on: false });
+  }
+  await db.prepare('INSERT INTO pro_share (code, data, updated) VALUES (?, ?, ?) ON CONFLICT(code) DO UPDATE SET data = excluded.data, updated = excluded.updated').bind(s.code, JSON.stringify(cleanShare(b.summary)), now.toISOString()).run();
+  return ok({ on: true });
+}
+
+export async function shareReport(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const r = await db.prepare('SELECT data, updated FROM pro_share WHERE code = ?').bind(s.code).first<{ data: string; updated: string }>();
+  if (!r) return bad(`${s.name} não está a partilhar o relatório.`, 404);
+  return ok({ report: JSON.parse(r.data), updated: r.updated });
 }
 
 /* ───────── conversa personal ↔ aluno (com comentários num treino) ───────── */

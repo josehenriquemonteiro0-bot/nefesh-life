@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS pro_photos (id INTEGER PRIMARY KEY AUTOINCREMENT, cod
 CREATE INDEX IF NOT EXISTS pro_photos_code ON pro_photos (code, assess);
 CREATE TABLE IF NOT EXISTS pro_msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', created TEXT NOT NULL, seen INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS pro_msgs_code ON pro_msgs (code, id);
+CREATE TABLE IF NOT EXISTS pro_share (code TEXT PRIMARY KEY, data TEXT NOT NULL, updated TEXT NOT NULL);
 `;
 
 /** Marcos da sequência do ritual que aparecem no mural. */

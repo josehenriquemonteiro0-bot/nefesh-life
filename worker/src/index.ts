@@ -310,6 +310,7 @@ export default {
         'aluno/treino': () => pro.logWorkout(db, env.LIMITS as never, key!, b),
         'aluno/conversa': () => pro.studentMessages(db, key!, b),
         'aluno/escrever': () => pro.studentWrite(db, env.LIMITS as never, key!, b),
+        'aluno/partilha': () => pro.studentShare(db, key!, b),
       };
       const key = pro.studentKey(uid, b.device);
       if (student[action]) {
@@ -336,6 +337,7 @@ export default {
         'aluno/foto/apagar': () => pro.deletePhoto(db, uid, b),
         'aluno/mensagens': () => pro.proMessages(db, uid, b),
         'aluno/mensagem': () => pro.proWrite(db, env.LIMITS as never, uid, b),
+        'aluno/relatorio': () => pro.shareReport(db, uid, b),
       };
       // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
       if (action === 'ia/ditado' || action === 'ia/rever' || action === 'ia/avaliacao') {
