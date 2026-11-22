@@ -82,6 +82,9 @@ const RAW: [string, Group, Kind][] = [
   // mobilidade
   ['Mobilidade de anca', 'mobilidade', 't'], ['Mobilidade de ombros', 'mobilidade', 't'], ['Gato-camelo', 'mobilidade', 'i'],
   ['Alongamento de posteriores', 'mobilidade', 't'], ['Alongamento de peitoral', 'mobilidade', 't'], ['Rotação torácica', 'mobilidade', 'i'],
+  ['Mobilidade articular geral', 'mobilidade', 't'], ['Alongamento dinâmico', 'mobilidade', 't'], ['Ativação de glúteos (mini band)', 'mobilidade', 'i'],
+  ['Ativação de core', 'mobilidade', 't'], ['Série de aquecimento (carga leve)', 'mobilidade', 'i'], ['Alongamento final (volta à calma)', 'mobilidade', 't'],
+  ['Relaxamento e respiração', 'mobilidade', 't'],
 ];
 
 /** Outros nomes (Brasil/Portugal, inglês de ginásio) que a pesquisa também reconhece. */
@@ -213,19 +216,48 @@ export function addFromLibrary(w: PlanWorkout, e: LibExercise): PlanWorkout {
   return { ...w, exercises: list.slice(0, 20) };
 }
 
-/** Aquecimentos rápidos (aeróbico no início do treino). */
-export const WARMUPS: { name: string; min: number; label: string }[] = [
-  { name: 'Bicicleta ergométrica', min: 10, label: 'Bicicleta 10 min' },
-  { name: 'Passadeira / esteira (caminhada)', min: 10, label: 'Esteira 10 min' },
-  { name: 'Elíptica / elíptico (transport)', min: 10, label: 'Elíptica 10 min' },
-  { name: 'Remo ergómetro (remo indoor)', min: 5, label: 'Remo 5 min' },
-  { name: 'Corda de saltar / pular corda', min: 5, label: 'Corda 5 min' },
+/** Início e fim do treino: aeróbico (um de cada vez), mobilidade e ativação, volta à calma. */
+export interface Bookend { label: string; name: string; sets: number; reps: string; kind: 'aerobico' | 'mobilidade' | 'final' }
+export const INTRO: Bookend[] = [
+  { label: 'Bicicleta 10 min', name: 'Bicicleta ergométrica', sets: 1, reps: '10 min', kind: 'aerobico' },
+  { label: 'Esteira 10 min', name: 'Passadeira / esteira (caminhada)', sets: 1, reps: '10 min', kind: 'aerobico' },
+  { label: 'Elíptica 10 min', name: 'Elíptica / elíptico (transport)', sets: 1, reps: '10 min', kind: 'aerobico' },
+  { label: 'Remo 5 min', name: 'Remo ergómetro (remo indoor)', sets: 1, reps: '5 min', kind: 'aerobico' },
+  { label: 'Corda 5 min', name: 'Corda de saltar / pular corda', sets: 1, reps: '5 min', kind: 'aerobico' },
+  { label: 'Mobilidade articular 5 min', name: 'Mobilidade articular geral', sets: 1, reps: '5 min', kind: 'mobilidade' },
+  { label: 'Alongamento dinâmico 5 min', name: 'Alongamento dinâmico', sets: 1, reps: '5 min', kind: 'mobilidade' },
+  { label: 'Ativação de glúteos', name: 'Ativação de glúteos (mini band)', sets: 2, reps: '15', kind: 'mobilidade' },
+  { label: 'Ativação de core', name: 'Ativação de core', sets: 2, reps: '30 s', kind: 'mobilidade' },
+  { label: 'Série de aquecimento', name: 'Série de aquecimento (carga leve)', sets: 2, reps: '12', kind: 'mobilidade' },
 ];
+export const OUTRO: Bookend[] = [
+  { label: 'Alongamento final 5 min', name: 'Alongamento final (volta à calma)', sets: 1, reps: '5 min', kind: 'final' },
+  { label: 'Cardio final 15 min', name: 'Passadeira / esteira (caminhada)', sets: 1, reps: '15 min', kind: 'final' },
+  { label: 'Relaxamento 3 min', name: 'Relaxamento e respiração', sets: 1, reps: '3 min', kind: 'final' },
+];
+/** Compatível com o atalho anterior (só aeróbico). */
+export const WARMUPS = INTRO.filter((b) => b.kind === 'aerobico').map((b) => ({ name: b.name, min: parseInt(b.reps, 10), label: b.label }));
 export const isWarmup = (e: { notes: string }) => /^aquecimento/i.test(e.notes.trim());
+export const isFinal = (e: { notes: string }) => /^(final|cardio final|volta [àa] calma)/i.test(e.notes.trim());
+const AERO = new Set(INTRO.filter((b) => b.kind === 'aerobico').map((b) => b.name));
+const exOf = (b: Bookend): WorkoutExercise => ({ name: b.name, sets: b.sets, reps: b.reps, load: '', rest: '', notes: b.kind === 'final' ? 'Final' : b.kind === 'aerobico' ? 'Aquecimento' : 'Aquecimento · mobilidade' });
+export const hasBookend = (w: PlanWorkout, b: Bookend) => w.exercises.some((e) => e.name === b.name && e.reps === b.reps && (b.kind === 'final' ? isFinal(e) : isWarmup(e)));
 
-/** Põe (ou troca) o aquecimento no início do treino; tira linhas vazias. */
+/** Liga/desliga um item do início ou do fim do treino (só um aeróbico no início); tira linhas vazias. */
+export function toggleBookend(w: PlanWorkout, b: Bookend, on = !hasBookend(w, b)): PlanWorkout {
+  const body = w.exercises.filter((e) => e.name.trim() && !isWarmup(e) && !isFinal(e));
+  let intro = w.exercises.filter((e) => isWarmup(e));
+  let outro = w.exercises.filter((e) => isFinal(e));
+  const same = (e: WorkoutExercise) => e.name === b.name && e.reps === b.reps;
+  if (b.kind === 'final') outro = on ? [...outro.filter((e) => !same(e)), exOf(b)] : outro.filter((e) => !same(e));
+  else {
+    intro = intro.filter((e) => !same(e) && !(on && b.kind === 'aerobico' && AERO.has(e.name)));
+    if (on) intro = b.kind === 'aerobico' ? [exOf(b), ...intro] : [...intro, exOf(b)];
+  }
+  return { ...w, exercises: [...intro, ...body, ...outro].slice(0, 20) };
+}
+
+/** Põe (ou troca) o aquecimento aeróbico no início do treino. */
 export function addWarmup(w: PlanWorkout, name: string, min: number): PlanWorkout {
-  const ex: WorkoutExercise = { name, sets: 1, reps: `${min} min`, load: '', rest: '', notes: 'Aquecimento' };
-  const rest = w.exercises.filter((e) => e.name.trim() && !isWarmup(e));
-  return { ...w, exercises: [ex, ...rest].slice(0, 20) };
+  return toggleBookend(w, { label: '', name, sets: 1, reps: `${min} min`, kind: 'aerobico' }, true);
 }

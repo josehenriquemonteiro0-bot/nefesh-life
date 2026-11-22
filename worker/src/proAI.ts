@@ -77,8 +77,8 @@ Devolves o plano COMPLETO atualizado:
 - Aplica só o que foi pedido; mantém tudo o resto exatamente como está (inclusive a ordem).
 - "Treino A", "treino B"… referem-se aos treinos pela ordem; se pedir um treino que ainda não existe, cria-o com o nome "Treino X". Se disser a divisão ("ABC", "3 treinos"), cria esses treinos.
 - Junta os exercícios ao fim do treino indicado, pela ordem em que foram ditos. "Tira", "remove", "troca" mudam o que já existe.
-- Aeróbico de aquecimento ("10 minutos de bicicleta no início", "aquecer 5 min na esteira", "começa com elíptico"): vai para o INÍCIO do treino, com sets 1, reps com a duração ("10 min"), rest "" e notes a começar por "Aquecimento" (ex.: "Aquecimento" ou "Aquecimento, ritmo leve"). Só um aquecimento por treino: um novo substitui o anterior.
-- Aeróbico no fim ("15 minutos de esteira no fim", "fecha com bicicleta"): vai para o FIM do treino, com sets 1, reps com a duração e notes a começar por "Cardio final".
+- Início do treino: aeróbico de aquecimento ("10 minutos de bicicleta no início", "aquecer 5 min na esteira"), mobilidade, alongamento dinâmico ou ativação ("começa com 5 minutos de mobilidade", "ativação de glúteos antes"): vai para o INÍCIO do treino, pela ordem aeróbico → mobilidade → ativação, com notes a começar por "Aquecimento" (ex.: "Aquecimento", "Aquecimento · mobilidade"). Com duração: sets 1, reps "10 min", rest "". Só um aeróbico de aquecimento por treino: um novo substitui o anterior. Nomes: "Mobilidade articular geral", "Alongamento dinâmico", "Ativação de glúteos (mini band)", "Ativação de core", "Série de aquecimento (carga leve)".
+- Fim do treino: alongamento final, volta à calma, relaxamento ou aeróbico no fim ("15 minutos de esteira no fim", "terminar com alongamento"): vai para o FIM do treino, com sets 1, reps com a duração e notes a começar por "Final" (ex.: "Final · volta à calma", "Final · cardio"). Nomes: "Alongamento final (volta à calma)", "Relaxamento e respiração".
 - Usa, quando corresponder, o nome desta lista (corrige a transcrição e os nomes do Brasil: "extensora" → "Cadeira extensora", "búlgaro" → "Agachamento búlgaro", "esteira" → "Passadeira / esteira (caminhada)", "elíptico" ou "transport" → "Elíptica / elíptico (transport)", "pulley" → "Puxada à frente", "avanço" → "Afundo (passada)"): ${NAMES}. Se não houver correspondência, escreve o nome como o profissional disse, com maiúscula inicial.
 - "4 de 10", "4 por 10", "4x10" = 4 séries de 10 repetições. Sem séries/repetições ditas: usa 3 séries e "12" (ou "8-10" nos exercícios compostos pesados). Descanso por omissão "60 s" (compostos "90 s"); "1 minuto" = "60 s". Carga só se for dita ("20 quilos" = "20 kg").
 - As observações para o aluno vão em "notes" desse exercício, reescritas de forma curta e clara, dirigidas ao aluno (ex.: "Desça devagar, 3 s na descida").
@@ -128,7 +128,7 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
   const target = shape[current]?.name ?? 'Treino A';
   const step =
     stage === 'estrutura'
-      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana), "weeks" (duração do plano, se for dita) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa, com UMA exceção: um aquecimento dito para todos os treinos (ex.: "todos começam com 10 minutos de bicicleta") entra no início de cada treino, com as regras do aquecimento. Mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
+      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana), "weeks" (duração do plano, se for dita) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa, com UMA exceção: o início ou o fim dito para todos os treinos (ex.: "todos começam com 10 minutos de bicicleta e mobilidade", "todos terminam com alongamento") entra em cada treino, com as regras do início e do fim do treino. Mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
       : stage === 'treino'
         ? `ETAPA 2 — EXERCÍCIOS do ${target}${shape[current]?.focus ? ` (foco: ${shape[current].focus})` : ''}. Tudo o que foi ditado é para o ${target}, mesmo que não diga o nome. Não mudes os outros treinos.`
         : `Treino que está a ser montado agora: ${target}`;
@@ -157,8 +157,12 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
     // sem exercícios novos (os treinos que já existiam guardam os seus), exceto o aquecimento dito para todos
     workouts = all.map((w, k) => {
       const kept = (shape.find((x) => x.name === w.name) ?? shape[k])?.exercises ?? [];
-      const warm = w.exercises.find((e) => /^aquecimento/i.test(e.notes.trim()));
-      return { ...w, exercises: warm ? [warm, ...kept.filter((e) => !/^aquecimento/i.test(e.notes.trim()))].slice(0, 20) : kept };
+      const isIntro = (e: { notes: string }) => /^aquecimento/i.test(e.notes.trim());
+      const isEnd = (e: { notes: string }) => /^(final|cardio final|volta [àa] calma)/i.test(e.notes.trim());
+      const intro = w.exercises.filter(isIntro), outro = w.exercises.filter(isEnd);
+      if (!intro.length && !outro.length) return { ...w, exercises: kept };
+      const body = kept.filter((e) => !(intro.length && isIntro(e)) && !(outro.length && isEnd(e)));
+      return { ...w, exercises: [...(intro.length ? intro : kept.filter(isIntro)), ...body.filter((e) => !isIntro(e) && !isEnd(e)), ...(outro.length ? outro : kept.filter(isEnd))].slice(0, 20) };
     });
   }
   // periodização: duração só muda na etapa da estrutura (ou no modo livre) se for dita; início e fases ficam

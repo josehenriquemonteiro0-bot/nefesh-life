@@ -37,6 +37,12 @@ describe('NEFESH Life Pro com IA', () => {
     const r1b = await dictate(fake(est2), 'm', kv(), 'isa', 'ip', { text: 'todos começam com 10 minutos de bicicleta', plan: { workouts: [] }, stage: 'estrutura' });
     const p1b = r1b.body.plan as { workouts: { exercises: { name: string; reps: string }[] }[] };
     expect(p1b.workouts.map((w) => w.exercises.map((e) => `${e.name} ${e.reps}`))).toEqual([['Bicicleta ergométrica 10 min'], ['Bicicleta ergométrica 10 min']]);
+    // início com mobilidade e fim com alongamento, em todos
+    const mob = { ...ex('Mobilidade articular geral'), sets: 1, reps: '5 min', notes: 'Aquecimento · mobilidade' };
+    const fim = { ...ex('Alongamento final (volta à calma)'), sets: 1, reps: '5 min', notes: 'Final · volta à calma' };
+    const est3 = { ...est, workouts: est.workouts.map((w) => ({ ...w, exercises: [warm, mob, ex('Supino reto com barra'), fim] })) };
+    const r1c = await dictate(fake(est3), 'm', kv(), 'isa', 'ip', { text: 'todos começam com bicicleta e mobilidade e terminam com alongamento', plan: { workouts: [] }, stage: 'estrutura' });
+    expect((r1c.body.plan as { workouts: { exercises: { name: string }[] }[] }).workouts[0].exercises.map((e) => e.name)).toEqual(['Bicicleta ergométrica', 'Mobilidade articular geral', 'Alongamento final (volta à calma)']);
     const plan = { workouts: [{ name: 'Treino A', focus: 'Superior', day: '', exercises: [ex('Supino reto com barra')] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [] }], per_week: 5, notes: 'x' };
     const out = { workouts: [{ name: 'Treino A', focus: 'Mudado', day: '', exercises: [] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [ex('Agachamento livre'), ex('Mesa flexora')] }], per_week: 2, notes: '', summary: 'ok', doubts: '' };
     const r2 = await dictate(fake(out, calls), 'm', kv(), 'isa', 'ip', { text: 'agachamento livre e mesa flexora', plan, stage: 'treino', current: 1 });

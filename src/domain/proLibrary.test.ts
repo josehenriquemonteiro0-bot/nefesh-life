@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, addFromLibrary, addWarmup, applySplit, focusGroups, isWarmup, searchExercises, splitName } from './proLibrary';
+import { INTRO, LIBRARY, OUTRO, addFromLibrary, addWarmup, applySplit, focusGroups, hasBookend, isWarmup, searchExercises, splitName, toggleBookend } from './proLibrary';
 
 describe('NEFESH Life Pro: biblioteca e divisão', () => {
   it('divisão ABC cria 3 treinos com foco sugerido e mantém o que já existe', () => {
@@ -50,5 +50,18 @@ describe('NEFESH Life Pro: biblioteca e divisão', () => {
     expect(isWarmup(a.exercises[0])).toBe(true);
     const b = addWarmup(a, 'Passadeira / esteira (caminhada)', 10);
     expect(b.exercises.map((e) => e.name)).toEqual(['Passadeira / esteira (caminhada)', 'Supino reto com barra']);
+  });
+  it('início e fim do treino: aeróbico primeiro, mobilidade depois, alongamento no fim; tocar outra vez tira', () => {
+    const [w0] = applySplit([], 1);
+    let w = { ...w0, exercises: [{ name: 'Leg press 45°', sets: 4, reps: '10', load: '', rest: '90 s', notes: '' }] };
+    const by = (l: string) => [...INTRO, ...OUTRO].find((x) => x.label === l)!;
+    w = toggleBookend(w, by('Alongamento final 5 min'));
+    w = toggleBookend(w, by('Mobilidade articular 5 min'));
+    w = toggleBookend(w, by('Bicicleta 10 min'));
+    w = toggleBookend(w, by('Esteira 10 min'));
+    expect(w.exercises.map((e) => e.name)).toEqual(['Passadeira / esteira (caminhada)', 'Mobilidade articular geral', 'Leg press 45°', 'Alongamento final (volta à calma)']);
+    expect(hasBookend(w, by('Bicicleta 10 min'))).toBe(false);
+    w = toggleBookend(w, by('Mobilidade articular 5 min'));
+    expect(w.exercises.map((e) => e.name)).toEqual(['Passadeira / esteira (caminhada)', 'Leg press 45°', 'Alongamento final (volta à calma)']);
   });
 });

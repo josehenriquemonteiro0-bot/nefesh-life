@@ -4,7 +4,7 @@ import { shortDate } from '../domain/dates';
 import { GYM } from '../domain/gymData';
 import { EXERCISES } from '../domain/training';
 import { inviteText, proApi, type ProInfo, type ProLog, type ProStudent } from '../domain/pro';
-import { FOCUS_PRESETS, GROUP_NAME, WARMUPS, addFromLibrary, addWarmup, applySplit, isWarmup, letter, searchExercises, splitName, type LibExercise } from '../domain/proLibrary';
+import { FOCUS_PRESETS, GROUP_NAME, INTRO, OUTRO, addFromLibrary, applySplit, hasBookend, isFinal, isWarmup, letter, searchExercises, splitName, toggleBookend, type Bookend, type LibExercise } from '../domain/proLibrary';
 import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/planRead';
 import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
@@ -93,6 +93,13 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   // lista de sugestões: fechada por omissão; abre sozinha só no treino vazio, no modo manual
   const [sugOpen, setSugOpen] = useState<boolean | null>(null);
   const [warmAll, setWarmAll] = useState(false);
+  /** liga/desliga um item do início/fim neste treino (ou em todos, com o mesmo estado) */
+  const [bookOpen, setBookOpen] = useState<boolean | null>(null);
+  const setBook = (x: Bookend) => {
+    setBookOpen(true);
+    const on = !hasBookend(plan.workouts[Math.min(cur, Math.max(0, plan.workouts.length - 1))], x);
+    setPlan({ ...plan, workouts: plan.workouts.map((wk, j) => (j === Math.min(cur, plan.workouts.length - 1) || warmAll ? toggleBookend(wk, x, on) : wk)) });
+  };
   const [, setVids] = useState(0);
   useEffect(() => { loadVideos().then(() => setVids((x) => x + 1)); }, []);
   const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
@@ -174,6 +181,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const showSugg = !!sugOpen;
   // ao entrar num treino: abre a lista só se estiver vazio e for o modo manual
   useEffect(() => { setSugOpen(mode === 'manual' && !!w && !filled(w)); }, [i, n, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setBookOpen(null); }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
   // treino ainda sem nenhuma linha (ex.: criado na etapa 1 por voz): no modo manual mostra já uma linha para escrever
   useEffect(() => { if (mode === 'manual' && w && !w.exercises.length) setW((x) => ({ ...x, exercises: [newEx()] })); }, [i, n, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -245,19 +253,34 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             {mode === 'manual' && <div className="chips" style={{ marginTop: 6 }}>
               {FOCUS_PRESETS.map((p) => <button key={p.label} className={`chip sm ${w.focus === p.label ? 'on' : ''}`} onClick={() => setW((x) => ({ ...x, focus: p.label }))}>{p.label}</button>)}
             </div>}
-            {mode === 'manual' && (
+            {mode === 'manual' && !(bookOpen ?? !w.exercises.some((e) => isWarmup(e) || isFinal(e))) && (
+              <div className="pro-warmup row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+                <span className="small" style={{ flex: 1, minWidth: 0 }}>🔥 <b>Início:</b> {w.exercises.filter(isWarmup).map((e) => `${e.name.split(' (')[0]} ${e.reps}`).join(', ') || '—'} · 🧘 <b>Fim:</b> {w.exercises.filter(isFinal).map((e) => `${e.name.split(' (')[0]} ${e.reps}`).join(', ') || '—'}</span>
+                <button className="link small inline" onClick={() => setBookOpen(true)}>Editar</button>
+              </div>
+            )}
+            {mode === 'manual' && (bookOpen ?? !w.exercises.some((e) => isWarmup(e) || isFinal(e))) && (
               <div className="pro-warmup">
                 <div className="row" style={{ gap: 8 }}>
-                  <span className="small" style={{ fontWeight: 700 }}>🔥 Aquecimento{w.exercises.some(isWarmup) ? ' ✓' : ''}</span>
+                  <span className="small" style={{ fontWeight: 700 }}>🔥 Início do treino</span>
                   {n > 1 && <label className="small mute" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={warmAll} onChange={(e) => setWarmAll(e.target.checked)} /> em todos os treinos</label>}
                 </div>
-                <div className="chips" style={{ marginTop: 6 }}>
-                  {WARMUPS.map((wu) => (
-                    <button key={wu.label} className={`chip sm ${w.exercises[0]?.name === wu.name && isWarmup(w.exercises[0]) ? 'on' : ''}`}
-                      onClick={() => setPlan({ ...plan, workouts: plan.workouts.map((x, j) => (j === i || warmAll ? addWarmup(x, wu.name, wu.min) : x)) })}>{wu.label}</button>
-                  ))}
+                <p className="small mute" style={{ margin: '6px 0 4px' }}>Aeróbico</p>
+                <div className="chips">
+                  {INTRO.filter((x) => x.kind === 'aerobico').map((x) => <button key={x.label} className={`chip sm ${hasBookend(w, x) ? 'on' : ''}`} aria-pressed={hasBookend(w, x)} onClick={() => setBook(x)}>{x.label}</button>)}
                 </div>
-                <p className="small mute" style={{ margin: '6px 0 0' }}>Entra no início do treino. Outro aeróbico ou outra duração: escreva no exercício (ex.: “esteira”, “15 min”).</p>
+                <p className="small mute" style={{ margin: '8px 0 4px' }}>Mobilidade e ativação</p>
+                <div className="chips">
+                  {INTRO.filter((x) => x.kind === 'mobilidade').map((x) => <button key={x.label} className={`chip sm ${hasBookend(w, x) ? 'on' : ''}`} aria-pressed={hasBookend(w, x)} onClick={() => setBook(x)}>{x.label}</button>)}
+                </div>
+                <p className="small" style={{ margin: '10px 0 4px', fontWeight: 700 }}>🧘 Fim do treino</p>
+                <div className="chips">
+                  {OUTRO.map((x) => <button key={x.label} className={`chip sm ${hasBookend(w, x) ? 'on' : ''}`} aria-pressed={hasBookend(w, x)} onClick={() => setBook(x)}>{x.label}</button>)}
+                </div>
+                <div className="row" style={{ marginTop: 6, gap: 8 }}>
+                  <span className="small mute" style={{ flex: 1 }}>Toque outra vez para tirar. Outra duração: mude no exercício.</span>
+                  {w.exercises.some((e) => isWarmup(e) || isFinal(e)) && <button className="link small inline" onClick={() => setBookOpen(false)}>Fechar</button>}
+                </div>
               </div>
             )}
             {w.exercises.map((e, k) => (
