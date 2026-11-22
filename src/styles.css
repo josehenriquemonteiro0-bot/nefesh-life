@@ -734,6 +734,9 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .pro-tabs button.on{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon) inset}
 .pro-tabs button.on b{color:var(--neon)}
 .pro-ac{position:relative}
+.chip.pro-split{display:grid;gap:0;justify-items:center;padding:6px 12px}
+.chip.pro-split span{font-size:12px;font-weight:400;color:var(--mute)}
+.chip.pro-split.on span{color:#00140d;opacity:.75}
 .pro-mode{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
 .pro-mode button{display:grid;gap:2px;text-align:left;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:inherit;cursor:pointer}
 .pro-mode button span{font-size:12px;color:var(--mute)}

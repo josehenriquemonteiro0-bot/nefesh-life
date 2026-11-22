@@ -50,7 +50,8 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const [sugOpen, setSugOpen] = useState<boolean | null>(null);
   const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
   const setMode = (m: 'manual' | 'voz') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* sem armazenamento */ } };
-  const top = () => document.querySelector('.pro-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const top = () => document.querySelector('.pro-tabs, .pro-workout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const [setupOpen, setSetupOpen] = useState(false);
   const n = plan.workouts.length;
   const i = Math.min(cur, Math.max(0, n - 1));
   const w = plan.workouts[i];
@@ -108,17 +109,25 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
         <button role="tab" aria-selected={mode === 'voz'} className={mode === 'voz' ? 'on' : ''} onClick={() => setMode('voz')}><b>🎙️ Por voz</b><span>ditar, a IA monta</span></button>
       </div>
       {mode === 'voz' && <DictationCard plan={plan} current={i} setCurrent={setCur} onPlan={(p) => { setPlan(p); setErr(''); }} />}
-      {(mode === 'manual' || n > 0) && (
+      {n > 0 && !setupOpen ? (
+        <section className="card pro-setup">
+          <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+            <p style={{ margin: 0 }}><b>Divisão {splitName(n)}</b> · {plan.per_week}× por semana</p>
+            <button className="btn ghost sm" onClick={() => setSetupOpen(true)}>Ajustar</button>
+          </div>
+          {plan.notes && <p className="small mute" style={{ margin: '6px 0 0' }}>📝 {plan.notes}</p>}
+        </section>
+      ) : (mode === 'manual' || n > 0) && (
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>{n ? 'Divisão do treino' : 'Quantos treinos diferentes?'}</h3>
-        <div className="chips">
+        <div className="row"><h3 style={{ margin: 0 }}>{n ? 'Divisão do treino' : 'Quantos treinos diferentes?'}</h3>{n > 0 && <button className="btn sm" onClick={() => setSetupOpen(false)}>Feito</button>}</div>
+        <div className="chips" style={{ marginTop: 10 }}>
           {[1, 2, 3, 4, 5, 6].map((m) => (
-            <button key={m} className={`chip ${n === m ? 'on' : ''}`} onClick={() => chooseSplit(m)} aria-pressed={n === m}>
-              <b>{splitName(m)}</b><span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{m} treino{m > 1 ? 's' : ''}</span>
+            <button key={m} className={`chip pro-split ${n === m ? 'on' : ''}`} onClick={() => { chooseSplit(m); if (!n) setSetupOpen(false); }} aria-pressed={n === m}>
+              <b>{splitName(m)}</b><span>{m} treino{m > 1 ? 's' : ''}</span>
             </button>
           ))}
         </div>
-        {!n && <p className="small mute" style={{ marginBottom: 0 }}>{mode === 'voz' ? 'Escolha aqui ou diga no ditado (ex.: "divisão ABC").' : 'Escolha a divisão: os treinos são criados já com um foco sugerido, que pode mudar.'}</p>}
+        {!n && <p className="small mute" style={{ marginBottom: 0 }}>Escolha a divisão: os treinos são criados já com um foco sugerido, que pode mudar.</p>}
         {n > 0 && (
           <>
             <label className="small" style={{ display: 'block', marginTop: 10 }}>Treinos por semana <input className="field sm" type="number" min={1} max={7} style={{ width: 64 }} value={plan.per_week} onChange={(e) => setPlan({ ...plan, per_week: Math.max(1, Math.min(7, Number(e.target.value) || 1)) })} /></label>
@@ -131,13 +140,13 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
       )}
       {w && (
         <>
-          <div className="pro-tabs" role="tablist">
+          {mode === 'manual' && <div className="pro-tabs" role="tablist">
             {plan.workouts.map((x, j) => (
               <button key={j} role="tab" aria-selected={j === i} className={j === i ? 'on' : ''} onClick={() => setCur(j)}>
                 <b>{letter(j)}</b><span>{filled(x) ? `${filled(x)} ex.` : '—'}</span>
               </button>
             ))}
-          </div>
+          </div>}
           <section className="card pro-workout">
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
               <input className="field sm" style={{ flex: 1, fontWeight: 700 }} value={w.name} maxLength={60} onChange={(e) => setW((x) => ({ ...x, name: e.target.value }))} aria-label="Nome do treino" />
@@ -188,8 +197,10 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
               </div>
             )}
           </section>
-          {i === n - 1 && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
-          {i < n - 1 ? (
+          {(mode === 'voz' || i === n - 1) && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
+          {mode === 'voz' ? (
+            <button className="btn full" disabled={busy || !plan.workouts.some(filled)} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar ao aluno'}</button>
+          ) : i < n - 1 ? (
             <>
               <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>
               <p />
@@ -198,7 +209,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
           ) : (
             <button className="btn full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : n > 1 ? `Concluir ${w.name} e enviar ao aluno` : 'Guardar e enviar ao aluno'}</button>
           )}
-          {!filled(w) && <p className="small mute">Junte pelo menos um exercício a este treino para avançar.</p>}
+          {mode === 'manual' && !filled(w) && <p className="small mute">Junte pelo menos um exercício a este treino para avançar.</p>}
         </>
       )}
       {err && <p className="small warn-t">{err}</p>}
