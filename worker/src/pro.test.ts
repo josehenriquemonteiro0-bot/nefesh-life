@@ -19,6 +19,14 @@ const keys = { get: async () => null, put: async () => undefined } as never;
 const NOW = new Date('2026-11-22T15:00:00Z');
 
 describe('NEFESH Life Pro', () => {
+  it('vídeo do exercício: só links https', () => {
+    const p = pro.cleanPlan({ workouts: [{ name: 'Treino A', exercises: [
+      { name: 'Agachamento', sets: 3, video: 'https://youtu.be/abc' },
+      { name: 'Prancha', sets: 3, video: 'javascript:alert(1)' },
+      { name: 'Remada', sets: 3, video: 'http://x.pt/v' },
+    ] }] });
+    expect(p.workouts[0].exercises.map((e) => (e as { video?: string }).video)).toEqual(['https://youtu.be/abc', undefined, undefined]);
+  });
   it('rascunho: guardar não envia ao aluno; enviar apaga o rascunho', async () => {
     const db = memoryDB();
     await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);

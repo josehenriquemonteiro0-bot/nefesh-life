@@ -1,6 +1,6 @@
 /** NEFESH Life Pro: biblioteca de exercícios por grupo muscular e divisões de treino (A, AB, ABC…). */
 // sem dependências (o servidor também usa este ficheiro): mesmos campos que planRead.ts
-interface WorkoutExercise { name: string; sets: number; reps: string; load: string; rest: string; notes: string }
+interface WorkoutExercise { name: string; sets: number; reps: string; load: string; rest: string; notes: string; video?: string }
 interface PlanWorkout { name: string; focus: string; day: string; exercises: WorkoutExercise[] }
 
 export type Group =

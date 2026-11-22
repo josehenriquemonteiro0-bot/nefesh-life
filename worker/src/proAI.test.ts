@@ -40,6 +40,11 @@ describe('NEFESH Life Pro com IA', () => {
     expect(p2.workouts[1].exercises.map((e) => e.name)).toEqual(['Agachamento livre', 'Mesa flexora']);
     expect(p2.per_week).toBe(5);
     expect(p2.notes).toBe('x');
+    // os vídeos que o profissional já pôs ficam, mesmo depois de a IA mexer no treino
+    const withVideo = { ...plan, workouts: [plan.workouts[0], { ...plan.workouts[1], exercises: [{ ...ex('Agachamento livre'), video: 'https://youtu.be/v1' }] }] };
+    const r3 = await dictate(fake(out), 'm', kv(), 'isa', 'ip', { text: 'junta mesa flexora', plan: withVideo, stage: 'treino', current: 1 });
+    const p3 = r3.body.plan as { workouts: { exercises: { name: string; video?: string }[] }[] };
+    expect(p3.workouts[1].exercises[0]).toMatchObject({ name: 'Agachamento livre', video: 'https://youtu.be/v1' });
   });
   it('revisão: observações gerais e notas só para exercícios que existem', async () => {
     const plan = { workouts: [{ name: 'Treino A', focus: 'Inferior', day: '', exercises: [ex('Leg press 45°'), ex('Mesa flexora')] }], per_week: 2, notes: '' };

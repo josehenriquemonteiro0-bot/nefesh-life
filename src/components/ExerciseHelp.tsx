@@ -6,7 +6,7 @@ import { useStore } from '../state/store';
 import { ExerciseAnim } from './ExerciseAnim';
 
 /** "Como fazer": animação (se houver), dicas da IA (guardadas) e vídeos no YouTube. */
-export function ExerciseHelp({ name, notes }: { name: string; notes?: string }) {
+export function ExerciseHelp({ name, notes, video }: { name: string; notes?: string; video?: string }) {
   const { S, update } = useStore();
   const anim = animFor(name);
   const tip = S.exerciseTips?.[tipKey(name)];
@@ -32,11 +32,12 @@ export function ExerciseHelp({ name, notes }: { name: string; notes?: string }) 
   return (
     <div className="exhelp">
       {anim && <ExerciseAnim id={anim} />}
-      <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
+      <div className="row" style={{ justifyContent: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={() => (open && tip ? setOpen(false) : load())} disabled={busy}>
           {busy ? 'A preparar dicas…' : open && tip ? 'Fechar dicas' : 'Como fazer'}
         </button>
-        <a className="btn ghost sm" href={videoSearchUrl(name)} target="_blank" rel="noopener">Ver vídeos ↗</a>
+        {video && /^https:\/\//.test(video) && <a className="btn sm" href={video} target="_blank" rel="noopener noreferrer">▶ Vídeo do personal</a>}
+        <a className="btn ghost sm" href={videoSearchUrl(name)} target="_blank" rel="noopener">{video ? 'Outros vídeos ↗' : 'Ver vídeos ↗'}</a>
       </div>
       {error && <p className="small warn-t" style={{ margin: '6px 0 0' }}>{error}</p>}
       {open && tip && (

@@ -137,6 +137,10 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
   const out = cleanPlan({ ...r, professional: plan.professional });
   // mantém treinos vazios que a IA devolveu (divisão escolhida, ainda por preencher)
   const all = r.workouts.slice(0, 10).map((w) => out.workouts.find((x) => x.name === w.name) ?? { name: String(w.name).slice(0, 60) || 'Treino', focus: String(w.focus ?? '').slice(0, 80), day: String(w.day ?? '').slice(0, 30), exercises: [] });
+  // a IA não vê nem devolve os vídeos: ficam os que o profissional já tinha posto (pelo nome do exercício)
+  const videos = new Map<string, string>();
+  for (const w of shape) for (const e of w.exercises) if ((e as { video?: string }).video) videos.set(e.name.toLowerCase(), (e as { video?: string }).video!);
+  for (const w of all) w.exercises = w.exercises.map((e) => (videos.get(e.name.toLowerCase()) ? { ...e, video: videos.get(e.name.toLowerCase()) } : e));
   let workouts = all;
   let per_week = out.per_week;
   let notes = out.notes;

@@ -737,6 +737,7 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .chip.pro-split{display:grid;gap:0;justify-items:center;padding:6px 12px}
 .chip.pro-split span{font-size:12px;font-weight:400;color:var(--mute)}
 .chip.pro-split.on span{color:#00140d;opacity:.75}
+.pro-video{width:100%;box-sizing:border-box;margin-top:6px;font-size:13px}
 .pro-savebar{display:flex;gap:10px;align-items:center;margin:10px 0}
 .pro-savebar .btn{white-space:nowrap;flex:0 0 auto}
 .pro-send{margin-top:6px;border:1px solid rgba(0,254,138,.35)}

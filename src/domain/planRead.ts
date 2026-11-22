@@ -4,7 +4,7 @@ import type { FoodEntry, MealKey } from './foods';
 
 export interface PlanItem { name: string; quantity: string; grams: number; kcal: number; protein_g: number; carbs_g: number; fat_g: number }
 export interface PlanMeal { meal: 'pa' | 'almoco' | 'lanche' | 'jantar' | 'ceia' | 'outro'; label: string; time: string; options: { name: string; items: PlanItem[] }[] }
-export interface WorkoutExercise { name: string; sets: number; reps: string; load: string; rest: string; notes: string }
+export interface WorkoutExercise { name: string; sets: number; reps: string; load: string; rest: string; notes: string; /** link do vídeo escolhido pelo personal (NEFESH Life Pro) */ video?: string }
 export interface PlanWorkout { name: string; focus: string; day: string; exercises: WorkoutExercise[] }
 export interface ParsedWorkoutPlan { is_workout: boolean; workouts: PlanWorkout[]; per_week: number; professional: string; notes: string }
 

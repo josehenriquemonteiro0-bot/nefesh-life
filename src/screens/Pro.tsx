@@ -217,11 +217,12 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
                   <label className="small">Descanso<input className="field sm" value={e.rest} maxLength={30} placeholder="60 s" onChange={(ev) => setE(k, { rest: ev.target.value })} /></label>
                 </div>
                 <div className="row" style={{ gap: 6, flexWrap: 'nowrap', marginTop: 6 }}>
-                  <input className="field sm" style={{ flex: 1, minWidth: 0 }} value={e.notes} maxLength={240} placeholder="Nota (técnica, cadência, vídeo…)" onChange={(ev) => setE(k, { notes: ev.target.value })} aria-label="Nota do exercício" />
+                  <input className="field sm" style={{ flex: 1, minWidth: 0 }} value={e.notes} maxLength={240} placeholder="Nota para o aluno (técnica, cadência…)" onChange={(ev) => setE(k, { notes: ev.target.value })} aria-label="Nota do exercício" />
                   <button className="btn ghost sm" aria-label="Subir" onClick={() => moveE(k, -1)}>↑</button>
                   <button className="btn ghost sm" aria-label="Descer" onClick={() => moveE(k, 1)}>↓</button>
                   <button className="x" aria-label="Apagar exercício" onClick={() => setW((x) => ({ ...x, exercises: x.exercises.filter((_, j) => j !== k) }))}>×</button>
                 </div>
+                <input className="field sm pro-video" type="url" inputMode="url" value={e.video ?? ''} maxLength={300} placeholder="🎬 Link do vídeo (YouTube, Instagram…) — opcional" onChange={(ev) => setE(k, { video: ev.target.value.trim() || undefined })} aria-label={`Vídeo do exercício ${k + 1}`} />
               </div>
             ))}
             <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>

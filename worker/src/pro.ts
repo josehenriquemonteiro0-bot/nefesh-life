@@ -25,6 +25,17 @@ export const validCode = (v: unknown) => /^NP-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(Str
 const normCode = (v: unknown) => String(v ?? '').trim().toUpperCase();
 
 /** Plano de treino no mesmo formato da app (ParsedWorkoutPlan), validado e com limites. */
+/** Só links https (YouTube, Instagram, Vimeo, Drive…) para o vídeo do exercício. */
+export function videoUrl(v: unknown): string {
+  const t = String(v ?? '').trim().slice(0, 300);
+  try {
+    const u = new URL(t);
+    return u.protocol === 'https:' ? u.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
 export function cleanPlan(p: unknown) {
   const o = (p ?? {}) as Record<string, unknown>;
   const workouts = (Array.isArray(o.workouts) ? o.workouts : []).slice(0, 10).map((w) => {
@@ -42,6 +53,7 @@ export function cleanPlan(p: unknown) {
           load: str(y.load, 30),
           rest: str(y.rest, 30),
           notes: str(y.notes, 240),
+          ...(videoUrl(y.video) ? { video: videoUrl(y.video) } : {}),
         };
       }).filter((e) => e.name),
     };
