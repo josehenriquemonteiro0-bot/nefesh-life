@@ -77,6 +77,35 @@ export async function proOf(db: DB, uid: string) {
 }
 
 /** Pedido de registo como profissional (fica pendente até a equipa aprovar). */
+/**
+ * Profissionais já verificados pela equipa (registo profissional visto): entram aprovados logo.
+ * Guarda-se só a chave da conta (hash do e-mail, como no KV das contas), nunca o e-mail.
+ */
+export const PREAPPROVED: { key: string; name: string; reg: string }[] = [
+  { key: 'u:8b24f8fc3660492224ab658483b96e0c12c197371b19bb8160cc513785400a7d', name: 'Isabela', reg: 'CREF 008026-G/MT' },
+];
+
+/** Esta conta é de um profissional já verificado? */
+export async function preapproved(store: { get(k: string): Promise<string | null> }, uid: string) {
+  for (const p of PREAPPROVED) {
+    const raw = await store.get(p.key);
+    try {
+      if (raw && (JSON.parse(raw) as { id?: string }).id === uid) return p;
+    } catch {
+      /* conta ilegível */
+    }
+  }
+  return null;
+}
+
+/** Cria (ou aprova) o registo de um profissional já verificado. */
+export async function ensurePreapproved(db: DB, uid: string, p: { name: string; reg: string }, now = new Date()) {
+  const cur = await proOf(db, uid);
+  if (cur?.status === 'aprovado') return;
+  if (cur) await db.prepare("UPDATE pros SET status = 'aprovado' WHERE uid = ?").bind(uid).run();
+  else await db.prepare("INSERT INTO pros (uid, name, kind, reg, status, created) VALUES (?, ?, 'personal', ?, 'aprovado', ?)").bind(uid, p.name, p.reg, now.toISOString()).run();
+}
+
 /** `auto` (só no servidor de teste): o acesso fica aprovado logo, sem passar pela página da equipa. */
 export async function registerPro(db: DB, uid: string, b: Record<string, unknown>, now = new Date(), auto = false): Promise<R> {
   const name = str(b.name, 60), reg = str(b.reg, 40) || (auto ? 'teste' : '');

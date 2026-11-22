@@ -227,3 +227,18 @@ describe('Pro: aluno ligado sem treino enviado', () => {
     expect(pro.attention([], { linked: false, hasPlan: false })).toEqual([]);
   });
 });
+
+describe('Pro: profissional já verificado', () => {
+  it('a conta da lista entra aprovada; as outras continuam pendentes', async () => {
+    const db = memoryDB();
+    const store = { get: async (k: string) => (k === pro.PREAPPROVED[0].key ? JSON.stringify({ id: 'conta-isa' }) : null) };
+    expect(await pro.preapproved(store, 'outra-conta')).toBeNull();
+    const pre = await pro.preapproved(store, 'conta-isa');
+    expect(pre?.reg).toMatch(/^CREF /);
+    await pro.ensurePreapproved(db, 'conta-isa', pre!, NOW);
+    expect((await pro.proState(db, 'conta-isa', NOW)).body.pro).toMatchObject({ status: 'aprovado' });
+    expect((await pro.newStudent(db, 'conta-isa', { name: 'Maria' }, NOW)).status).toBe(200);
+    await pro.registerPro(db, 'outro', { name: 'Outro Personal', reg: 'CREF 1234' }, NOW);
+    expect((await pro.proState(db, 'outro', NOW)).body.pro).toMatchObject({ status: 'pendente' });
+  });
+});

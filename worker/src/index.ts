@@ -320,6 +320,11 @@ export default {
       }
       // lado do profissional: precisa de conta
       if (!uid) return json({ error: 'Entre na sua conta para usar o NEFESH Life Pro.' }, 401, h);
+      // profissional já verificado pela equipa: entra aprovado
+      if (action === 'estado' || action === 'registar') {
+        const pre = await pro.preapproved(env.LIMITS as never, uid);
+        if (pre) await pro.ensurePreapproved(db, uid, pre);
+      }
       const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
         registar: () => pro.registerPro(db, uid, b, new Date(), env.PRO_AUTO_APPROVE === 'true'),
         estado: () => pro.proState(db, uid, new Date(), env.PRO_AUTO_APPROVE === 'true'),
