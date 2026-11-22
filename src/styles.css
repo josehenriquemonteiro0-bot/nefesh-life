@@ -737,6 +737,15 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .chip.pro-split{display:grid;gap:0;justify-items:center;padding:6px 12px}
 .chip.pro-split span{font-size:12px;font-weight:400;color:var(--mute)}
 .chip.pro-split.on span{color:#00140d;opacity:.75}
+.pro-chart{width:100%;height:auto;margin-top:8px;color:var(--text,#e8f3ee)}
+.pro-results{display:flex;flex-wrap:wrap;gap:6px 14px;margin:12px 0 0;padding:10px 12px;border-radius:12px;background:rgba(0,254,138,.06);font-size:13px}
+.pro-results b{color:var(--neon)}
+.pro-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.pro-photo-slot{display:grid;gap:4px;justify-items:center;cursor:pointer}
+.pro-photo{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;font-size:24px;color:var(--mute)}
+.pro-photo.ph{background:var(--panel2)}
+.pro-compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.pro-compare figure{margin:0;display:grid;gap:4px;text-align:center}
 .pro-phase{border:1px solid var(--line);border-radius:12px;padding:8px;margin:6px 0}
 .plan-week{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(0,254,138,.06);border:1px solid rgba(0,254,138,.25)}
 .plan-week.ended{background:rgba(201,168,92,.08);border-color:rgba(201,168,92,.4)}

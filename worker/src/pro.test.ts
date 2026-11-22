@@ -147,3 +147,31 @@ describe('Pro: periodização', () => {
     expect(pro.planEndsIn(null)).toBeNull();
   });
 });
+
+describe('Pro: avaliações físicas', () => {
+  it('guarda, lista com fotos, atualiza o perfil com a mais recente e apaga tudo com o aluno', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
+    const a1 = { day: '2026-10-01', peso: 64, sexo: 'f', idade: 34, protocol: 'jp3', folds: { triceps: 20, suprailiaca: 18, coxa: 25 }, medidas: { cintura: 74 } };
+    const a2 = { day: '2026-11-20', peso: '62,5', sexo: 'f', idade: 34, protocol: 'medido', gorduraMedida: 24, medidas: { cintura: 71.5, quadril: 98 } };
+    const id1 = (await pro.saveAssessment(db, 'isa', { code, assessment: a1 }, NOW)).body.id as number;
+    const id2 = (await pro.saveAssessment(db, 'isa', { code, assessment: a2 }, NOW)).body.id as number;
+    expect(id2).toBeGreaterThan(id1);
+    expect((await pro.savePhoto(db, 'isa', { code, assess: id2, pose: 'frente', image: 'QUJD' }, NOW)).status).toBe(400); // sem autorização
+    expect((await pro.savePhoto(db, 'isa', { code, assess: id2, pose: 'frente', image: 'QUJD', consent: true }, NOW)).status).toBe(200);
+    const list = (await pro.listAssessments(db, 'isa', { code })).body.list as { id: number; day: string; peso: number; photos: { id: number; pose: string }[] }[];
+    expect(list.map((x) => x.day)).toEqual(['2026-11-20', '2026-10-01']);
+    expect(list[0].peso).toBe(62.5);
+    expect(list[0].photos).toHaveLength(1);
+    expect((await pro.getPhoto(db, 'isa', { code, id: list[0].photos[0].id })).body.image).toBe('QUJD');
+    expect((await pro.getPhoto(db, 'outro', { code, id: list[0].photos[0].id })).status).toBe(404);
+    const st = (await pro.proState(db, 'isa', NOW)).body.students as { profile: Record<string, unknown> }[];
+    expect(st[0].profile).toMatchObject({ peso: 62.5, gordura: 24, dataAval: '2026-11-20', medidas: { cintura: 71.5, quadril: 98 } });
+    // corrigir a antiga não muda o perfil
+    await pro.saveAssessment(db, 'isa', { code, id: id1, assessment: { ...a1, peso: 65 } }, NOW);
+    expect(((await pro.proState(db, 'isa', NOW)).body.students as { profile: { peso: number } }[])[0].profile.peso).toBe(62.5);
+    await pro.removeStudent(db, 'isa', { code });
+    expect(await db.prepare('SELECT (SELECT COUNT(*) FROM pro_assess) + (SELECT COUNT(*) FROM pro_photos) AS n').first<{ n: number }>()).toEqual({ n: 0 });
+  });
+});

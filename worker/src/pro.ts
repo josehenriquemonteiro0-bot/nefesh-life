@@ -9,6 +9,7 @@ import { localNow, sendPush, type KeyStore } from './push';
 import type { DB } from './social';
 import { isQuiet } from './notify';
 import { cleanProfile, profileEmpty, type StudentProfile } from '../../src/domain/proProfile';
+import { POSES, cleanAssessment, results } from '../../src/domain/proAssess';
 
 type R = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown> = { ok: true }): R => ({ status: 200, body });
@@ -189,6 +190,88 @@ export async function saveProfile(db: DB, uid: string, b: Record<string, unknown
   return ok({ profile: await putProfile(db, s.code, b.profile, now) });
 }
 
+/* ───────── avaliações físicas (histórico, fotos) ───────── */
+
+export async function listAssessments(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const { results: rows } = await db.prepare('SELECT id, day, data FROM pro_assess WHERE code = ? ORDER BY day DESC, id DESC LIMIT 60').bind(s.code).all<{ id: number; day: string; data: string }>();
+  const { results: ph } = await db.prepare('SELECT id, assess, pose FROM pro_photos WHERE code = ?').bind(s.code).all<{ id: number; assess: number; pose: string }>();
+  return ok({ list: rows.map((r) => ({ ...(JSON.parse(r.data) as object), id: r.id, day: r.day, photos: ph.filter((p) => p.assess === r.id).map((p) => ({ id: p.id, pose: p.pose })) })) });
+}
+
+/** Guarda (nova ou corrigida) e põe os números mais recentes no perfil (a IA usa-os). */
+export async function saveAssessment(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const a = cleanAssessment(b.assessment, now.toISOString().slice(0, 10));
+  const data = JSON.stringify(a);
+  let id = Math.round(Number(b.id) || 0);
+  if (id) {
+    const own = await db.prepare('SELECT id FROM pro_assess WHERE id = ? AND code = ?').bind(id, s.code).first();
+    if (!own) return bad('Avaliação não encontrada.', 404);
+    await db.prepare('UPDATE pro_assess SET day = ?, data = ? WHERE id = ?').bind(a.day, data, id).run();
+  } else {
+    const n = await db.prepare('SELECT COUNT(*) AS n FROM pro_assess WHERE code = ?').bind(s.code).first<{ n: number }>();
+    if ((n?.n ?? 0) >= 60) return bad('Chegou ao limite de avaliações deste aluno.');
+    await db.prepare('INSERT INTO pro_assess (code, day, data, created) VALUES (?, ?, ?, ?)').bind(s.code, a.day, data, now.toISOString()).run();
+    id = (await db.prepare('SELECT MAX(id) AS id FROM pro_assess WHERE code = ?').bind(s.code).first<{ id: number }>())?.id ?? 0;
+  }
+  const latest = await db.prepare('SELECT id FROM pro_assess WHERE code = ? ORDER BY day DESC, id DESC LIMIT 1').bind(s.code).first<{ id: number }>();
+  if (latest?.id === id) {
+    const pr = await db.prepare('SELECT data FROM pro_profiles WHERE code = ?').bind(s.code).first<{ data: string }>();
+    const cur = pr ? cleanProfile(JSON.parse(pr.data)) : cleanProfile({});
+    const r = results(a);
+    await putProfile(db, s.code, {
+      ...cur, sexo: a.sexo || cur.sexo, idade: a.idade ?? cur.idade, altura: a.altura ?? cur.altura, peso: a.peso ?? cur.peso,
+      gordura: r.gordura ?? cur.gordura, magra: r.magra ?? cur.magra, fc: a.fc ?? cur.fc, dataAval: a.day,
+      medidas: Object.keys(a.medidas).length ? a.medidas : cur.medidas,
+    }, now);
+  }
+  return ok({ id });
+}
+
+export async function deleteAssessment(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const id = Math.round(Number(b.id) || 0);
+  await db.batch([db.prepare('DELETE FROM pro_photos WHERE code = ? AND assess = ?').bind(s.code, id), db.prepare('DELETE FROM pro_assess WHERE code = ? AND id = ?').bind(s.code, id)]);
+  return ok();
+}
+
+const MAX_PHOTO = 400_000; // ~300 KB em base64
+
+/** Foto da avaliação (só com a autorização do aluno): visível apenas para o profissional. */
+export async function savePhoto(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  if (b.consent !== true) return bad('Confirme que o aluno autorizou as fotos.');
+  const assess = Math.round(Number(b.assess) || 0);
+  if (!(await db.prepare('SELECT id FROM pro_assess WHERE id = ? AND code = ?').bind(assess, s.code).first())) return bad('Avaliação não encontrada.', 404);
+  const pose = POSES.includes(b.pose as never) ? String(b.pose) : '';
+  const image = String(b.image ?? '');
+  if (!pose || !image || image.length > MAX_PHOTO || !/^[A-Za-z0-9+/=]+$/.test(image)) return bad('Foto inválida ou grande demais.');
+  await db.batch([
+    db.prepare('DELETE FROM pro_photos WHERE code = ? AND assess = ? AND pose = ?').bind(s.code, assess, pose),
+    db.prepare('INSERT INTO pro_photos (code, assess, pose, data, created) VALUES (?, ?, ?, ?, ?)').bind(s.code, assess, pose, image, now.toISOString()),
+  ]);
+  return ok();
+}
+
+export async function getPhoto(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const p = await db.prepare('SELECT data FROM pro_photos WHERE id = ? AND code = ?').bind(Math.round(Number(b.id) || 0), s.code).first<{ data: string }>();
+  return p ? ok({ image: p.data }) : bad('Foto não encontrada.', 404);
+}
+
+export async function deletePhoto(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  await db.prepare('DELETE FROM pro_photos WHERE id = ? AND code = ?').bind(Math.round(Number(b.id) || 0), s.code).run();
+  return ok();
+}
+
 export async function studentLogs(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
@@ -199,7 +282,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 

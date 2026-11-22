@@ -10,6 +10,7 @@ import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
 import { DictationCard, ReviewCard } from '../components/ProAI';
 import { ProfileEditor } from '../components/ProProfile';
+import { StudentAssessments } from '../components/ProAssess';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
@@ -345,6 +346,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [newName, setNewName] = useState('');
   const [edit, setEdit] = useState<ProStudent | null>(null);
   const [profileOf, setProfileOf] = useState<ProStudent | null>(null);
+  const [assessOf, setAssessOf] = useState<ProStudent | null>(null);
   const [askPlan, setAskPlan] = useState<ProStudent | null>(null);
   const [askProfile, setAskProfile] = useState<{ code: string; name: string } | null>(null);
   const [logs, setLogs] = useState<ProStudent | null>(null);
@@ -364,6 +366,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       </>
     );
   if (edit) return <PlanEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
+  if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
   if (profileOf) return <ProfileEditor student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
   if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} />;
 
@@ -453,6 +456,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                 <button className="btn sm" onClick={() => setEdit(s)}>{s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
                 <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{s.profile ? 'Perfil' : '+ Perfil'}</button>
+                <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
                 {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appUrl))} target="_blank" rel="noreferrer">Enviar código</a>}
                 <button className="link small inline" onClick={() => confirm(`Apagar ${s.name} e os registos?`) && proApi('aluno/apagar', { code: s.code }).then(load)}>Apagar</button>

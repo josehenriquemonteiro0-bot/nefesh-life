@@ -7,7 +7,7 @@ const parseNum = (t: string) => (t.trim() && Number.isFinite(Number(t.replace(',
 const showNum = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
 
 /** Campo numérico que aceita vírgula enquanto se escreve (71,5) e se atualiza quando o documento preenche. */
-function NumField({ value, onNum, placeholder, decimal = true }: { value: number | null | undefined; onNum: (v: number | null) => void; placeholder: string; decimal?: boolean }) {
+export function NumField({ value, onNum, placeholder, decimal = true }: { value: number | null | undefined; onNum: (v: number | null) => void; placeholder: string; decimal?: boolean }) {
   const [t, setT] = useState(showNum(value));
   useEffect(() => { if (parseNum(t) !== (value ?? null)) setT(showNum(value)); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
   return <input className="field sm" inputMode={decimal ? 'decimal' : 'numeric'} value={t} placeholder={placeholder} onChange={(e) => { setT(e.target.value); onNum(parseNum(e.target.value)); }} />;

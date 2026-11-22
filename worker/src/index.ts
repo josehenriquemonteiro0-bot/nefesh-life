@@ -326,6 +326,12 @@ export default {
         'aluno/apagar': () => pro.removeStudent(db, uid, b),
         'aluno/perfil': () => pro.saveProfile(db, uid, b),
         'aluno/rascunho': () => pro.saveDraft(db, uid, b),
+        'aluno/avaliacoes': () => pro.listAssessments(db, uid, b),
+        'aluno/avaliacao': () => pro.saveAssessment(db, uid, b),
+        'aluno/avaliacao/apagar': () => pro.deleteAssessment(db, uid, b),
+        'aluno/foto': () => pro.savePhoto(db, uid, b),
+        'aluno/foto/ver': () => pro.getPhoto(db, uid, b),
+        'aluno/foto/apagar': () => pro.deletePhoto(db, uid, b),
       };
       // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
       if (action === 'ia/ditado' || action === 'ia/rever' || action === 'ia/avaliacao') {
