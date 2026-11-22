@@ -6,7 +6,7 @@
  * A decisão é sempre do profissional: a IA só propõe.
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { LIBRARY } from '../../src/domain/proLibrary';
+import { LIBRARY, normalizeBookends } from '../../src/domain/proLibrary';
 import { check, count, type CounterStore, type Limits } from './limits';
 import { cleanPlan } from './pro';
 import { MEASURE_KEYS, cleanProfile } from '../../src/domain/proProfile';
@@ -77,7 +77,7 @@ Devolves o plano COMPLETO atualizado:
 - Aplica só o que foi pedido; mantém tudo o resto exatamente como está (inclusive a ordem).
 - "Treino A", "treino B"… referem-se aos treinos pela ordem; se pedir um treino que ainda não existe, cria-o com o nome "Treino X". Se disser a divisão ("ABC", "3 treinos"), cria esses treinos.
 - Junta os exercícios ao fim do treino indicado, pela ordem em que foram ditos. "Tira", "remove", "troca" mudam o que já existe.
-- Início do treino: aeróbico de aquecimento ("10 minutos de bicicleta no início", "aquecer 5 min na esteira"), mobilidade, alongamento dinâmico ou ativação ("começa com 5 minutos de mobilidade", "ativação de glúteos antes"): vai para o INÍCIO do treino, pela ordem aeróbico → mobilidade → ativação, com notes a começar por "Aquecimento" (ex.: "Aquecimento", "Aquecimento · mobilidade"). Com duração: sets 1, reps "10 min", rest "". Só um aeróbico de aquecimento por treino: um novo substitui o anterior. Nomes: "Mobilidade articular geral", "Alongamento dinâmico", "Ativação de glúteos (mini band)", "Ativação de core", "Série de aquecimento (carga leve)".
+- Início do treino — tudo o que é para fazer ANTES dos exercícios principais (aquecer, alongar, mobilidade, ativação, "começa com…", "primeiro…") é início do treino, mesmo que não diga a palavra aquecimento: aeróbico de aquecimento ("10 minutos de bicicleta no início", "aquecer 5 min na esteira"), mobilidade, alongamento dinâmico ou ativação ("começa com 5 minutos de mobilidade", "ativação de glúteos antes"): vai para o INÍCIO do treino, pela ordem aeróbico → mobilidade → ativação, com notes a começar por "Aquecimento" (ex.: "Aquecimento", "Aquecimento · mobilidade"). Com duração: sets 1, reps "10 min", rest "". Só um aeróbico de aquecimento por treino: um novo substitui o anterior. Nomes: "Mobilidade articular geral", "Alongamento dinâmico", "Ativação de glúteos (mini band)", "Ativação de core", "Série de aquecimento (carga leve)".
 - Fim do treino: alongamento final, volta à calma, relaxamento ou aeróbico no fim ("15 minutos de esteira no fim", "terminar com alongamento"): vai para o FIM do treino, com sets 1, reps com a duração e notes a começar por "Final" (ex.: "Final · volta à calma", "Final · cardio"). Nomes: "Alongamento final (volta à calma)", "Relaxamento e respiração".
 - Usa, quando corresponder, o nome desta lista (corrige a transcrição e os nomes do Brasil: "extensora" → "Cadeira extensora", "búlgaro" → "Agachamento búlgaro", "esteira" → "Passadeira / esteira (caminhada)", "elíptico" ou "transport" → "Elíptica / elíptico (transport)", "pulley" → "Puxada à frente", "avanço" → "Afundo (passada)"): ${NAMES}. Se não houver correspondência, escreve o nome como o profissional disse, com maiúscula inicial.
 - "4 de 10", "4 por 10", "4x10" = 4 séries de 10 repetições. Sem séries/repetições ditas: usa 3 séries e "12" (ou "8-10" nos exercícios compostos pesados). Descanso por omissão "60 s" (compostos "90 s"); "1 minuto" = "60 s". Carga só se for dita ("20 quilos" = "20 kg").
@@ -165,6 +165,8 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
       return { ...w, exercises: [...(intro.length ? intro : kept.filter(isIntro)), ...body.filter((e) => !isIntro(e) && !isEnd(e)), ...(outro.length ? outro : kept.filter(isEnd))].slice(0, 20) };
     });
   }
+  // início e fim do treino arrumados como no modo manual (ordem, duração, notas, sem descanso)
+  workouts = workouts.map((w) => normalizeBookends(w as never) as typeof w);
   // periodização: duração só muda na etapa da estrutura (ou no modo livre) se for dita; início e fases ficam
   const weeks = stage !== 'treino' && Number(r.weeks) > 0 ? Math.min(52, Math.round(Number(r.weeks))) : plan.weeks;
   const period = { ...(weeks ? { weeks } : {}), ...(plan.start ? { start: plan.start } : {}), ...(plan.phases ? { phases: plan.phases } : {}) };

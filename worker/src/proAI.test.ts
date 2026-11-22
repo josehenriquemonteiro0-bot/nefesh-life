@@ -77,3 +77,24 @@ describe('NEFESH Life Pro com IA', () => {
     expect((await readAssessment(fake({ ...out, is_assessment: false }), 'm', kv(), 'isa', 'ip', { file: 'JVBERi0x', media_type: 'application/pdf' })).body).toEqual({ found: false });
   });
 });
+
+describe('ditado: início e fim arrumados como no manual', () => {
+  it('alongamento e esteira no início com duração certa, sem descanso, notas do manual', async () => {
+    const ex2 = (name: string, reps: string, notes: string, rest = '60 s') => ({ name, sets: 3, reps, load: '', rest, notes });
+    const out = { workouts: [{ name: 'Treino A', focus: 'Inferior', day: '', exercises: [
+      ex2('Alongamento dinâmico', '10 ou 8-12', 'Aquecimento · alongamento'),
+      ex2('Agachamento livre', '10', ''),
+      ex2('Passadeira / esteira (caminhada)', '10 min', 'Aquecimento'),
+      ex2('Alongamento final (volta à calma)', '12', 'Final · volta à calma'),
+    ] }], per_week: 3, weeks: 0, notes: '', summary: 'ok', doubts: '' };
+    const plan = { workouts: [{ name: 'Treino A', focus: 'Inferior', day: '', exercises: [] }], per_week: 3, notes: '' };
+    const r = await dictate(fake(out), 'm', kv(), 'isa', 'ip', { text: 'começa com alongamento e esteira', plan, stage: 'treino', current: 0 });
+    const exs = (r.body.plan as { workouts: { exercises: { name: string; sets: number; reps: string; rest: string; notes: string }[] }[] }).workouts[0].exercises;
+    expect(exs.map((e) => `${e.name}|${e.sets}x${e.reps}|${e.rest}|${e.notes}`)).toEqual([
+      'Passadeira / esteira (caminhada)|1x10 min||Aquecimento',
+      'Alongamento dinâmico|1x5 min||Aquecimento · mobilidade',
+      'Agachamento livre|3x10|60 s|',
+      'Alongamento final (volta à calma)|1x5 min||Final',
+    ]);
+  });
+});

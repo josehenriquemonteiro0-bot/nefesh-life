@@ -261,3 +261,29 @@ export function toggleBookend(w: PlanWorkout, b: Bookend, on = !hasBookend(w, b)
 export function addWarmup(w: PlanWorkout, name: string, min: number): PlanWorkout {
   return toggleBookend(w, { label: '', name, sets: 1, reps: `${min} min`, kind: 'aerobico' }, true);
 }
+
+const DUR = /^\d+([,.]\d+)?\s*(min|minutos?|s|seg|segundos?)$/i;
+const COUNT = /^\d+(\s*-\s*\d+)?$/;
+const CARDIO = new Set(LIBRARY.filter((e) => e.group === 'cardio').map((e) => e.name));
+
+/**
+ * Arruma o início e o fim do treino (o que a IA devolve, ou o que se escreveu à mão):
+ * início = aeróbico primeiro (só um), depois mobilidade/alongamento/ativação; fim no fim;
+ * sem descanso, duração válida e as mesmas notas do modo manual.
+ */
+export function normalizeBookends(w: PlanWorkout): PlanWorkout {
+  const fix = (e: WorkoutExercise, end: boolean): WorkoutExercise => {
+    const b = (end ? OUTRO : INTRO).find((x) => x.name === e.name);
+    const aero = !end && (AERO.has(e.name) || CARDIO.has(e.name));
+    const reps = DUR.test(e.reps.trim()) || (!aero && !end && COUNT.test(e.reps.trim())) ? e.reps.trim() : b?.reps ?? (aero ? '10 min' : '5 min');
+    const sets = DUR.test(reps) ? 1 : b?.sets ?? e.sets;
+    return { ...e, sets, reps, rest: '', notes: end ? 'Final' : aero ? 'Aquecimento' : 'Aquecimento · mobilidade' };
+  };
+  const intro = w.exercises.filter((e) => isWarmup(e)).map((e) => fix(e, false));
+  const outro = w.exercises.filter((e) => isFinal(e)).map((e) => fix(e, true));
+  if (!intro.length && !outro.length) return w;
+  const body = w.exercises.filter((e) => !isWarmup(e) && !isFinal(e));
+  const firstAero = intro.find((e) => e.notes === 'Aquecimento');
+  const introSorted = [...(firstAero ? [firstAero] : []), ...intro.filter((e) => e.notes !== 'Aquecimento')];
+  return { ...w, exercises: [...introSorted, ...body, ...outro].slice(0, 20) };
+}

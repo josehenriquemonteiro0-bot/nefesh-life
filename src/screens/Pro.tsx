@@ -253,18 +253,29 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             {mode === 'manual' && <div className="chips" style={{ marginTop: 6 }}>
               {FOCUS_PRESETS.map((p) => <button key={p.label} className={`chip sm ${w.focus === p.label ? 'on' : ''}`} onClick={() => setW((x) => ({ ...x, focus: p.label }))}>{p.label}</button>)}
             </div>}
-            {mode === 'manual' && !(bookOpen ?? !w.exercises.some((e) => isWarmup(e) || isFinal(e))) && (
+            {!(bookOpen ?? (mode === 'manual' && !w.exercises.some((e) => isWarmup(e) || isFinal(e)))) && (
               <div className="pro-warmup row" style={{ gap: 8, flexWrap: 'nowrap' }}>
                 <span className="small" style={{ flex: 1, minWidth: 0 }}>🔥 <b>Início:</b> {w.exercises.filter(isWarmup).map((e) => `${e.name.split(' (')[0]} ${e.reps}`).join(', ') || '—'} · 🧘 <b>Fim:</b> {w.exercises.filter(isFinal).map((e) => `${e.name.split(' (')[0]} ${e.reps}`).join(', ') || '—'}</span>
                 <button className="link small inline" onClick={() => setBookOpen(true)}>Editar</button>
               </div>
             )}
-            {mode === 'manual' && (bookOpen ?? !w.exercises.some((e) => isWarmup(e) || isFinal(e))) && (
+            {(bookOpen ?? (mode === 'manual' && !w.exercises.some((e) => isWarmup(e) || isFinal(e)))) && (
               <div className="pro-warmup">
                 <div className="row" style={{ gap: 8 }}>
                   <span className="small" style={{ fontWeight: 700 }}>🔥 Início do treino</span>
                   {n > 1 && <label className="small mute" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={warmAll} onChange={(e) => setWarmAll(e.target.checked)} /> em todos os treinos</label>}
                 </div>
+                {w.exercises.some((e) => isWarmup(e) || isFinal(e)) && (
+                  <div className="pro-book-list">
+                    {w.exercises.map((e, k) => (isWarmup(e) || isFinal(e)) && (
+                      <div key={k} className="pro-book-item">
+                        <span className="small">{isFinal(e) ? '🧘' : '🔥'} {e.name}</span>
+                        <input className="field sm" value={e.reps} maxLength={30} onChange={(ev) => setE(k, { reps: ev.target.value })} aria-label={`Duração de ${e.name}`} />
+                        <button className="x" aria-label={`Tirar ${e.name}`} onClick={() => setW((x) => ({ ...x, exercises: x.exercises.filter((_, j) => j !== k) }))}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <p className="small mute" style={{ margin: '6px 0 4px' }}>Aeróbico</p>
                 <div className="chips">
                   {INTRO.filter((x) => x.kind === 'aerobico').map((x) => <button key={x.label} className={`chip sm ${hasBookend(w, x) ? 'on' : ''}`} aria-pressed={hasBookend(w, x)} onClick={() => setBook(x)}>{x.label}</button>)}
@@ -278,15 +289,15 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
                   {OUTRO.map((x) => <button key={x.label} className={`chip sm ${hasBookend(w, x) ? 'on' : ''}`} aria-pressed={hasBookend(w, x)} onClick={() => setBook(x)}>{x.label}</button>)}
                 </div>
                 <div className="row" style={{ marginTop: 6, gap: 8 }}>
-                  <span className="small mute" style={{ flex: 1 }}>🧍 O aluno vê cada um explicado com o bonequinho animado. Toque outra vez para tirar; outra duração: mude no exercício.</span>
+                  <span className="small mute" style={{ flex: 1 }}>🧍 O aluno vê cada um explicado com o bonequinho animado. Toque outra vez para tirar.</span>
                   {w.exercises.some((e) => isWarmup(e) || isFinal(e)) && <button className="link small inline" onClick={() => setBookOpen(false)}>Fechar</button>}
                 </div>
               </div>
             )}
-            {w.exercises.map((e, k) => (
+            {w.exercises.map((e, k) => !isWarmup(e) && !isFinal(e) && (
               <div className="pro-ex" key={k}>
                 <div className="row" style={{ gap: 6, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
-                  <span className="small mute" style={{ paddingTop: 8 }}>{k + 1}.</span>
+                  <span className="small mute" style={{ paddingTop: 8 }}>{w.exercises.slice(0, k + 1).filter((x) => !isWarmup(x) && !isFinal(x)).length}.</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <ExerciseInput value={e.name} focus={w.focus} label={`Exercício ${k + 1}`} onType={(t) => setE(k, { name: t })}
                       onPick={(l) => setE(k, { name: l.name, sets: l.sets, reps: l.reps, rest: l.rest })} />
