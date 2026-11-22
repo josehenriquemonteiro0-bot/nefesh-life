@@ -36,6 +36,38 @@ describe('animações dos exercícios', () => {
     expect(animFor('Afundo com Halteres')).toBe('afundos');
     expect(animFor('Abdominal Prancha Isométrica')).toBe('prancha');
     expect(animFor('Hiperextensao de Lombar Solo')).toBe('superman');
-    expect(animFor('Pulldown Barra Aberta')).toBeNull();
+    expect(animFor('Pulldown Barra Aberta')).toBe('puxada');
+    expect(animFor('Exercício inventado')).toBeNull();
+  });
+  it('todos os exercícios que o personal pode escolher têm bonequinho', async () => {
+    const { LIBRARY } = await import('./proLibrary');
+    const { GYM } = await import('./gymData');
+    const { ROUTINES } = await import('./exerciseAnims');
+    for (const e of [...LIBRARY, ...Object.values(GYM)]) {
+      const id = ROUTINES[e.name] ? 'rotina' : animFor(e.name);
+      expect(id, e.name).toBeTruthy();
+      if (id !== 'rotina') expect(ANIMS[id!], e.name).toBeTruthy();
+    }
+  });
+  it('escolhe o movimento certo nos exercícios de ginásio', () => {
+    const cases: [string, string][] = [
+      ['Supino reto com barra', 'supino'], ['Supino inclinado com halteres', 'supino_inclinado'], ['Crucifixo invertido (posterior de ombro)', 'crucifixo_inv'],
+      ['Peck deck (voador)', 'voador'], ['Puxada à frente', 'puxada'], ['Pulldown com braços estendidos', 'pulldown_reto'],
+      ['Remada sentada (cabo)', 'remada_sentada'], ['Remada alta', 'remada_alta'], ['Desenvolvimento Arnold', 'desenvolvimento'],
+      ['Rosca Scott', 'rosca_barra'], ['Rosca martelo', 'rosca'], ['Tríceps corda', 'triceps_polia'], ['Tríceps coice (kickback)', 'coice_triceps'],
+      ['Glúteo 4 apoios (coice)', 'coice_4apoios'], ['Glúteo na polia (coice)', 'coice_polia'], ['Panturrilha no leg press', 'panturrilha'],
+      ['Leg press 45°', 'leg_press'], ['Cadeira extensora', 'extensora'], ['Mesa flexora', 'mesa_flexora'], ['Cadeira flexora', 'flexora_sentada'],
+      ['Levantamento terra romeno', 'stiff'], ['Elevação pélvica (hip thrust)', 'hip_thrust'], ['Agachamento búlgaro', 'bulgaro'],
+      ['Passadeira / esteira (corrida)', 'esteira_corrida'], ['Esteira 10 min', 'esteira'], ['Bicicleta ergométrica', 'bicicleta'],
+      ['Abdominal bicicleta', 'abdominal_bicicleta'], ['Elíptica / elíptico (transport)', 'eliptica'], ['Remo ergómetro (remo indoor)', 'remo'],
+      ['Prancha lateral', 'prancha_lateral'], ['Hiperextensão lombar (banco romano)', 'hiperextensao'], ['Supino fechado', 'supino'],
+      ['Mergulho no banco', 'mergulho_banco'], ['Paralelas (tríceps)', 'paralelas'], ['Agachamento na parede (isometria)', 'parede'],
+    ];
+    for (const [n, id] of cases) expect(animFor(n), n).toBe(id);
+  });
+  it('nomes livres do personal: pelo grupo muscular ou pelas notas', () => {
+    expect(animFor('Exercício para peito na máquina nova')).toBe('supino');
+    expect(animFor('Circuito de pernas')).toBe('agachamento');
+    expect(animFor('Exercício X', 'tipo remada na polia')).toBe('remada_sentada');
   });
 });

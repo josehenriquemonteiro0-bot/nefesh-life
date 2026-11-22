@@ -36,6 +36,27 @@ function Line({ p, q, a, b, dur, far }: { p: Joint; q: Joint; a: Pose; b: Pose; 
   );
 }
 
+const SHAPES: Record<string, JSX.Element> = {
+  db: <><rect x="-5" y="-1.5" width="10" height="3" rx="1" /><rect x="-6.5" y="-3.5" width="3" height="7" rx="1" /><rect x="3.5" y="-3.5" width="3" height="7" rx="1" /></>,
+  bar: <circle r="6.5" />,
+  pad: <rect x="-4" y="-4" width="8" height="8" rx="3" />,
+  wheel: <circle r="4.5" />,
+  sled: <rect x="-1.5" y="-9" width="5" height="18" rx="1.5" transform="rotate(45)" />,
+};
+
+/** Peso que acompanha uma articulação (halter, disco da barra, almofada da máquina…). */
+function Held({ kind, p, q, dur, still }: { kind: string; p: [number, number]; q: [number, number]; dur: number; still: boolean }) {
+  const same = p[0] === q[0] && p[1] === q[1];
+  return (
+    <g transform={`translate(${p[0]} ${p[1]})`} className={`held ${kind}`}>
+      {!still && !same && (
+        <animateTransform attributeName="transform" type="translate" values={`${p[0]} ${p[1]};${q[0]} ${q[1]};${p[0]} ${p[1]}`} keyTimes="0;0.5;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" dur={`${dur}s`} repeatCount="indefinite" />
+      )}
+      {SHAPES[kind]}
+    </g>
+  );
+}
+
 /** Figura animada de um exercício (vetorial, sem vídeo, funciona sem internet). */
 export function ExerciseAnim({ id, size = 'md' }: { id: string; size?: 'sm' | 'md' }) {
   const anim = ANIMS[id];
@@ -52,6 +73,20 @@ export function ExerciseAnim({ id, size = 'md' }: { id: string; size?: 'sm' | 'm
         <line x1="4" y1="93" x2="116" y2="93" className="ground" />
         {anim.props?.includes('mat') && <rect x="10" y="91.5" width="100" height="3" rx="1.5" className="mat" />}
         {anim.props?.includes('door') && <path d="M70 92 V6 H96 V92" className="door" />}
+        {anim.gear && <path d={anim.gear} className="gear" />}
+        {anim.cable && (
+          <>
+            <line x1={anim.cable.from[0]} y1={anim.cable.from[1]} x2={a[anim.cable.to]![0]} y2={a[anim.cable.to]![1]} className="cable">
+              {!still && (
+                <>
+                  <Anim2 attr="x2" a={a[anim.cable.to]![0]} b={b[anim.cable.to]![0]} dur={dur} />
+                  <Anim2 attr="y2" a={a[anim.cable.to]![1]} b={b[anim.cable.to]![1]} dur={dur} />
+                </>
+              )}
+            </line>
+            <circle cx={anim.cable.from[0]} cy={anim.cable.from[1]} r="2.5" className="pulley" />
+          </>
+        )}
         {SEGMENTS.map(([p, q, far]) => <Line key={p + q} p={p} q={q} a={a} b={b} dur={dur} far={far} />)}
         {spine.slice(1).map((q, i) => <Line key={`s${q}`} p={spine[i]} q={q} a={a} b={b} dur={dur} far={false} />)}
         <circle cx={a.head![0]} cy={a.head![1]} r="7" className="head">
@@ -72,6 +107,7 @@ export function ExerciseAnim({ id, size = 'md' }: { id: string; size?: 'sm' | 'm
             )}
           </rect>
         )}
+        {anim.hold?.map((h, i) => <Held key={i} kind={h.kind} p={a[h.at]!} q={b[h.at]!} dur={dur} still={still} />)}
       </svg>
       {size === 'md' && <figcaption className="small mute">{anim.cue}</figcaption>}
     </figure>

@@ -1,3 +1,5 @@
+import { GYM_ANIMS } from './gymAnims';
+
 /**
  * Animações dos exercícios: uma figura de traços que alterna entre duas posições.
  * Coordenadas numa área de 120 × 100 (chão em y = 92). Vista de lado, exceto os polichinelos.
@@ -13,6 +15,14 @@ export interface Anim {
   dur: number;
   /** elementos de cenário */
   props?: ('door' | 'mat' | 'bag')[];
+  /** aparelho fixo (banco, máquina, barra alta…), como caminho SVG */
+  gear?: string;
+  /** peso que acompanha uma articulação: halter, barra (disco), almofada da máquina, roda, plataforma */
+  hold?: { at: Joint; kind: 'db' | 'bar' | 'pad' | 'wheel' | 'sled' }[];
+  /** cabo da polia: de um ponto fixo até à mão (ou ao pé) */
+  cable?: { from: [number, number]; to: Joint };
+  /** vista de frente (para movimentos laterais) */
+  view?: 'front';
   /** texto curto do ritmo, ex.: "desce 2 s, sobe 1 s" */
   cue: string;
 }
@@ -155,6 +165,7 @@ export const ANIMS: Record<string, Anim> = {
     props: ['mat'],
     cue: 'Inspira em 4 s, expira em 6 s, ombros soltos',
   },
+  ...GYM_ANIMS,
 };
 
 /** Rotinas de vários movimentos (início e fim do treino): o aluno vê-as passo a passo. */
@@ -187,29 +198,136 @@ export const ROUTINES: Record<string, { anim: string; label: string }[]> = {
   ],
 };
 
-/** Palavras-chave para reconhecer exercícios de planos de personal (ex.: MyFit). */
+const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/**
+ * Palavras-chave para reconhecer exercícios (biblioteca do Pro, planos de personal, MyFit…).
+ * O texto é comparado sem acentos e em minúsculas; a ordem importa (o mais específico primeiro).
+ */
 const MATCH: [RegExp, string][] = [
-  [/agachamento|squat/i, 'agachamento'],
-  [/afundo|avan[cç]o|lunge|passada/i, 'afundos'],
-  [/flex[aã]o|flexões|push.?up/i, 'flexoes'],
-  [/prancha|plank/i, 'prancha'],
-  [/eleva[cç][aã]o p[eé]lvica|ponte|glute bridge|hip thrust/i, 'ponte'],
-  [/remada curvada|remada com halter|remada unilateral|bent.?over/i, 'remada'],
-  [/super.?(man|homem)|hiperextens[aã]o de lombar solo/i, 'superman'],
-  [/escalador|mountain climber/i, 'escalador'],
-  [/polichinelo|jumping jack/i, 'polichinelos'],
-  [/relaxamento|respira[cç][aã]o|postura da crian[cç]a|child.?s pose/i, 'crianca'],
-  [/alongamento (de )?posterior|isquiotibia/i, 'posterior'],
-  [/alongamento (de )?quadr[ií]ceps/i, 'quadriceps'],
-  [/alongamento (de )?peit/i, 'peito_porta'],
-  [/mobilidade de ombro|c[ií]rculos de bra[cç]o/i, 'circ_bracos'],
-  [/mobilidade de anca|mobilidade de quadril/i, 'anca'],
-  [/gato|camelo|cat.?cow/i, 'gato_vaca'],
-  [/dead.?bug/i, 'deadbug'],
+  // alongamentos, mobilidade e respiração
+  [/relaxamento|respiracao|postura da crianca|child.?s pose/, 'crianca'],
+  [/alongamento (de |dos |da )?(posterior|isquio)/, 'posterior'],
+  [/alongamento (de |do )?quadriceps/, 'quadriceps'],
+  [/alongamento (de |do )?peit/, 'peito_porta'],
+  [/mobilidade (de |dos )?ombro|circulos de braco/, 'circ_bracos'],
+  [/mobilidade (de |da |do )?(anca|quadril)|abertura de anca/, 'anca'],
+  [/gato|camelo|cat.?cow/, 'gato_vaca'],
+  [/rotacao toracica|thoracic/, 'rotacao_toracica'],
+  [/dead.?bug/, 'deadbug'],
+  [/serie de aquecimento|carga leve/, 'aquecimento'],
+  [/joelhos? ao peito|skipping|marcha/, 'marcha'],
+  [/balanco de perna|leg swing/, 'balanco_perna'],
+  // abdómen
+  [/prancha lateral|side plank/, 'prancha_lateral'],
+  [/prancha|plank/, 'prancha'],
+  [/abdominal bicicleta|bicycle crunch/, 'abdominal_bicicleta'],
+  [/abdominal (na |no )?(polia|cabo)|cable crunch/, 'abdominal_polia'],
+  [/infra|elevacao de pernas|leg raise/, 'infra'],
+  [/russian|twist|rotacao russa/, 'russian_twist'],
+  [/roda abdominal|ab wheel|rollout/, 'roda'],
+  [/bird.?dog|perdigueiro/, 'bird_dog'],
+  [/pallof/, 'pallof'],
+  [/escalador|mountain climber/, 'escalador'],
+  [/super.?(man|homem)|hiperextensao de lombar solo/, 'superman'],
+  // cardio
+  [/(passadeira|esteira|treadmill).*(corrida|correr|run)/, 'esteira_corrida'],
+  [/passadeira|esteira|treadmill/, 'esteira'],
+  [/bicicleta|bike|spinning|ciclismo|cycle/, 'bicicleta'],
+  [/eliptic|transport|crosstrainer/, 'eliptica'],
+  [/remo (ergo|indoor)|ergometro de remo|rowing/, 'remo'],
+  [/escada|stair/, 'escada'],
+  [/corda de saltar|pular corda|saltar (a )?corda|jump rope/, 'corda'],
+  [/burpee/, 'burpee'],
+  [/natacao|nadar|piscina/, 'natacao'],
+  [/danca|zumba/, 'danca'],
+  [/polichinelo|jumping jack/, 'polichinelos'],
+  [/hiit|tabata|intervalado/, 'escalador'],
+  [/corrida|correr|\brun/, 'corrida'],
+  [/caminhada|andar|walk/, 'caminhada'],
+  // peito
+  [/supino inclinado|incline/, 'supino_inclinado'],
+  [/supino fechado|close.?grip/, 'supino'],
+  [/supino.*halter|dumbbell press/, 'supino_halteres'],
+  [/supino|bench press|chest press/, 'supino'],
+  [/crucifixo invertido|reverse fly|posterior de ombro|voador invertido/, 'crucifixo_inv'],
+  [/peck|voador|crossover|cross over|fly machine/, 'voador'],
+  [/crucifixo|\bfly\b/, 'crucifixo'],
+  [/paralela|\bdips?\b/, 'paralelas'],
+  [/mergulho|bench dip/, 'mergulho_banco'],
+  [/flexao|flexoes|push.?up/, 'flexoes'],
+  // costas
+  [/bracos? (estendidos|esticados)|pulldown reto|straight.?arm/, 'pulldown_reto'],
+  [/barra fixa|pull.?up|chin.?up|graviton/, 'barra_fixa'],
+  [/puxada|pulldown|pulley|lat pull/, 'puxada'],
+  [/remada alta|upright row/, 'remada_alta'],
+  [/remada (sentada|baixa|no cabo|na polia|na maquina)|seated row|cable row/, 'remada_sentada'],
+  [/remada|row\b|serrote|cavalinho|t.?bar/, 'remada'],
+  [/pullover/, 'pullover'],
+  [/hiperextensao|banco romano|back extension|lombar/, 'hiperextensao'],
+  [/encolhimento|shrug/, 'encolhimento'],
+  // braços
+  [/rosca (no |na )?(cabo|polia)|cable curl/, 'rosca_cabo'],
+  [/rosca (direta|scott|com barra|na barra|w)|barbell curl/, 'rosca_barra'],
+  [/rosca|curl de biceps|biceps curl|\bbiceps\b/, 'rosca'],
+  [/triceps testa|skull/, 'triceps_testa'],
+  [/frances|triceps (acima da cabeca|overhead)/, 'triceps_frances'],
+  [/kickback|triceps coice/, 'coice_triceps'],
+  [/gluteo.*(polia|cabo)|coice na polia/, 'coice_polia'],
+  [/gluteo.*(4|quatro) apoios|coice|donkey/, 'coice_4apoios'],
+  [/triceps|pushdown/, 'triceps_polia'],
+  // pernas e glúteos
+  [/hip.?thrust/, 'hip_thrust'],
+  [/elevacao pelvica|ponte|glute bridge/, 'ponte'],
+  [/abdutora|abducao|abductor/, 'abdutora'],
+  [/adutora|aducao|adductor/, 'adutora'],
+  [/agachamento lateral|cossack|side squat/, 'agachamento_lateral'],
+  [/bulgaro|bulgarian|split squat/, 'bulgaro'],
+  [/parede|isometria de agachamento|wall sit|cadeirinha/, 'parede'],
+  [/goblet|sumo|taca/, 'agachamento_goblet'],
+  [/panturrilha sentada|gemeos sentado|solear|seated calf/, 'panturrilha_sentada'],
+  [/panturrilha|gemeos|calf/, 'panturrilha'],
+  [/leg press|prensa/, 'leg_press'],
+  [/extensora|leg extension/, 'extensora'],
+  [/flexora (em pe|unilateral|de pe)|standing (leg )?curl/, 'flexora_pe'],
+  [/cadeira flexora|flexora sentada|seated (leg )?curl/, 'flexora_sentada'],
+  [/flexora|leg curl/, 'mesa_flexora'],
+  [/stiff|romeno|rdl|peso morto romeno/, 'stiff'],
+  [/levantamento terra|peso morto|deadlift/, 'terra'],
+  [/good morning|bom dia/, 'good_morning'],
+  [/sentar e levantar|levantar da cadeira|sit.?to.?stand/, 'sentar_levantar'],
+  [/subida|step.?up|\bstep\b/, 'subida_banco'],
+  [/afundo|avanco|lunge|passada/, 'afundos'],
+  [/agachamento (livre|com barra|no smith|frontal|na barra)|hack|smith|back squat|front squat/, 'agachamento_barra'],
+  [/agachamento|squat/, 'agachamento'],
+  // ombros
+  [/desenvolvimento|press (militar|de ombros?|ombro)|shoulder press|arnold|overhead press/, 'desenvolvimento'],
+  [/elevacao lateral|lateral raise/, 'elevacao_lateral'],
+  [/elevacao frontal|front raise/, 'elevacao_frontal'],
+  [/face pull/, 'face_pull'],
 ];
 
-/** Animação para um nome de exercício qualquer, se houver correspondência. */
-export function animFor(name: string): string | null {
-  for (const [re, id] of MATCH) if (re.test(name)) return id;
+/** Quando o nome não diz o movimento, pelo menos o grupo muscular escolhe uma figura representativa. */
+const GROUP_FALLBACK: [RegExp, string][] = [
+  [/peit|chest/, 'supino'],
+  [/costa|dorsa|back/, 'remada_sentada'],
+  [/ombro|deltoide|shoulder/, 'desenvolvimento'],
+  [/bicep|braco|arm/, 'rosca'],
+  [/tricep/, 'triceps_polia'],
+  [/posterior|isquio|hamstring/, 'stiff'],
+  [/glute/, 'ponte'],
+  [/perna|quadricep|coxa|leg/, 'agachamento'],
+  [/abdo|core|obliqu/, 'crunch'],
+  [/cardio|aerobi/, 'caminhada'],
+  [/alongamento|mobilidade|aquecimento|stretch|warm/, 'circ_bracos'],
+];
+
+/** Animação para um nome de exercício qualquer: primeiro pelo movimento, depois pelo grupo muscular. */
+export function animFor(name: string, hint = ''): string | null {
+  const n = norm(name);
+  for (const [re, id] of MATCH) if (re.test(n)) return id;
+  for (const [re, id] of GROUP_FALLBACK) if (re.test(n)) return id;
+  const h = norm(hint);
+  if (h) for (const [re, id] of MATCH) if (re.test(h)) return id;
   return null;
 }

@@ -292,6 +292,12 @@ header{padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
 .exanim .mat{fill:#1d4556}
 .exanim .door{fill:none;stroke:#8a7034;stroke-width:3}
 .exanim .bag{fill:var(--gold)}
+.exanim .gear{fill:none;stroke:#4f6b70;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.exanim .cable{stroke:#9fb3b5;stroke-width:1.2}
+.exanim .pulley{fill:#4f6b70}
+.exanim .held{fill:var(--gold)}
+.exanim .held.bar{fill:#c9a24a;stroke:#04100c;stroke-width:1}
+.exanim .held.pad{fill:#7a5a2e}
 .exhelp{margin:6px 0 10px}
 .tipbox{margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .tipbox ol{margin:0 0 8px;padding-left:18px}.tipbox p{margin:0 0 6px}

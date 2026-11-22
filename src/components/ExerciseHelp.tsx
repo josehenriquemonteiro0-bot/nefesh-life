@@ -10,7 +10,7 @@ import { ExerciseAnim, RoutineAnim } from './ExerciseAnim';
 export function ExerciseHelp({ name, notes, video }: { name: string; notes?: string; video?: string }) {
   const { S, update } = useStore();
   const routine = ROUTINES[name];
-  const anim = routine ? null : animFor(name);
+  const anim = routine ? null : animFor(name, notes);
   const tip = S.exerciseTips?.[tipKey(name)];
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
