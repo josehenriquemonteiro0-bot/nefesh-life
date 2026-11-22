@@ -53,23 +53,28 @@ export async function proOf(db: DB, uid: string) {
 }
 
 /** Pedido de registo como profissional (fica pendente até a equipa aprovar). */
-export async function registerPro(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
-  const name = str(b.name, 60), reg = str(b.reg, 40);
+/** `auto` (só no servidor de teste): o acesso fica aprovado logo, sem passar pela página da equipa. */
+export async function registerPro(db: DB, uid: string, b: Record<string, unknown>, now = new Date(), auto = false): Promise<R> {
+  const name = str(b.name, 60), reg = str(b.reg, 40) || (auto ? 'teste' : '');
   const kind = ['personal', 'nutricionista', 'medico', 'outro'].includes(String(b.kind)) ? String(b.kind) : 'personal';
   if (name.length < 2) return bad('Escreva o seu nome profissional.');
   if (reg.length < 3) return bad('Escreva o seu registo profissional (CREF ou título profissional).');
   const cur = await proOf(db, uid);
   if (cur?.status === 'aprovado') return ok({ pro: cur });
-  await db.prepare("INSERT INTO pros (uid, name, kind, reg, status, created) VALUES (?, ?, ?, ?, 'pendente', ?) ON CONFLICT(uid) DO UPDATE SET name = excluded.name, kind = excluded.kind, reg = excluded.reg").bind(uid, name, kind, reg, now.toISOString()).run();
+  await db.prepare("INSERT INTO pros (uid, name, kind, reg, status, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(uid) DO UPDATE SET name = excluded.name, kind = excluded.kind, reg = excluded.reg, status = CASE WHEN ? THEN 'aprovado' ELSE pros.status END").bind(uid, name, kind, reg, auto ? 'aprovado' : 'pendente', now.toISOString(), auto ? 1 : 0).run();
   return ok({ pro: await proOf(db, uid) });
 }
 
 const weekAgo = (now: Date) => new Date(now.getTime() - 7 * 864e5).toISOString().slice(0, 10);
 
 /** Painel do profissional: o seu estado e os alunos (com o último treino e os da semana). */
-export async function proState(db: DB, uid: string, now = new Date()): Promise<R> {
+export async function proState(db: DB, uid: string, now = new Date(), auto = false): Promise<R> {
   const pro = await proOf(db, uid);
   if (!pro) return ok({ pro: null });
+  if (auto && pro.status === 'pendente') {
+    await db.prepare("UPDATE pros SET status = 'aprovado' WHERE uid = ?").bind(uid).run();
+    pro.status = 'aprovado';
+  }
   if (pro.status !== 'aprovado') return ok({ pro });
   const { results } = await db.prepare('SELECT code, name, uid, plan, version, status, updated FROM pro_students WHERE pro = ? ORDER BY created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string }>();
   const students = [];

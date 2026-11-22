@@ -7,6 +7,7 @@ import { inviteText, proApi, type ProInfo, type ProLog, type ProStudent } from '
 import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/planRead';
 import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
+import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
 const LIB = [...new Set([...Object.values(GYM).map((e) => e.name), ...EXERCISES.map((e) => e.name)])].sort((a, b) => a.localeCompare(b, 'pt'));
@@ -176,8 +177,8 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       {pro === undefined && !err && <p className="small mute">A carregar…</p>}
       {pro === null && (
         <section className="card">
-          <h2 style={{ marginTop: 0 }}>Pedir acesso como profissional</h2>
-          <p className="small mute" style={{ marginTop: 0 }}>A equipa NEFESH confirma o seu registo profissional e aprova o acesso.</p>
+          <h2 style={{ marginTop: 0 }}>{isTestCopy() ? 'Ativar o modo profissional' : 'Pedir acesso como profissional'}</h2>
+          <p className="small mute" style={{ marginTop: 0 }}>{isTestCopy() ? 'Cópia de teste: o acesso fica ativo logo, sem aprovação. O registo profissional é opcional aqui.' : 'A equipa NEFESH confirma o seu registo profissional e aprova o acesso.'}</p>
           <label className="small" style={{ display: 'block' }}>Nome profissional<input className="field" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
           <label className="small" style={{ display: 'block', marginTop: 8 }}>Área
             <select className="field sm" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
@@ -188,7 +189,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             </select>
           </label>
           <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional (CREF no Brasil, título profissional em Portugal)<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
-          <button className="btn" style={{ marginTop: 12 }} onClick={() => proApi<{ pro: ProInfo }>('registar', form).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>Pedir acesso</button>
+          <button className="btn" style={{ marginTop: 12 }} onClick={() => proApi<{ pro: ProInfo }>('registar', form).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
         </section>
       )}
       {pro && pro.status !== 'aprovado' && (

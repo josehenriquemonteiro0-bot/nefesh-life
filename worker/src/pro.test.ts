@@ -19,6 +19,14 @@ const keys = { get: async () => null, put: async () => undefined } as never;
 const NOW = new Date('2026-11-22T15:00:00Z');
 
 describe('NEFESH Life Pro', () => {
+  it('no servidor de teste o profissional fica aprovado logo (também quem já estava pendente)', async () => {
+    const db = memoryDB();
+    expect((await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true)).body.pro).toMatchObject({ status: 'aprovado', reg: 'teste' });
+    expect((await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).status).toBe(200);
+    await pro.registerPro(db, 'ana', { name: 'Ana', reg: 'CREF 2' }, NOW);
+    expect((await pro.proState(db, 'ana', NOW)).body.pro).toMatchObject({ status: 'pendente' });
+    expect((await pro.proState(db, 'ana', NOW, true)).body.pro).toMatchObject({ status: 'aprovado' });
+  });
   it('profissional pendente até a equipa aprovar; depois cria alunos com código', async () => {
     const db = memoryDB();
     expect((await pro.registerPro(db, 'isa', { name: 'I', reg: 'x' })).status).toBe(400);

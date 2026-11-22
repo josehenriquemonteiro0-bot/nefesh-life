@@ -67,8 +67,9 @@ jobs:
         run: |
           sed -i -e 's/^name = "nefesh-foto"/name = "nefesh-foto-v2"/' \
                  -e 's#^ALLOWED_ORIGIN = .*#ALLOWED_ORIGIN = "https://*nefesh-life-v2*.pages.dev"#' \
-                 -e 's#^APP_URL = .*#APP_URL = "https://nefesh-life-v2.pages.dev/"#' wrangler.toml
-          grep -nE '^(name|ALLOWED_ORIGIN|APP_URL) =' wrangler.toml
+                 -e 's#^APP_URL = .*#APP_URL = "https://nefesh-life-v2.pages.dev/"#' \
+                 -e 's#^PRO_AUTO_APPROVE = .*#PRO_AUTO_APPROVE = "true"#' wrangler.toml
+          grep -nE '^(name|ALLOWED_ORIGIN|APP_URL|PRO_AUTO_APPROVE) =' wrangler.toml
       - name: Preparar o armazenamento dos limites diários (KV)
         if: steps.check.outputs.ready == 'true'
         run: |

@@ -10,6 +10,8 @@ TEST_MODE = "true"
 APP_URL = "https://josehenriquemonteiro0-bot.github.io/nefesh-life/"
 # Só a app NEFESH Life pode chamar o serviço a partir do navegador
 ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io"
+# NEFESH Life Pro: "true" aprova os profissionais sem a página da equipa (só no servidor de teste)
+PRO_AUTO_APPROVE = "false"
 MODEL = "claude-opus-5-5"
 # limites diários de fotos
 DAILY_LIMIT = "15"

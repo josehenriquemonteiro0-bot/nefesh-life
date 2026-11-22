@@ -54,6 +54,8 @@ export interface Env {
   STATS_KEY?: string;
   /** "true" na fase de teste (tudo aberto); "false" no lançamento */
   TEST_MODE?: string;
+  /** "true" só no servidor de teste: profissionais aprovados sem passar pela página da equipa */
+  PRO_AUTO_APPROVE?: string;
   /** endereço da app (para os links das mensagens) */
   APP_URL?: string;
   /** base de dados da comunidade (D1); opcional até estar criada */
@@ -315,8 +317,8 @@ export default {
       // lado do profissional: precisa de conta
       if (!uid) return json({ error: 'Entre na sua conta para usar o NEFESH Life Pro.' }, 401, h);
       const routes: Record<string, () => Promise<{ status: number; body: Record<string, unknown> }>> = {
-        registar: () => pro.registerPro(db, uid, b),
-        estado: () => pro.proState(db, uid),
+        registar: () => pro.registerPro(db, uid, b, new Date(), env.PRO_AUTO_APPROVE === 'true'),
+        estado: () => pro.proState(db, uid, new Date(), env.PRO_AUTO_APPROVE === 'true'),
         'aluno/novo': () => pro.newStudent(db, uid, b),
         'aluno/guardar': () => pro.savePlan(db, uid, b),
         'aluno/registos': () => pro.studentLogs(db, uid, b),
