@@ -30,6 +30,7 @@ import * as verify from './verify';
 import { checkSpirulinaPhoto } from './spirulinaPhoto';
 import { acceptShot, readHealthShot } from './healthShot';
 import * as admin from './admin';
+import * as proAI from './proAI';
 import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
@@ -324,6 +325,18 @@ export default {
         'aluno/registos': () => pro.studentLogs(db, uid, b),
         'aluno/apagar': () => pro.removeStudent(db, uid, b),
       };
+      // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
+      if (action === 'ia/ditado' || action === 'ia/rever') {
+        if ((await pro.proOf(db, uid))?.status !== 'aprovado') return json({ error: 'Acesso de profissional ainda não aprovado.' }, 403, h);
+        try {
+          const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+          const model = env.MODEL?.trim() || 'claude-opus-5-5';
+          const r = action === 'ia/ditado' ? await proAI.dictate(client, model, env.LIMITS, uid, req.headers.get('CF-Connecting-IP') ?? 'sem-ip', b) : await proAI.review(client, model, env.LIMITS, uid, req.headers.get('CF-Connecting-IP') ?? 'sem-ip', b);
+          return json(r.body, r.status, h);
+        } catch (err) {
+          return apiError(err, h);
+        }
+      }
       const fn = routes[action];
       if (!fn) return json({ error: 'pedido inválido' }, 404, h);
       const r = await fn();

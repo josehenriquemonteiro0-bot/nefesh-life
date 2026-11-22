@@ -8,12 +8,15 @@ import { FOCUS_PRESETS, GROUP_NAME, addFromLibrary, applySplit, letter, searchEx
 import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/planRead';
 import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
+import { DictationCard, ReviewCard } from '../components/ProAI';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
+
+const MODE_KEY = 'nefesh-life-pro-modo';
 
 /** Nome do exercício com lista de sugestões que se vai filtrando enquanto se escreve. */
 function ExerciseInput({ value, focus, onPick, onType, label }: { value: string; focus: string; onPick: (e: LibExercise) => void; onType: (t: string) => void; label: string }) {
@@ -44,6 +47,8 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [sugOpen, setSugOpen] = useState(true);
+  const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
+  const setMode = (m: 'manual' | 'voz') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* sem armazenamento */ } };
   const top = () => document.querySelector('.pro-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const n = plan.workouts.length;
   const i = Math.min(cur, Math.max(0, n - 1));
@@ -94,6 +99,11 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
           </select>
         </label>
       )}
+      <div className="pro-mode" role="tablist" aria-label="Como montar">
+        <button role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}><b>✍️ Manual</b><span>escrever e escolher</span></button>
+        <button role="tab" aria-selected={mode === 'voz'} className={mode === 'voz' ? 'on' : ''} onClick={() => setMode('voz')}><b>🎙️ Por voz</b><span>ditar, a IA monta</span></button>
+      </div>
+      {mode === 'voz' && <DictationCard plan={plan} current={i} onPlan={(p) => { setPlan(p); setErr(''); }} />}
       <section className="card">
         <h3 style={{ marginTop: 0 }}>{n ? 'Divisão do treino' : 'Quantos treinos diferentes?'}</h3>
         <div className="chips">
@@ -103,7 +113,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             </button>
           ))}
         </div>
-        {!n && <p className="small mute" style={{ marginBottom: 0 }}>Escolha a divisão: os treinos são criados já com um foco sugerido, que pode mudar.</p>}
+        {!n && <p className="small mute" style={{ marginBottom: 0 }}>{mode === 'voz' ? 'Escolha aqui ou diga no ditado (ex.: "divisão ABC").' : 'Escolha a divisão: os treinos são criados já com um foco sugerido, que pode mudar.'}</p>}
         {n > 0 && (
           <>
             <label className="small" style={{ display: 'block', marginTop: 10 }}>Treinos por semana <input className="field sm" type="number" min={1} max={7} style={{ width: 64 }} value={plan.per_week} onChange={(e) => setPlan({ ...plan, per_week: Math.max(1, Math.min(7, Number(e.target.value) || 1)) })} /></label>
@@ -172,6 +182,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             ))}
             <button className="btn ghost sm" style={{ marginTop: 8 }} disabled={w.exercises.length >= 20} onClick={() => setW((x) => ({ ...x, exercises: [...x.exercises, newEx()] }))}>+ Exercício</button>
           </section>
+          {i === n - 1 && plan.workouts.some(filled) && <><ReviewCard plan={plan} onPlan={setPlan} /><p /></>}
           {i < n - 1 ? (
             <>
               <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); setSugOpen(true); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>

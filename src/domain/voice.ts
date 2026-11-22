@@ -68,13 +68,13 @@ export interface Listening {
  * Começa a ouvir. Chama onText com o texto até agora (parcial) e onDone com o texto final
  * quando a pessoa para de falar (ou toca para parar).
  */
-export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone: (t: string) => void; onError: (msg: string, code: string) => void }): Listening | null {
+export function listen(lang: VoiceLang, h: { onText: (t: string) => void; onDone: (t: string) => void; onError: (msg: string, code: string) => void }, opts: { continuous?: boolean } = {}): Listening | null {
   const C = ctor();
   if (!C) return null;
   const rec = new C();
   rec.lang = lang;
   rec.interimResults = true;
-  rec.continuous = false;
+  rec.continuous = !!opts.continuous;
   rec.maxAlternatives = 1;
   let finalText = '';
   let latest = '';
@@ -221,7 +221,8 @@ const SILENCE_MS = 1600;
  * Grava a frase da pessoa e para sozinha quando ela se cala (ou ao fim de 60 s).
  * onDone recebe o áudio e se houve fala.
  */
-export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string, code?: string) => void; onLevel?: (rms: number) => void }): Listening {
+export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onError: (msg: string, code?: string) => void; onLevel?: (rms: number) => void }, opts: { silenceMs?: number; maxMs?: number } = {}): Listening {
+  const silenceMs = opts.silenceMs ?? SILENCE_MS;
   let rec: MediaRecorder | null = null;
   let stream: MediaStream | null = null;
   let ctx: AudioContext | null = null;
@@ -270,7 +271,7 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
       if (!aborted) h.onDone(new Blob(chunks, { type: rec?.mimeType || mime || 'audio/mp4' }), spoke || !ctx);
     };
     rec.start(250);
-    timer = window.setTimeout(finish, 60000);
+    timer = window.setTimeout(finish, opts.maxMs ?? 60000);
     if (!ctx) return;
     try {
       await ctx.resume();
@@ -296,7 +297,7 @@ export function record(h: { onDone: (audio: Blob, spoke: boolean) => void; onErr
           quietSince = 0;
         } else if (spoke) {
           quietSince ||= now;
-          if (now - quietSince > SILENCE_MS) return finish();
+          if (now - quietSince > silenceMs) return finish();
         }
         // 8 s sem falar: desiste
         if (!spoke && now - t0 > 8000) return finish();
