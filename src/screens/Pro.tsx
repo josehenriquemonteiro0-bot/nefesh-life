@@ -22,6 +22,37 @@ const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '',
 
 const MODE_KEY = 'nefesh-life-pro-modo';
 
+/** Periodização: duração em semanas e fases (opcional). */
+function PeriodEditor({ plan, setPlan }: { plan: ParsedWorkoutPlan; setPlan: (p: ParsedWorkoutPlan) => void }) {
+  const phases = plan.phases ?? [];
+  const sum = phases.reduce((a, f) => a + f.weeks, 0);
+  const setPhases = (list: NonNullable<ParsedWorkoutPlan['phases']>) => setPlan({ ...plan, phases: list.length ? list : undefined, weeks: list.length ? list.reduce((a, f) => a + f.weeks, 0) : plan.weeks });
+  const setF = (k: number, patch: Partial<NonNullable<ParsedWorkoutPlan['phases']>[number]>) => setPhases(phases.map((f, j) => (j === k ? { ...f, ...patch } : f)));
+  return (
+    <div className="pro-period">
+      <label className="small" style={{ display: 'block', marginTop: 10 }}>Duração do plano{' '}
+        <input className="field sm" type="number" min={0} max={52} style={{ width: 64 }} value={plan.weeks ?? ''} disabled={phases.length > 0} placeholder="—"
+          onChange={(e) => { const w = Math.max(0, Math.min(52, Number(e.target.value) || 0)); setPlan({ ...plan, weeks: w || undefined }); }} /> semanas
+      </label>
+      {plan.start && <p className="small mute" style={{ margin: '4px 0 0' }}>Começou a {plan.start.split('-').reverse().join('/')}. <button className="link small inline" onClick={() => setPlan({ ...plan, start: undefined })}>Recomeçar no dia em que enviar</button></p>}
+      <p className="small" style={{ margin: '10px 0 4px' }}><b>Fases</b> <span className="mute">(opcional: adaptação, hipertrofia, força, descarga…)</span></p>
+      {phases.map((f, k) => (
+        <div key={k} className="pro-phase">
+          <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+            <input className="field sm" style={{ flex: 1, minWidth: 0 }} value={f.name} maxLength={40} placeholder={`Fase ${k + 1} (ex.: Adaptação)`} onChange={(e) => setF(k, { name: e.target.value })} aria-label={`Nome da fase ${k + 1}`} />
+            <input className="field sm" type="number" min={1} max={26} style={{ flex: '0 0 52px', width: 52, minWidth: 0, boxSizing: 'border-box' }} value={f.weeks} onChange={(e) => setF(k, { weeks: Math.max(1, Math.min(26, Number(e.target.value) || 1)) })} aria-label={`Semanas da fase ${k + 1}`} />
+            <span className="small mute">sem.</span>
+            <button className="x" aria-label={`Apagar fase ${k + 1}`} onClick={() => setPhases(phases.filter((_, j) => j !== k))}>×</button>
+          </div>
+          <input className="field sm" style={{ width: '100%', boxSizing: 'border-box', marginTop: 4 }} value={f.notes} maxLength={300} placeholder="Orientação para o aluno (ex.: 4×10, subir 2,5 kg por semana)" onChange={(e) => setF(k, { notes: e.target.value })} aria-label={`Orientação da fase ${k + 1}`} />
+        </div>
+      ))}
+      <button className="btn ghost sm" disabled={phases.length >= 8} onClick={() => setPhases([...phases, { name: '', weeks: 2, notes: '' }])}>+ Fase</button>
+      {phases.length > 0 && <span className="small mute" style={{ marginLeft: 8 }}>Total: {sum} semanas</span>}
+    </div>
+  );
+}
+
 /** Nome do exercício com lista de sugestões que se vai filtrando enquanto se escreve. */
 function ExerciseInput({ value, focus, onPick, onType, label }: { value: string; focus: string; onPick: (e: LibExercise) => void; onType: (t: string) => void; label: string }) {
   const [open, setOpen] = useState(false);
@@ -159,9 +190,10 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
       {n > 0 && !setupOpen ? (
         <section className="card pro-setup">
           <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-            <p style={{ margin: 0 }}><b>Divisão {splitName(n)}</b> · {plan.per_week}× por semana</p>
+            <p style={{ margin: 0 }}><b>Divisão {splitName(n)}</b> · {plan.per_week}× por semana{plan.weeks ? ` · ${plan.weeks} semanas` : ''}</p>
             <button className="btn ghost sm" onClick={() => setSetupOpen(true)}>Ajustar</button>
           </div>
+          {plan.phases?.length ? <p className="small mute" style={{ margin: '6px 0 0' }}>📈 {plan.phases.map((f) => `${f.name || 'Fase'} (${f.weeks} sem.)`).join(' → ')}</p> : null}
           {plan.notes && <p className="small mute" style={{ margin: '6px 0 0' }}>📝 {plan.notes}</p>}
         </section>
       ) : (mode === 'manual' || n > 0) && (
@@ -178,6 +210,7 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
         {n > 0 && (
           <>
             <label className="small" style={{ display: 'block', marginTop: 10 }}>Treinos por semana <input className="field sm" type="number" min={1} max={7} style={{ width: 64 }} value={plan.per_week} onChange={(e) => setPlan({ ...plan, per_week: Math.max(1, Math.min(7, Number(e.target.value) || 1)) })} /></label>
+            <PeriodEditor plan={plan} setPlan={setPlan} />
             <label className="small" style={{ display: 'block', marginTop: 8 }}>Observações gerais
               <textarea className="field" rows={2} maxLength={600} value={plan.notes} onChange={(e) => setPlan({ ...plan, notes: e.target.value })} placeholder="ex.: aquecer 10 min; beber água entre séries" />
             </label>

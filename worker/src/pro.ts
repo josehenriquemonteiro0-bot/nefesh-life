@@ -58,7 +58,17 @@ export function cleanPlan(p: unknown) {
       }).filter((e) => e.name),
     };
   }).filter((w) => w.exercises.length);
-  return { is_workout: true, workouts, per_week: Math.max(1, Math.min(7, Math.round(Number(o.per_week) || workouts.length || 3))), professional: str(o.professional, 60), notes: str(o.notes, 600) };
+  const phases = (Array.isArray(o.phases) ? o.phases : []).slice(0, 8).map((x) => {
+    const y = (x ?? {}) as Record<string, unknown>;
+    return { name: str(y.name, 40), weeks: Math.max(1, Math.min(26, Math.round(Number(y.weeks) || 1))), notes: str(y.notes, 300) };
+  }).filter((x) => x.name || x.notes);
+  const fromPhases = phases.reduce((a, x) => a + x.weeks, 0);
+  const weeks = Math.max(0, Math.min(52, Math.round(Number(o.weeks) || fromPhases || 0)));
+  const start = /^\d{4}-\d{2}-\d{2}$/.test(String(o.start ?? '')) ? String(o.start) : '';
+  return {
+    is_workout: true, workouts, per_week: Math.max(1, Math.min(7, Math.round(Number(o.per_week) || workouts.length || 3))), professional: str(o.professional, 60), notes: str(o.notes, 600),
+    ...(weeks ? { weeks } : {}), ...(start && weeks ? { start } : {}), ...(phases.length ? { phases } : {}),
+  };
 }
 
 export async function proOf(db: DB, uid: string) {
@@ -104,7 +114,7 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const dr = await db.prepare('SELECT plan, updated FROM pro_drafts WHERE code = ?').bind(s.code).first<{ plan: string; updated: string }>();
     let draft: ReturnType<typeof cleanPlan> | null = null;
     try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
-    const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated }, now);
+    const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now) }, now);
     students.push({ alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
   }
   return ok({ pro, students });
@@ -140,7 +150,9 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
   const pro = await proOf(db, uid);
-  const plan = cleanPlan({ ...((b.plan ?? {}) as Record<string, unknown>), professional: pro?.name });
+  const raw = (b.plan ?? {}) as Record<string, unknown>;
+  // periodização: o plano começa no dia em que é enviado (a não ser que o profissional diga outra data)
+  const plan = cleanPlan({ ...raw, professional: pro?.name, start: raw.start || (Number(raw.weeks) || (Array.isArray(raw.phases) && raw.phases.length) ? now.toISOString().slice(0, 10) : '') });
   if (!plan.workouts.length) return bad('Acrescente pelo menos um treino com um exercício.');
   await db.batch([
     db.prepare('UPDATE pro_students SET plan = ?, version = version + 1, updated = ? WHERE code = ?').bind(JSON.stringify(plan), now.toISOString(), s.code),
@@ -301,6 +313,13 @@ export function attention(logs: { day: string; data: LogData }[], o: { linked: b
   if (up.length) out.push({ kind: 'subir', text: `Pronto para subir a carga: ${up.slice(0, 3).join(', ')}` });
   if (o.endsInDays !== undefined && o.endsInDays !== null && o.endsInDays <= 7) out.push({ kind: 'fim', text: o.endsInDays < 0 ? `O plano terminou há ${-o.endsInDays} dias` : o.endsInDays === 0 ? 'O plano termina hoje' : `O plano termina em ${o.endsInDays} dias` });
   return out;
+}
+
+/** Dias até ao fim do plano periodizado (negativo: já terminou); null sem periodização. */
+export function planEndsIn(plan: { weeks?: number; start?: string } | null, now = new Date()): number | null {
+  if (!plan?.weeks || !plan.start) return null;
+  const end = new Date(`${plan.start}T12:00:00Z`).getTime() + plan.weeks * 7 * 864e5;
+  return Math.ceil((end - now.getTime()) / 864e5) - 1;
 }
 
 /** Página da equipa: profissionais pendentes e aprovados. */

@@ -3,7 +3,7 @@ import { shortDate, todayKey } from '../domain/dates';
 import { loadFile } from '../domain/files';
 import type { PhotoError } from '../domain/photo';
 import { readWorkoutPlan, type PlanWorkout } from '../domain/planRead';
-import { sendWorkout, workoutReport } from '../domain/pro';
+import { planWeek, sendWorkout, workoutReport } from '../domain/pro';
 import { EFFORT_NAME, describeTrainChanges, lastPerformance, perSet, weekTrainAdherence, type Effort, type TrainSessionLog, type TrainSetLog } from '../domain/trainAdherence';
 import type { DayLog } from '../domain/types';
 import { useStore } from '../state/store';
@@ -213,12 +213,24 @@ export function TrainPlanCard() {
 
   const wk = weekTrainAdherence(S);
   const pro = plan.professional || meta.by;
+  const pw = planWeek(plan);
   return (
     <section className="card">
       <div className="row">
         <h2 style={{ margin: 0 }}>O treino {pro ? `de ${pro}` : 'do seu personal'}</h2>
-        <PremiumTag f="lerPlano" />
+        {meta.type !== 'nefesh-pro' && <PremiumTag f="lerPlano" />}
       </div>
+      {pw && (
+        <div className={`plan-week ${pw.ended ? 'ended' : ''}`}>
+          {pw.ended
+            ? <p className="small" style={{ margin: 0 }}><b>O plano de {pw.of} semanas terminou.</b> Fale com {pro || 'o seu personal'} sobre o próximo; entretanto pode continuar com estes treinos.</p>
+            : <>
+                <p className="small" style={{ margin: 0 }}><b>Semana {pw.week} de {pw.of}</b>{pw.phase ? <> · {pw.phase.name || 'Fase'}{pw.phase.of > 1 ? ` (semana ${pw.phase.week} de ${pw.phase.of})` : ''}</> : null}</p>
+                {pw.phase?.notes && <p className="small" style={{ margin: '4px 0 0' }}>{pw.phase.notes}</p>}
+                <div className="plan-dots" style={{ marginTop: 6 }}>{Array.from({ length: Math.min(pw.of, 26) }, (_, i) => <i key={i} className={i < pw.week - 1 ? 'done' : i === pw.week - 1 ? 'now' : ''} />)}</div>
+              </>}
+        </div>
+      )}
       <div className="row small" style={{ marginTop: 8 }}>
         <span>{wk.done} de {wk.planned} treinos esta semana</span>
         <span className="mute">{wk.pct}%</span>
@@ -240,10 +252,14 @@ export function TrainPlanCard() {
         })}
       </div>
       {plan.notes && <p className="small" style={{ margin: '12px 0 0' }}><b>Orientações do plano:</b> {plan.notes}</p>}
-      <p className="small mute" style={{ margin: '10px 0 0' }}>
-        Transcrição feita por IA. Em caso de dúvida, vale o plano original do seu personal.{' '}
-        <button className="link small inline" disabled={busy} onClick={read}>{busy ? 'A ler…' : 'Ler de novo'}</button>
-      </p>
+      {meta.type === 'nefesh-pro' ? (
+        <p className="small mute" style={{ margin: '10px 0 0' }}>Plano montado por {pro || 'o seu personal'} na NEFESH Life Pro. Quando o atualizar, chega aqui sozinho.</p>
+      ) : (
+        <p className="small mute" style={{ margin: '10px 0 0' }}>
+          Transcrição feita por IA. Em caso de dúvida, vale o plano original do seu personal.{' '}
+          <button className="link small inline" disabled={busy} onClick={read}>{busy ? 'A ler…' : 'Ler de novo'}</button>
+        </p>
+      )}
       {error && <p className="small warn-t" style={{ margin: '8px 0 0' }}>{error}</p>}
       {open !== null && plan.workouts[open] && <TrainSessionSheet idx={open} onClose={() => setOpen(null)} />}
     </section>

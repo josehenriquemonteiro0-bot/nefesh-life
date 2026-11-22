@@ -737,6 +737,9 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .chip.pro-split{display:grid;gap:0;justify-items:center;padding:6px 12px}
 .chip.pro-split span{font-size:12px;font-weight:400;color:var(--mute)}
 .chip.pro-split.on span{color:#00140d;opacity:.75}
+.pro-phase{border:1px solid var(--line);border-radius:12px;padding:8px;margin:6px 0}
+.plan-week{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(0,254,138,.06);border:1px solid rgba(0,254,138,.25)}
+.plan-week.ended{background:rgba(201,168,92,.08);border-color:rgba(201,168,92,.4)}
 .pro-attn{border:1px solid rgba(255,179,122,.45)}
 .pro-attn-row{display:grid;gap:3px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:10px 0;color:inherit;cursor:pointer;font:inherit}
 .pro-attn-row:first-of-type{border-top:0}

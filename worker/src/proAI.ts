@@ -41,11 +41,12 @@ const PLAN_SCHEMA = {
       },
     },
     per_week: { type: 'integer' },
+    weeks: { type: 'integer', description: 'duração do plano em semanas, se for dita (ex.: "por 8 semanas"); 0 se não' },
     notes: { type: 'string' },
     summary: { type: 'string', description: 'uma frase curta com o que foi mudado' },
     doubts: { type: 'string', description: 'o que não ficou claro no ditado (vazio se nada)' },
   },
-  required: ['workouts', 'per_week', 'notes', 'summary', 'doubts'],
+  required: ['workouts', 'per_week', 'weeks', 'notes', 'summary', 'doubts'],
   additionalProperties: false,
 } as const;
 
@@ -86,7 +87,7 @@ Devolves o plano COMPLETO atualizado:
 
 export const REVIEW_SYSTEM = `És um revisor técnico para um profissional de educação física na app NEFESH Life Pro.
 Recebes um plano de treino e, se houver, o objetivo/nível do aluno. Dás:
-- "general": 2 a 5 observações técnicas curtas e úteis para o PROFISSIONAL (equilíbrio entre grupos musculares e entre empurrar/puxar, volume por grupo, ordem dos exercícios (compostos antes de isolados), descansos, progressão, aquecimento, risco de sobreposição em dias seguidos). Concretas, sem repetir o óbvio, sem elogios vazios.
+- "general": 2 a 5 observações técnicas curtas e úteis para o PROFISSIONAL (equilíbrio entre grupos musculares e entre empurrar/puxar, volume por grupo, ordem dos exercícios (compostos antes de isolados), descansos, progressão e periodização (duração, fases, semana de descarga), aquecimento, risco de sobreposição em dias seguidos). Concretas, sem repetir o óbvio, sem elogios vazios.
 - "notes": para cada exercício SEM nota, uma nota curta para o ALUNO (até ~15 palavras) com a dica técnica principal de execução/segurança. Não escrevas notas para exercícios que já têm.
 Regras: não fazes diagnósticos, não falas de doenças nem de suplementos; linguagem profissional e respeitosa; a decisão é do profissional. Português do Brasil ou de Portugal, conforme o texto do plano.`;
 
@@ -125,7 +126,7 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
   const target = shape[current]?.name ?? 'Treino A';
   const step =
     stage === 'estrutura'
-      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa; mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
+      ? `ETAPA 1 — ESTRUTURA. Só defines os treinos: quantos (Treino A, Treino B…), o foco de cada um (ex.: "Inferior", "Peito e tríceps"), "per_week" (quantos dias por semana), "weeks" (duração do plano, se for dita) e o dia de cada treino se for dito. NÃO juntes exercícios nesta etapa; mantém os exercícios que já existam nos treinos que continuam. Se disser só os dias por semana sem a divisão, cria uma divisão adequada (ex.: 3 dias → ABC) com focos clássicos, tendo em conta o nível e o objetivo do aluno.`
       : stage === 'treino'
         ? `ETAPA 2 — EXERCÍCIOS do ${target}${shape[current]?.focus ? ` (foco: ${shape[current].focus})` : ''}. Tudo o que foi ditado é para o ${target}, mesmo que não diga o nome. Não mudes os outros treinos.`
         : `Treino que está a ser montado agora: ${target}`;
@@ -154,7 +155,11 @@ export async function dictate(client: Anthropic, model: string, store: CounterSt
     // sem exercícios novos: os treinos que já existiam guardam os seus
     workouts = all.map((w, k) => ({ ...w, exercises: (shape.find((x) => x.name === w.name) ?? shape[k])?.exercises ?? [] }));
   }
-  return { status: 200, body: { plan: { ...out, per_week, notes, workouts }, summary: String(r.summary ?? '').slice(0, 300), doubts: String(r.doubts ?? '').slice(0, 300) } };
+  // periodização: duração só muda na etapa da estrutura (ou no modo livre) se for dita; início e fases ficam
+  const weeks = stage !== 'treino' && Number(r.weeks) > 0 ? Math.min(52, Math.round(Number(r.weeks))) : plan.weeks;
+  const period = { ...(weeks ? { weeks } : {}), ...(plan.start ? { start: plan.start } : {}), ...(plan.phases ? { phases: plan.phases } : {}) };
+  const { weeks: _w, start: _s, phases: _p, ...base } = out; // eslint-disable-line @typescript-eslint/no-unused-vars
+  return { status: 200, body: { plan: { ...base, ...period, per_week, notes, workouts }, summary: String(r.summary ?? '').slice(0, 300), doubts: String(r.doubts ?? '').slice(0, 300) } };
 }
 
 /** Revisão técnica: observações gerais + notas por exercício. */
@@ -164,7 +169,7 @@ export async function review(client: Anthropic, model: string, store: CounterSto
   const allowed = await check(store, REVIEW_LIMITS, uid, ip, new Date(), 'pr');
   if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de revisões por hoje. Tente amanhã.' } };
   const about = String(b.about ?? '').trim().slice(0, 600);
-  const user = `${about ? `Sobre o aluno: ${about}\n\n` : ''}Plano:\n${JSON.stringify(plan.workouts.map((w, i) => ({ i, name: w.name, focus: w.focus, exercises: w.exercises.map((e, k) => ({ k, ...e })) })))}\nObservações gerais do plano: ${plan.notes || '—'}; treinos por semana: ${plan.per_week}`;
+  const user = `${about ? `Sobre o aluno: ${about}\n\n` : ''}Plano:\n${JSON.stringify(plan.workouts.map((w, i) => ({ i, name: w.name, focus: w.focus, exercises: w.exercises.map((e, k) => ({ k, ...e })) })))}\nObservações gerais do plano: ${plan.notes || '—'}; treinos por semana: ${plan.per_week}${plan.weeks ? `; duração: ${plan.weeks} semanas` : ''}${plan.phases?.length ? `; fases: ${plan.phases.map((f) => `${f.name} (${f.weeks} sem.)${f.notes ? `: ${f.notes}` : ''}`).join(' → ')}` : ''}`;
   const r = await ask<{ general: string[]; notes: { workout: number; exercise: number; note: string }[] }>(client, model, REVIEW_SYSTEM, user, REVIEW_SCHEMA, 'medium');
   if (!r) return { status: 502, body: { error: 'A IA não conseguiu rever agora. Tente outra vez.' } };
   await count(store, REVIEW_LIMITS, uid, ip, new Date(), 'pr');

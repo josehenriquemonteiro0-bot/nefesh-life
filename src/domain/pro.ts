@@ -149,3 +149,18 @@ export async function readAssessmentFile(file: File): Promise<{ found: boolean; 
   } else throw new Error('Use um PDF ou uma fotografia.');
   return proApi('ia/avaliacao', body);
 }
+
+/** Em que semana do plano periodizado está o aluno (e em que fase). null sem periodização. */
+export function planWeek(plan: Pick<ParsedWorkoutPlan, 'weeks' | 'start' | 'phases'> | null | undefined, now = new Date()) {
+  if (!plan?.weeks || !plan.start) return null;
+  const days = Math.floor((now.getTime() - new Date(`${plan.start}T00:00:00`).getTime()) / 864e5);
+  const week = Math.floor(days / 7) + 1;
+  const ended = week > plan.weeks;
+  let phase: { name: string; notes: string; week: number; of: number } | null = null;
+  let acc = 0;
+  for (const f of plan.phases ?? []) {
+    if (week <= acc + f.weeks) { phase = { name: f.name, notes: f.notes, week: week - acc, of: f.weeks }; break; }
+    acc += f.weeks;
+  }
+  return { week: Math.max(1, Math.min(week, plan.weeks)), of: plan.weeks, ended, daysLeft: plan.weeks * 7 - days - 1, phase: ended ? null : phase };
+}

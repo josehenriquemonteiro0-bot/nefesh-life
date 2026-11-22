@@ -31,3 +31,15 @@ describe('NEFESH Life Pro na app', () => {
     expect(r.exercises.map((e) => [e.effort, e.pain])).toEqual([['ok', false], ['dificil', true]]);
   });
 });
+
+describe('Pro: semana do plano', () => {
+  it('semana e fase atuais; fim do plano', async () => {
+    const { planWeek } = await import('./pro');
+    const plan = { weeks: 7, start: '2026-11-02', phases: [{ name: 'Adaptação', weeks: 2, notes: '3×12' }, { name: 'Hipertrofia', weeks: 4, notes: '4×10' }, { name: 'Deload', weeks: 1, notes: '' }] };
+    expect(planWeek(plan, new Date('2026-11-04T10:00:00'))).toMatchObject({ week: 1, of: 7, ended: false, phase: { name: 'Adaptação', week: 1, of: 2 } });
+    expect(planWeek(plan, new Date('2026-11-22T10:00:00'))).toMatchObject({ week: 3, phase: { name: 'Hipertrofia', week: 1, of: 4 } });
+    expect(planWeek(plan, new Date('2026-12-20T10:00:00'))).toMatchObject({ week: 7, phase: { name: 'Deload' } });
+    expect(planWeek(plan, new Date('2026-12-21T10:00:00'))).toMatchObject({ ended: true, phase: null });
+    expect(planWeek({ weeks: 0 })).toBeNull();
+  });
+});

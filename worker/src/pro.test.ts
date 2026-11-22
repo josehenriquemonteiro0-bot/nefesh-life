@@ -43,6 +43,12 @@ describe('NEFESH Life Pro', () => {
     expect(st2[0].version).toBe(1);
     expect(st2[0].draft).toBeNull();
     expect((await pro.saveDraft(db, 'outro', { code, plan: draft }, NOW)).status).toBe(404);
+    // com duração: o plano começa no dia do envio; reenviar mantém o início
+    await pro.savePlan(db, 'isa', { code, plan: { ...draft, weeks: 8 } }, NOW);
+    const sent = (await pro.proState(db, 'isa', NOW)).body.students as { plan: { weeks: number; start: string } }[];
+    expect(sent[0].plan).toMatchObject({ weeks: 8, start: '2026-11-22' });
+    await pro.savePlan(db, 'isa', { code, plan: { ...draft, weeks: 8, start: '2026-11-22' } }, new Date('2026-11-29T10:00:00Z'));
+    expect(((await pro.proState(db, 'isa', NOW)).body.students as { plan: { start: string } }[])[0].plan.start).toBe('2026-11-22');
   });
   it('perfil do aluno: criado com o aluno, aparece no painel, edita-se, limpa-se e sai ao apagar', async () => {
     const db = memoryDB();
@@ -127,5 +133,17 @@ describe('Pro: precisa de atenção', () => {
     const logs = [log('2026-11-21', [ex('Supino', 'facil', 2)]), log('2026-11-19', [ex('Supino', 'facil')])];
     expect(pro.attention(logs, { linked: true, hasPlan: true }, NOW2)).toEqual([]);
     expect(pro.attention([log('2026-11-21', [], { status: 'saltado' }), log('2026-11-20', [], { status: 'saltado' })], { linked: true, hasPlan: true }, NOW2).map((x) => x.kind)).toEqual(['saltou']);
+  });
+});
+
+describe('Pro: periodização', () => {
+  it('duração pelas fases, início marcado ao enviar e dias até ao fim', async () => {
+    const p = pro.cleanPlan({ workouts: [{ name: 'Treino A', exercises: [{ name: 'Prancha', sets: 3 }] }], phases: [{ name: 'Adaptação', weeks: 2, notes: '3×12 leve' }, { name: 'Hipertrofia', weeks: 4, notes: '' }, { name: 'Deload', weeks: 1, notes: '' }] });
+    expect(p.weeks).toBe(7);
+    expect(p.start).toBeUndefined();
+    expect(pro.planEndsIn({ weeks: 1, start: '2026-11-16' }, new Date('2026-11-22T15:00:00Z'))).toBe(0);
+    expect(pro.planEndsIn({ weeks: 2, start: '2026-11-16' }, new Date('2026-11-22T15:00:00Z'))).toBe(7);
+    expect(pro.planEndsIn({ weeks: 1, start: '2026-11-10' }, new Date('2026-11-22T15:00:00Z'))).toBe(-6);
+    expect(pro.planEndsIn(null)).toBeNull();
   });
 });

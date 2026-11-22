@@ -6,7 +6,12 @@ export interface PlanItem { name: string; quantity: string; grams: number; kcal:
 export interface PlanMeal { meal: 'pa' | 'almoco' | 'lanche' | 'jantar' | 'ceia' | 'outro'; label: string; time: string; options: { name: string; items: PlanItem[] }[] }
 export interface WorkoutExercise { name: string; sets: number; reps: string; load: string; rest: string; notes: string; /** link do vídeo escolhido pelo personal (NEFESH Life Pro) */ video?: string }
 export interface PlanWorkout { name: string; focus: string; day: string; exercises: WorkoutExercise[] }
-export interface ParsedWorkoutPlan { is_workout: boolean; workouts: PlanWorkout[]; per_week: number; professional: string; notes: string }
+export interface PlanPhase { name: string; weeks: number; notes: string }
+export interface ParsedWorkoutPlan {
+  is_workout: boolean; workouts: PlanWorkout[]; per_week: number; professional: string; notes: string;
+  /** periodização (NEFESH Life Pro): duração, início (AAAA-MM-DD, marcado ao enviar) e fases */
+  weeks?: number; start?: string; phases?: PlanPhase[];
+}
 
 export interface ParsedPlan { is_plan: boolean; meals: PlanMeal[]; daily_kcal: number; daily_protein_g: number; professional: string; notes: string }
 
