@@ -144,6 +144,9 @@ function TrainSessionSheet({ idx, onClose }: { idx: number; onClose: () => void 
                       {(Object.keys(EFFORT_NAME) as Effort[]).map((k) => <button key={k} className={`chip sm ${fx[i]?.effort === k ? 'on' : ''}`} aria-pressed={fx[i]?.effort === k} onClick={() => setEx(i, { effort: fx[i]?.effort === k ? undefined : k })}>{EFFORT_NAME[k]}</button>)}
                       <button className={`chip sm pain ${fx[i]?.pain ? 'on' : ''}`} aria-pressed={!!fx[i]?.pain} onClick={() => setEx(i, { pain: !fx[i]?.pain })}>😣 Dor</button>
                     </div>
+                    {mine.some((x) => !x.done) && (
+                      <button className="btn ghost sm" style={{ margin: '0 0 6px' }} onClick={() => setSets(sets.map((x) => (x.ex === i ? { ...x, done: true } : x)))}>✓ Fiz as {mine.length} {mine.length === 1 ? 'série' : 'séries'}</button>
+                    )}
                     {mine.map((s) => (
                       <div key={s.set} className={`setrow ${s.done ? 'on' : ''}`}>
                         <label className="row" style={{ gap: 8, flexWrap: 'nowrap', cursor: 'pointer' }}>
@@ -236,7 +239,7 @@ export function TrainPlanCard() {
         </div>
       )}
       <div className="row small" style={{ marginTop: 8 }}>
-        <span>{wk.done} de {wk.planned} treinos esta semana</span>
+        <span>{wk.done > wk.planned ? `${wk.done} treinos esta semana (meta: ${wk.planned}) ✓` : `${wk.done} de ${wk.planned} treinos esta semana`}</span>
         <span className="mute">{wk.pct}%</span>
       </div>
       <Bar pct={wk.pct} />

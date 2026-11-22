@@ -16,22 +16,33 @@ export function ProCodeCard() {
   const [unread, setUnread] = useState(0);
   const [chat, setChat] = useState(false);
 
-  // ao abrir: plano novo do personal? e treinos por enviar
-  useEffect(() => {
-    if (!link) return;
-    flushWorkouts();
-    checkProPlan(link.code)
+  // ao abrir, ao voltar à app e (sem treino ainda) de 30 em 30 s: plano novo do personal? e treinos por enviar
+  const [checking, setChecking] = useState(false);
+  const check = (manual = false) => {
+    if (!link) return Promise.resolve();
+    if (manual) setChecking(true);
+    return checkProPlan(link.code)
       .then((r) => {
         setUnread(r.unread ?? 0);
         // relatório partilhado: atualiza uma vez por dia
         if (S.proShare?.on && S.proShare.at !== todayKey()) syncShare(S, true).then(() => update((d) => { d.proShare = { on: true, at: todayKey() }; })).catch(() => undefined);
-        if (r.version > link.version) {
+        if (r.version > link.version || (r.plan && !S.trainPlan)) {
           update((d) => applyProPlan(d, r));
-          toast(`${r.pro} atualizou o seu treino. 💪`);
-        }
+          toast(link.version === 0 || !S.trainPlan ? `O treino de ${r.pro} chegou. 💪` : `${r.pro} atualizou o seu treino. 💪`);
+        } else if (manual) toast(r.plan ? 'O seu treino está em dia.' : `${r.pro} ainda não enviou o treino.`);
       })
-      .catch(() => undefined);
-  }, [link?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => manual && toast('Sem ligação. Tente outra vez.'))
+      .finally(() => manual && setChecking(false));
+  };
+  useEffect(() => {
+    if (!link) return;
+    flushWorkouts();
+    check();
+    const onVis = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVis);
+    const id = S.trainPlan ? 0 : window.setInterval(() => check(), 30000);
+    return () => { document.removeEventListener('visibilitychange', onVis); if (id) window.clearInterval(id); };
+  }, [link?.code, link?.version, !!S.trainPlan]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (link)
     return (
@@ -39,7 +50,12 @@ export function ProCodeCard() {
         <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>NEFESH Life Pro</p>
         <p style={{ margin: '4px 0 2px' }}>Treino de <b>{link.pro}</b></p>
         <p className="small mute" style={{ margin: 0 }}>Código {link.code} · atualizado a {shortDate(link.at)}. Quando concluir um treino, {link.pro} recebe um aviso com o que fez.</p>
-        {!S.trainPlan && <p className="small warn" style={{ margin: '6px 0 0' }}>{link.pro} ainda não montou o seu treino. Aparece aqui assim que estiver pronto.</p>}
+        {!S.trainPlan && (
+          <p className="small warn" style={{ margin: '6px 0 0' }}>
+            {link.pro} ainda não enviou o seu treino. Aparece aqui sozinho assim que for enviado.{' '}
+            <button className="link small inline" disabled={checking} onClick={() => check(true)}>{checking ? 'A ver…' : 'Ver se já chegou'}</button>
+          </p>
+        )}
         <button className="btn sm" style={{ marginTop: 10 }} onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
         {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
         <div className="pro-share">

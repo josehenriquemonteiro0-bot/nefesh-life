@@ -219,3 +219,11 @@ describe('Pro: relatório partilhado', () => {
     expect((await pro.shareReport(db, 'isa', { code })).status).toBe(404);
   });
 });
+
+describe('Pro: aluno ligado sem treino enviado', () => {
+  it('avisa o personal (com ou sem rascunho)', () => {
+    expect(pro.attention([], { linked: true, hasPlan: false, hasDraft: true })[0]).toMatchObject({ kind: 'enviar', text: expect.stringContaining('ainda não foi enviado') });
+    expect(pro.attention([], { linked: true, hasPlan: false })[0].kind).toBe('enviar');
+    expect(pro.attention([], { linked: false, hasPlan: false })).toEqual([]);
+  });
+});

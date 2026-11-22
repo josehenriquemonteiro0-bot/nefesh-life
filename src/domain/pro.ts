@@ -31,7 +31,7 @@ export interface ProStudent {
   /** mensagens do aluno por ler */
   unread?: number;
   /** precisa de atenção (calculado no servidor) */
-  alerts?: { kind: 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }[];
+  alerts?: { kind: 'enviar' | 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }[];
 }
 export interface ProInfo { uid: string; name: string; kind: string; reg: string; status: 'pendente' | 'aprovado' | 'recusado' }
 export interface ProLog { day: string; workout: string; at: string; status: string; minutes: number; note: string; changes: string[]; effort?: string; pain?: boolean; exercises: { name: string; sets: number; of: number; reps: string; load: string; effort?: string; pain?: boolean }[] }

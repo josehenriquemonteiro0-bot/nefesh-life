@@ -19,7 +19,7 @@ import type { Nav } from '../App';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const EFFORT: Record<string, string> = { facil: 'fácil', ok: 'na medida', dificil: 'difícil' };
-const ALERT_ICON: Record<string, string> = { dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅' };
+const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅' };
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
 
@@ -325,7 +325,7 @@ function StudentLogs({ student, onClose, onComment }: { student: ProStudent; onC
           {g.note && <p className="small" style={{ margin: '4px 0' }}>💬 "{g.note}"</p>}
           {g.changes?.length > 0 && <p className="small mute" style={{ margin: '4px 0' }}>Alterações: {g.changes.join('; ')}</p>}
           <button className="link small inline" onClick={() => onComment(`${g.workout} · ${shortDate(g.day)}`)}>💬 Comentar este treino</button>
-          {g.exercises?.length > 0 && (
+          {g.status !== 'saltado' && g.exercises?.length > 0 && (
             <table className="mydata small">
               <tbody>
                 {g.exercises.map((e) => <tr key={e.name}><td>{e.pain ? '😣 ' : ''}{e.name}</td><td>{e.sets}/{e.of} séries{e.reps ? ` · ${e.reps}` : ''}{e.load ? ` · ${e.load}` : ''}{e.effort ? ` · ${EFFORT[e.effort]}` : ''}</td></tr>)}
@@ -455,7 +455,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               <p className="small" style={{ margin: '4px 0' }}>
                 {s.linked ? '✓ Ligado na app' : '⏳ À espera que o aluno use o código'}
                 {s.plan ? ` · ${s.plan.workouts.length} ${s.plan.workouts.length === 1 ? 'treino enviado' : 'treinos enviados'}` : s.draft ? ' · treino por enviar' : ' · treino por montar'}
-                {s.linked ? ` · ${s.week} esta semana` : ''}
+                {s.linked ? ` · ${s.week} ${s.week === 1 ? 'treino' : 'treinos'} nos últimos 7 dias` : ''}
               </p>
               {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 Treino guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
               {s.profile && profileText(s.profile) && <p className="small mute pro-prof-line" style={{ margin: '0 0 6px' }}>👤 {profileText(s.profile)}</p>}

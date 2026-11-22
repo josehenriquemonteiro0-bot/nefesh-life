@@ -106,7 +106,7 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const { results: recentLogs } = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY day DESC, created DESC LIMIT 12').bind(s.code).all<{ day: string; workout: string; data: string; created: string }>();
     const last = recentLogs[0] ?? null;
     const parsed = recentLogs.map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
-    const wk = await db.prepare('SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ?').bind(s.code, weekAgo(now)).first<{ n: number }>();
+    const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND json_extract(data, '$.status') != 'saltado'").bind(s.code, weekAgo(now)).first<{ n: number }>();
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = s.plan ? (JSON.parse(s.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
     const pr = await db.prepare('SELECT data FROM pro_profiles WHERE code = ?').bind(s.code).first<{ data: string }>();
@@ -115,7 +115,7 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const dr = await db.prepare('SELECT plan, updated FROM pro_drafts WHERE code = ?').bind(s.code).first<{ plan: string; updated: string }>();
     let draft: ReturnType<typeof cleanPlan> | null = null;
     try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
-    const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now) }, now);
+    const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now), hasDraft: !!dr }, now);
     const unread = await unreadFor(db, s.code, 'pro');
     const sh = await db.prepare('SELECT updated FROM pro_share WHERE code = ?').bind(s.code).first<{ updated: string }>();
     students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
@@ -464,7 +464,7 @@ const effortOf = (v: unknown): Effort => (v === 'facil' || v === 'ok' || v === '
 const EFFORT_TXT: Record<Exclude<Effort, ''>, string> = { facil: 'achou fácil', ok: 'na medida', dificil: 'achou difícil' };
 
 export interface LogData { status: string; minutes: number; note: string; effort?: Effort; pain?: boolean; exercises: { name: string; sets: number; of: number; load: string; effort?: Effort; pain?: boolean }[] }
-export interface Alert { kind: 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }
+export interface Alert { kind: 'enviar' | 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }
 
 const daysBetween = (a: string, b: Date) => Math.floor((b.getTime() - new Date(`${a.slice(0, 10)}T12:00:00Z`).getTime()) / 864e5);
 const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
@@ -473,8 +473,9 @@ const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
  * "Precisa de atenção": o que o personal deve olhar neste aluno, do mais importante para o menos.
  * logs: os mais recentes primeiro.
  */
-export function attention(logs: { day: string; data: LogData }[], o: { linked: boolean; hasPlan: boolean; planSince?: string; endsInDays?: number | null }, now = new Date()): Alert[] {
+export function attention(logs: { day: string; data: LogData }[], o: { linked: boolean; hasPlan: boolean; planSince?: string; endsInDays?: number | null; hasDraft?: boolean }, now = new Date()): Alert[] {
   const out: Alert[] = [];
+  if (o.linked && !o.hasPlan) out.push({ kind: 'enviar', text: o.hasDraft ? 'Já usou o código, mas o treino ainda não foi enviado (está guardado)' : 'Já usou o código e está à espera do treino' });
   const recent = logs.filter((l) => daysBetween(l.day, now) <= 14);
   const pained = recent.find((l) => l.data.pain);
   if (pained) {

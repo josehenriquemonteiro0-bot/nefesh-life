@@ -94,7 +94,8 @@ export function describeTrainChanges(exercises: { name: string; sets: number; re
     const parts: string[] = [];
     if (done.length < planned) parts.push(`${done.length}/${planned} séries`);
     // compara cada série com o que estava prescrito para essa série (pirâmides incluídas)
-    const loadDiff = done.filter((s) => (s.load ?? '').trim() && (s.load ?? '').trim() !== perSet(e.load, e.sets, s.set).trim());
+    // carga registada num exercício sem carga prescrita não é alteração (é só a carga que usou)
+    const loadDiff = done.filter((s) => { const pl = perSet(e.load, e.sets, s.set).trim(); return pl && (s.load ?? '').trim() && (s.load ?? '').trim() !== pl; });
     if (loadDiff.length) parts.push([...new Set(loadDiff.map((s) => s.load!.trim()))].join('/'));
     const repsDiff = done.filter((s) => (s.reps ?? '').trim() && (s.reps ?? '').trim() !== perSet(e.reps, e.sets, s.set).trim());
     if (repsDiff.length) parts.push(`${[...new Set(done.map((s) => (s.reps ?? '').trim()).filter(Boolean))].join('/')} reps`);

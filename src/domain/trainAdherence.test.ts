@@ -62,4 +62,8 @@ describe('prescrição por série (formato MyFit)', () => {
     sets[2].reps = '6';
     expect(describeTrainChanges(e, sets)).toEqual(['Puxada neutra triângulo: 12/10/6 reps']);
   });
+  it('carga registada num exercício sem carga prescrita não conta como alteração', () => {
+    const ex = [{ name: 'Leg press', sets: 2, reps: '10', load: '' }, { name: 'Supino', sets: 1, reps: '10', load: '20 kg' }];
+    expect(describeTrainChanges(ex, [{ ex: 0, set: 0, done: true, reps: '10', load: '60 kg' }, { ex: 0, set: 1, done: true, reps: '10', load: '60 kg' }, { ex: 1, set: 0, done: true, reps: '10', load: '25 kg' }])).toEqual(['Supino: 25 kg']);
+  });
 });
