@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DICTATE_SYSTEM, dictate, review } from './proAI';
+import { DICTATE_SYSTEM, dictate, readAssessment, review } from './proAI';
 
 const kv = () => { const m = new Map<string, string>(); return { get: async (k: string) => m.get(k) ?? null, put: async (k: string, v: string) => void m.set(k, v) }; };
 const fake = (out: unknown, calls: { messages: { content: string }[] }[] = []) =>
@@ -48,5 +48,15 @@ describe('NEFESH Life Pro com IA', () => {
     expect(r.body.general).toEqual(['Falta trabalho de panturrilha.']);
     expect(r.body.notes).toEqual([{ workout: 'Treino A', exercise: 1, name: 'Mesa flexora', note: 'Quadril colado ao banco.' }]);
     expect((await review(fake(out), 'm', kv(), 'isa', 'ip', { plan: { workouts: [] } })).status).toBe(400);
+  });
+  it('avaliação física: lê PDF/foto e devolve as medidas já limpas', async () => {
+    const out = { is_assessment: true, sexo: 'f', idade: 34, altura_cm: 165, peso_kg: 62.4, gordura_pct: 24.37, massa_magra_kg: 47.2, fc_repouso: -1, data: '2026-11-10',
+      pescoco: -1, ombros: -1, peito: 88, cintura: 71.5, abdomen: 78, quadril: 98, braco_d: 28, braco_e: -1, antebraco: -1, coxa_d: 55, coxa_e: -1, panturrilha: 35 };
+    const r = await readAssessment(fake(out), 'm', kv(), 'isa', 'ip', { file: 'JVBERi0x', media_type: 'application/pdf' });
+    expect(r.body.found).toBe(true);
+    expect(r.body.profile).toMatchObject({ sexo: 'f', idade: 34, peso: 62.4, gordura: 24.4, magra: 47.2, fc: null, dataAval: '2026-11-10', medidas: { cintura: 71.5, quadril: 98, panturrilha: 35 } });
+    expect((r.body.profile as { medidas: Record<string, unknown> }).medidas.braco_e).toBeUndefined();
+    expect((await readAssessment(fake(out), 'm', kv(), 'isa', 'ip', { file: 'x', media_type: 'text/plain' })).status).toBe(400);
+    expect((await readAssessment(fake({ ...out, is_assessment: false }), 'm', kv(), 'isa', 'ip', { file: 'JVBERi0x', media_type: 'application/pdf' })).body).toEqual({ found: false });
   });
 });

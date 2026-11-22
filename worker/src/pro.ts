@@ -87,7 +87,10 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const pr = await db.prepare('SELECT data FROM pro_profiles WHERE code = ?').bind(s.code).first<{ data: string }>();
     let profile: StudentProfile | null = null;
     try { profile = pr ? cleanProfile(JSON.parse(pr.data)) : null; } catch { profile = null; }
-    students.push({ profile, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
+    const dr = await db.prepare('SELECT plan, updated FROM pro_drafts WHERE code = ?').bind(s.code).first<{ plan: string; updated: string }>();
+    let draft: ReturnType<typeof cleanPlan> | null = null;
+    try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
+    students.push({ profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
   }
   return ok({ pro, students });
 }
@@ -124,8 +127,25 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   const pro = await proOf(db, uid);
   const plan = cleanPlan({ ...((b.plan ?? {}) as Record<string, unknown>), professional: pro?.name });
   if (!plan.workouts.length) return bad('Acrescente pelo menos um treino com um exercício.');
-  await db.prepare('UPDATE pro_students SET plan = ?, version = version + 1, updated = ? WHERE code = ?').bind(JSON.stringify(plan), now.toISOString(), s.code).run();
+  await db.batch([
+    db.prepare('UPDATE pro_students SET plan = ?, version = version + 1, updated = ? WHERE code = ?').bind(JSON.stringify(plan), now.toISOString(), s.code),
+    db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code),
+  ]);
   return ok({ version: s.version + 1 });
+}
+
+/** Rascunho: o profissional guarda o treino sem o enviar ao aluno (o aluno continua a ver o último enviado). */
+export async function saveDraft(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Aluno não encontrado.', 404);
+  const o = (b.plan ?? {}) as Record<string, unknown>;
+  // no rascunho os treinos ainda vazios também ficam (a divisão já escolhida)
+  const raw = (Array.isArray(o.workouts) ? o.workouts : []).slice(0, 10) as Record<string, unknown>[];
+  const clean = cleanPlan(o);
+  const workouts = raw.map((w) => clean.workouts.find((x) => x.name === str(w.name, 60)) ?? { name: str(w.name, 60) || 'Treino', focus: str(w.focus, 80), day: str(w.day, 30), exercises: [] });
+  const at = now.toISOString();
+  await db.prepare('INSERT INTO pro_drafts (code, plan, updated) VALUES (?, ?, ?) ON CONFLICT(code) DO UPDATE SET plan = excluded.plan, updated = excluded.updated').bind(s.code, JSON.stringify({ ...clean, workouts }), at).run();
+  return ok({ at });
 }
 
 async function putProfile(db: DB, code: string, p: unknown, now: Date) {
@@ -152,7 +172,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 

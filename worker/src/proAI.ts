@@ -9,6 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { LIBRARY } from '../../src/domain/proLibrary';
 import { check, count, type CounterStore, type Limits } from './limits';
 import { cleanPlan } from './pro';
+import { MEASURE_KEYS, cleanProfile } from '../../src/domain/proProfile';
 
 export const DICTATE_LIMITS: Limits = { device: 80, ip: 200, global: 4000 };
 export const REVIEW_LIMITS: Limits = { device: 30, ip: 100, global: 2000 };
@@ -167,4 +168,62 @@ export async function review(client: Anthropic, model: string, store: CounterSto
     .filter((n) => plan.workouts[n.workout]?.exercises[n.exercise] && String(n.note ?? '').trim())
     .map((n) => ({ workout: plan.workouts[n.workout].name, exercise: n.exercise, name: plan.workouts[n.workout].exercises[n.exercise].name, note: String(n.note).trim().slice(0, 240) }));
   return { status: 200, body: { general: (r.general ?? []).map((g) => String(g).trim().slice(0, 400)).filter(Boolean).slice(0, 6), notes } };
+}
+
+/* ───────── avaliação física (PDF ou foto) → medidas do perfil ───────── */
+
+export const ASSESS_LIMITS: Limits = { device: 20, ip: 60, global: 800 };
+const MAX_FILE_CHARS = 8_000_000;
+const n = { type: 'number', description: '-1 se não aparecer' } as const;
+const ASSESS_SCHEMA = {
+  type: 'object',
+  properties: {
+    is_assessment: { type: 'boolean', description: 'true se o documento tem dados de uma avaliação física/antropométrica' },
+    sexo: { type: 'string', enum: ['f', 'm', ''] },
+    idade: n, altura_cm: n, peso_kg: n, gordura_pct: n, massa_magra_kg: n, fc_repouso: n,
+    data: { type: 'string', description: 'data da avaliação AAAA-MM-DD; "" se não aparecer' },
+    ...Object.fromEntries(MEASURE_KEYS.map((k) => [k, n])),
+  },
+  required: ['is_assessment', 'sexo', 'idade', 'altura_cm', 'peso_kg', 'gordura_pct', 'massa_magra_kg', 'fc_repouso', 'data', ...MEASURE_KEYS],
+  additionalProperties: false,
+} as const;
+
+export const ASSESS_SYSTEM = `Transcreves avaliações físicas (antropometria, bioimpedância, fichas de academia; Portugal e Brasil) para o perfil do aluno.
+- Perímetros em centímetros: pescoço, ombros, peito/tórax, cintura, abdómen, quadril (anca), braço direito/esquerdo (se só houver um, usa-o em braco_d; "braço relaxado" ou "contraído": prefere relaxado), antebraço, coxa direita/esquerda (se só houver uma, coxa_d; prefere coxa medial/média), panturrilha.
+- % de gordura, massa magra (kg), FC em repouso, peso (kg), altura (cm; se estiver em metros multiplica por 100), idade, sexo, data.
+- Se houver várias avaliações, usa a mais recente. Converte vírgulas decimais. Não inventes valores: -1 quando não aparecer. Não interpretes nem comentes.`;
+
+export async function readAssessment(client: Anthropic, model: string, store: CounterStore, uid: string, ip: string, b: Record<string, unknown>): Promise<R> {
+  const data = String(b.file ?? '');
+  const media = String(b.media_type ?? '');
+  if (!data || data.length > MAX_FILE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(data)) return { status: 400, body: { error: 'Ficheiro inválido ou demasiado grande (máximo 6 MB).' } };
+  const content: Anthropic.Beta.BetaContentBlockParam[] = [];
+  if (media === 'application/pdf') content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
+  else if (['image/jpeg', 'image/png', 'image/webp'].includes(media)) content.push({ type: 'image', source: { type: 'base64', media_type: media as 'image/jpeg', data } });
+  else return { status: 400, body: { error: 'Use um PDF ou uma fotografia.' } };
+  const allowed = await check(store, ASSESS_LIMITS, uid, ip, new Date(), 'pa');
+  if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de leituras de hoje. Tente amanhã.' } };
+  content.push({ type: 'text', text: 'Transcreve os dados desta avaliação física.' });
+  const response = await client.beta.messages.create({
+    model,
+    max_tokens: 4000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    system: ASSESS_SYSTEM,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: ASSESS_SCHEMA as never } },
+    messages: [{ role: 'user', content }],
+  });
+  if (response.stop_reason === 'refusal') return { status: 422, body: { error: 'Não foi possível ler este documento.' } };
+  const text = response.content.find((x) => x.type === 'text');
+  if (!text || text.type !== 'text') return { status: 502, body: { error: 'resposta vazia' } };
+  const r = JSON.parse(text.text) as Record<string, number | string | boolean>;
+  await count(store, ASSESS_LIMITS, uid, ip, new Date(), 'pa');
+  if (!r.is_assessment) return { status: 200, body: { found: false } };
+  const v = (k: string) => (typeof r[k] === 'number' && (r[k] as number) >= 0 ? r[k] : null);
+  // passa pelas mesmas regras do perfil (limites e arredondamentos)
+  const profile = cleanProfile({
+    sexo: r.sexo, idade: v('idade'), altura: v('altura_cm'), peso: v('peso_kg'), gordura: v('gordura_pct'), magra: v('massa_magra_kg'), fc: v('fc_repouso'), dataAval: r.data,
+    medidas: Object.fromEntries(MEASURE_KEYS.map((k) => [k, v(k)])),
+  });
+  return { status: 200, body: { found: true, profile } };
 }

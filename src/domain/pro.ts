@@ -5,7 +5,7 @@
  */
 import { getAuth } from './account';
 import { todayKey } from './dates';
-import { PHOTO_API, deviceId } from './photo';
+import { PHOTO_API, compressImage, deviceId } from './photo';
 import type { ParsedWorkoutPlan, PlanWorkout } from './planRead';
 import type { AppState } from './types';
 
@@ -22,6 +22,9 @@ export interface ProStudent {
   last: { day: string; workout: string; status: string; minutes: number; note: string } | null;
   week: number;
   profile?: StudentProfile | null;
+  /** treino guardado e ainda não enviado ao aluno */
+  draft?: ParsedWorkoutPlan | null;
+  draftAt?: string | null;
 }
 export interface ProInfo { uid: string; name: string; kind: string; reg: string; status: 'pendente' | 'aprovado' | 'recusado' }
 export interface ProLog { day: string; workout: string; at: string; status: string; minutes: number; note: string; changes: string[]; exercises: { name: string; sets: number; of: number; reps: string; load: string }[] }
@@ -121,3 +124,23 @@ export async function flushWorkouts() {
 /** Mensagem para o personal enviar o código ao aluno. */
 export const inviteText = (student: string, code: string, pro: string, appUrl: string) =>
   `Olá ${student}! O seu treino está na NEFESH Life. Abra a app (${appUrl}), vá a Saúde → Treino → Com personal e escreva o código ${code}. — ${pro}`;
+
+/** Avaliação física (PDF ou foto) → medidas para o perfil do aluno. O documento não é guardado. */
+export async function readAssessmentFile(file: File): Promise<{ found: boolean; profile?: StudentProfile }> {
+  const isPdf = file.type === 'application/pdf';
+  if (isPdf && file.size > 6 * 1024 * 1024) throw new Error('O PDF é demasiado grande (máximo 6 MB).');
+  let body: { file: string; media_type: string };
+  if (isPdf) {
+    const data = await new Promise<string>((ok, fail) => {
+      const r = new FileReader();
+      r.onload = () => ok(String(r.result).slice(String(r.result).indexOf(',') + 1));
+      r.onerror = () => fail(r.error);
+      r.readAsDataURL(file);
+    });
+    body = { file: data, media_type: 'application/pdf' };
+  } else if (file.type.startsWith('image/')) {
+    const i = await compressImage(file, 1800);
+    body = { file: i.data, media_type: i.media_type };
+  } else throw new Error('Use um PDF ou uma fotografia.');
+  return proApi('ia/avaliacao', body);
+}

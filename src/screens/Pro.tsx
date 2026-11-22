@@ -44,7 +44,12 @@ function ExerciseInput({ value, focus, onPick, onType, label }: { value: string;
 /** Montar ou editar o treino de um aluno: divisão (A, AB, ABC…), um treino de cada vez, sugestões pelo foco. */
 function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent; others: ProStudent[]; onClose: () => void; onSaved: () => void }) {
   const { toast } = useStore();
-  const [plan, setPlan] = useState<ParsedWorkoutPlan>(() => student.plan ?? { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '' });
+  const [plan, setPlan] = useState<ParsedWorkoutPlan>(() => student.draft ?? student.plan ?? { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '' });
+  // rascunho: 'Guardar' não envia; 'Concluir e enviar' é que o aluno passa a ver
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(student.draft ?? student.plan ?? { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '' }));
+  const [savedAt, setSavedAt] = useState<string | null>(student.draftAt ?? null);
+  const [touched, setTouched] = useState(false);
+  const dirty = JSON.stringify(plan) !== savedJson;
   const [cur, setCur] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -73,13 +78,33 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
     setCur(0);
   };
   const filled = (x: PlanWorkout) => x.exercises.filter((e) => e.name.trim()).length;
+  const saveDraft = async (quiet = false) => {
+    if (!plan.workouts.length) return true;
+    if (!dirty) return true;
+    if (!quiet) setBusy(true);
+    setErr('');
+    try {
+      const r = await proApi<{ at: string }>('aluno/rascunho', { code: student.code, plan });
+      setSavedJson(JSON.stringify(plan));
+      setSavedAt(r.at);
+      setTouched(true);
+      if (!quiet) toast('Treino guardado. O aluno ainda não o vê.');
+      return true;
+    } catch (e) {
+      setErr((e as Error).message);
+      return false;
+    } finally {
+      if (!quiet) setBusy(false);
+    }
+  };
   const save = async () => {
     if (!plan.workouts.some(filled)) { setErr('Junte pelo menos um exercício.'); return; }
+    if (!confirm(`Enviar o treino a ${student.name}? ${student.linked ? 'Passa a vê-lo na app.' : 'Vê-o quando usar o código na app.'}`)) return;
     setBusy(true);
     setErr('');
     try {
       await proApi('aluno/guardar', { code: student.code, plan });
-      toast(`Treino de ${student.name} guardado.${student.linked ? ' O aluno recebe-o ao abrir a app.' : ''}`);
+      toast(`Treino enviado a ${student.name}.${student.linked ? ' Recebe-o ao abrir a app.' : ''}`);
       onSaved();
     } catch (e) {
       setErr((e as Error).message);
@@ -87,6 +112,21 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
       setBusy(false);
     }
   };
+  const leave = async () => {
+    if (dirty && plan.workouts.length && confirm('Tem alterações por guardar. Guardar antes de sair? (o aluno não recebe nada)')) {
+      if (!(await saveDraft(true))) return;
+      return onSaved();
+    }
+    if (touched) onSaved();
+    else onClose();
+  };
+  const hhmm = (iso: string) => new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const saveBar = (
+    <div className="pro-savebar">
+      <button className="btn ghost sm" disabled={busy || !dirty} onClick={() => saveDraft()}>💾 Guardar</button>
+      <span className="small mute">{dirty ? 'Alterações por guardar' : savedAt ? `Guardado ${hhmm(savedAt)} · o aluno ainda não vê` : student.plan ? 'Igual ao que o aluno tem' : ''}</span>
+    </div>
+  );
   const templates = others.filter((o) => o.plan && o.code !== student.code);
   const about = profileText(student.profile);
   const sugg = w ? searchExercises('', w.focus, [], 60) : [];
@@ -96,9 +136,10 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
   useEffect(() => { setSugOpen(mode === 'manual' && !!w && !filled(w)); }, [i, n, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
-      <button className="btn ghost sm" onClick={onClose}>← Alunos</button>
+      <button className="btn ghost sm" onClick={leave}>← Alunos</button>
       <h1 style={{ marginBottom: 4 }}>Treino de {student.name}</h1>
-      {about && <p className="small mute" style={{ marginTop: 0 }}>👤 {about}</p>}
+      {student.draft && student.plan && <p className="small gold" style={{ marginTop: 0 }}>📝 A editar o rascunho. O aluno continua a ver o treino enviado antes.</p>}
+      {about && <p className="small mute pro-prof-line" style={{ marginTop: 0 }} title={about}>👤 {about}</p>}
       {templates.length > 0 && (
         <label className="small" style={{ display: 'block', margin: '0 0 12px' }}>
           Partir do treino de outro aluno:{' '}
@@ -202,16 +243,19 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             )}
           </section>
           {(mode === 'voz' || i === n - 1) && plan.workouts.some(filled) && <><div className="pro-end" /><ReviewCard plan={plan} onPlan={setPlan} profile={about} /><p /></>}
-          {mode === 'voz' ? (
-            <button className="btn full" disabled={busy || !plan.workouts.some(filled)} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar ao aluno'}</button>
-          ) : i < n - 1 ? (
+          {mode === 'manual' && i < n - 1 ? (
             <>
-              <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); top(); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>
-              <p />
-              <button className="btn ghost full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : 'Guardar e enviar já'}</button>
+              <button className="btn full" disabled={!filled(w)} onClick={() => { setCur(i + 1); top(); void saveDraft(true); }}>Concluir {w.name} → montar o {plan.workouts[i + 1].name}</button>
+              {saveBar}
             </>
           ) : (
-            <button className="btn full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : n > 1 ? `Concluir ${w.name} e enviar ao aluno` : 'Guardar e enviar ao aluno'}</button>
+            <>
+              {saveBar}
+              <section className="card pro-send">
+                <p className="small" style={{ margin: '0 0 8px' }}><b>Pronto?</b> Ao enviar, {student.name} passa a ver este treino na app{student.plan ? ' (substitui o anterior)' : ''}.</p>
+                <button className="btn full" disabled={busy || !plan.workouts.some(filled)} onClick={save}>{busy ? 'A enviar…' : 'Concluir e enviar ao aluno'}</button>
+              </section>
+            </>
           )}
           {mode === 'manual' && !filled(w) && <p className="small mute">Junte pelo menos um exercício a este treino para avançar.</p>}
         </>
@@ -353,13 +397,14 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               <div className="row"><h2 style={{ margin: 0 }}>{s.name}</h2><span className="small mute">{s.code}</span></div>
               <p className="small" style={{ margin: '4px 0' }}>
                 {s.linked ? '✓ Ligado na app' : '⏳ À espera que o aluno use o código'}
-                {s.plan ? ` · ${s.plan.workouts.length} ${s.plan.workouts.length === 1 ? 'treino' : 'treinos'}` : ' · treino por montar'}
+                {s.plan ? ` · ${s.plan.workouts.length} ${s.plan.workouts.length === 1 ? 'treino enviado' : 'treinos enviados'}` : s.draft ? ' · treino por enviar' : ' · treino por montar'}
                 {s.linked ? ` · ${s.week} esta semana` : ''}
               </p>
+              {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 Treino guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
               {s.profile && profileText(s.profile) && <p className="small mute pro-prof-line" style={{ margin: '0 0 6px' }}>👤 {profileText(s.profile)}</p>}
               {s.last && <p className="small mute" style={{ margin: '0 0 6px' }}>Último: {s.last.workout}, {shortDate(s.last.day)} · {STATUS[s.last.status] ?? s.last.status}{s.last.note ? ` · "${s.last.note}"` : ''}</p>}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                <button className="btn sm" onClick={() => setEdit(s)}>{s.plan ? 'Editar treino' : 'Montar treino'}</button>
+                <button className="btn sm" onClick={() => setEdit(s)}>{s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
                 <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{s.profile ? 'Perfil' : '+ Perfil'}</button>
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
                 {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appUrl))} target="_blank" rel="noreferrer">Enviar código</a>}

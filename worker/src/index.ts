@@ -325,14 +325,16 @@ export default {
         'aluno/registos': () => pro.studentLogs(db, uid, b),
         'aluno/apagar': () => pro.removeStudent(db, uid, b),
         'aluno/perfil': () => pro.saveProfile(db, uid, b),
+        'aluno/rascunho': () => pro.saveDraft(db, uid, b),
       };
       // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
-      if (action === 'ia/ditado' || action === 'ia/rever') {
+      if (action === 'ia/ditado' || action === 'ia/rever' || action === 'ia/avaliacao') {
         if ((await pro.proOf(db, uid))?.status !== 'aprovado') return json({ error: 'Acesso de profissional ainda não aprovado.' }, 403, h);
         try {
           const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
           const model = env.MODEL?.trim() || 'claude-opus-5-5';
-          const r = action === 'ia/ditado' ? await proAI.dictate(client, model, env.LIMITS, uid, req.headers.get('CF-Connecting-IP') ?? 'sem-ip', b) : await proAI.review(client, model, env.LIMITS, uid, req.headers.get('CF-Connecting-IP') ?? 'sem-ip', b);
+          const ipx = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+          const r = action === 'ia/ditado' ? await proAI.dictate(client, model, env.LIMITS, uid, ipx, b) : action === 'ia/rever' ? await proAI.review(client, model, env.LIMITS, uid, ipx, b) : await proAI.readAssessment(client, model, env.LIMITS, uid, ipx, b);
           return json(r.body, r.status, h);
         } catch (err) {
           return apiError(err, h);

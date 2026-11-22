@@ -19,6 +19,23 @@ const keys = { get: async () => null, put: async () => undefined } as never;
 const NOW = new Date('2026-11-22T15:00:00Z');
 
 describe('NEFESH Life Pro', () => {
+  it('rascunho: guardar não envia ao aluno; enviar apaga o rascunho', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
+    const ex = { name: 'Prancha', sets: 3, reps: '30 s', load: '', rest: '', notes: '' };
+    const draft = { workouts: [{ name: 'Treino A', focus: 'Core', day: '', exercises: [ex] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [] }], per_week: 3 };
+    expect((await pro.saveDraft(db, 'isa', { code, plan: draft }, NOW)).status).toBe(200);
+    const st = (await pro.proState(db, 'isa', NOW)).body.students as { plan: unknown; version: number; draft: { workouts: { name: string }[] } }[];
+    expect(st[0].plan).toBeNull();
+    expect(st[0].version).toBe(0);
+    expect(st[0].draft.workouts.map((w) => w.name)).toEqual(['Treino A', 'Treino B']);
+    await pro.savePlan(db, 'isa', { code, plan: draft }, NOW);
+    const st2 = (await pro.proState(db, 'isa', NOW)).body.students as { plan: unknown; version: number; draft: unknown }[];
+    expect(st2[0].version).toBe(1);
+    expect(st2[0].draft).toBeNull();
+    expect((await pro.saveDraft(db, 'outro', { code, plan: draft }, NOW)).status).toBe(404);
+  });
   it('perfil do aluno: criado com o aluno, aparece no painel, edita-se, limpa-se e sai ao apagar', async () => {
     const db = memoryDB();
     await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
@@ -26,7 +43,7 @@ describe('NEFESH Life Pro', () => {
     const code = r.body.code as string;
     const st = await pro.proState(db, 'isa', NOW);
     const s0 = (st.body.students as { profile: Record<string, unknown> }[])[0];
-    expect(s0.profile).toMatchObject({ sexo: 'f', idade: 34, peso: 63, nivel: 'iniciante', lesoes: 'dor no joelho direito' });
+    expect(s0.profile).toMatchObject({ sexo: 'f', idade: 34, peso: 62.5, nivel: 'iniciante', lesoes: 'dor no joelho direito' });
     expect((await pro.saveProfile(db, 'isa', { code, profile: { idade: 35 } }, NOW)).body.profile).toMatchObject({ idade: 35, sexo: '' });
     expect((await pro.saveProfile(db, 'outro', { code, profile: { idade: 35 } }, NOW)).status).toBe(404);
     expect((await pro.saveProfile(db, 'isa', { code, profile: {} }, NOW)).body.profile).toBeNull();
