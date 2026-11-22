@@ -25,20 +25,16 @@ export function applyReviewNotes(plan: ParsedWorkoutPlan, notes: ReviewNote[]): 
 const MAX_MS = 120000;
 
 /**
- * Ditado guiado por etapas:
- * 1) estrutura — quantos dias e o que treina em cada dia (cria Treino A, B, C… com o foco);
- * 2) um treino de cada vez — os exercícios desse treino.
- * O microfone não corta nas pausas: ouve até tocar para parar (máx. 2 min).
+ * Microfone para ditados longos (montar o treino, falar do aluno na revisão):
+ * não corta nas pausas, ouve até tocar em parar (máx. 2 min). No iPhone grava e o servidor
+ * passa a texto; no Android/Chrome volta a ouvir sozinho quando o sistema corta.
  */
-export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }: { plan: ParsedWorkoutPlan; current: number; setCurrent: (i: number) => void; onPlan: (p: ParsedWorkoutPlan) => void; about?: string }) {
+export function useLongDictation(add: (t: string) => void, onErr: (m: string) => void) {
   const { S } = useStore();
-  const [text, setText] = useState('');
-  const [partial, setPartial] = useState('');
   const [on, setOn] = useState(false);
   const [secs, setSecs] = useState(0);
-  const [busy, setBusy] = useState<'' | 'ouvir' | 'montar'>('');
-  const [msg, setMsg] = useState<{ ok?: string; doubt?: string; err?: string; next?: boolean }>({});
-  const [restructure, setRestructure] = useState(false);
+  const [partial, setPartial] = useState('');
+  const [transcribing, setTranscribing] = useState(false);
   const rec = useRef<Listening | null>(null);
   const userStop = useRef(false);
   useEffect(() => () => { userStop.current = true; rec.current?.abort(); }, []);
@@ -49,13 +45,8 @@ export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }:
     const id = window.setInterval(() => setSecs(Math.round((Date.now() - t0) / 1000)), 500);
     return () => window.clearInterval(id);
   }, [on]);
-  const n = plan.workouts.length;
-  const stage: 'estrutura' | 'treino' = !n || restructure ? 'estrutura' : 'treino';
-  const w = plan.workouts[current];
-  const add = (t: string) => setText((x) => `${x}${x && !/\s$/.test(x) ? ' ' : ''}${t.trim()}`);
   const stop = () => { userStop.current = true; rec.current?.stop(); };
   const start = () => {
-    setMsg({});
     primeAudio();
     userStop.current = false;
     if (shouldRecord(isIOS())) {
@@ -64,22 +55,22 @@ export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }:
         onDone: async (audio) => {
           setOn(false);
           rec.current = null;
-          setBusy('ouvir');
+          setTranscribing(true);
           try {
             const t = await transcribe(audio, PHOTO_API, deviceId());
             if (t) add(t);
-            else setMsg({ err: 'Não percebi. Tente outra vez, mais perto do telemóvel.' });
+            else onErr('Não percebi. Tente outra vez, mais perto do telemóvel.');
           } catch (e) {
-            setMsg({ err: (e as Error).message });
+            onErr((e as Error).message);
           } finally {
-            setBusy('');
+            setTranscribing(false);
           }
         },
-        onError: (m) => { setOn(false); rec.current = null; setMsg({ err: m }); },
+        onError: (m) => { setOn(false); rec.current = null; onErr(m); },
       }, { manual: true, maxMs: MAX_MS });
       return;
     }
-    if (!speechSupported()) return setMsg({ err: 'Aqui o microfone da app não está disponível: toque no campo de texto e use o 🎤 do teclado para ditar.' });
+    if (!speechSupported()) return onErr('Aqui o microfone da app não está disponível: toque no campo de texto e use o 🎤 do teclado para ditar.');
     const t0 = Date.now();
     // o reconhecimento do navegador pára sozinho nas pausas: volta a ouvir até a pessoa tocar para parar
     const go = (): boolean => {
@@ -97,18 +88,42 @@ export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }:
           if (code === 'no-speech' && !userStop.current && Date.now() - t0 < MAX_MS && go()) return;
           setOn(false);
           rec.current = null;
-          setMsg({ err: m });
+          onErr(m);
         },
       }, { continuous: true });
       if (!r) return false;
       rec.current = r;
       return true;
     };
-    if (!go()) return setMsg({ err: 'Não foi possível usar o microfone. Use o 🎤 do teclado no campo de texto.' });
+    if (!go()) return onErr('Não foi possível usar o microfone. Use o 🎤 do teclado no campo de texto.');
     setOn(true);
   };
+  const clock = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  return { on, secs, clock, partial, transcribing, start, stop };
+}
+
+const joinText = (x: string, t: string) => `${x}${x && !/\s$/.test(x) ? ' ' : ''}${t.trim()}`;
+
+/**
+ * Ditado guiado por etapas:
+ * 1) estrutura — quantos dias e o que treina em cada dia (cria Treino A, B, C… com o foco);
+ * 2) um treino de cada vez — os exercícios desse treino.
+ */
+export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }: { plan: ParsedWorkoutPlan; current: number; setCurrent: (i: number) => void; onPlan: (p: ParsedWorkoutPlan) => void; about?: string }) {
+  const [text, setText] = useState('');
+  const [building, setBuilding] = useState(false);
+  const [msg, setMsg] = useState<{ ok?: string; doubt?: string; err?: string; next?: boolean }>({});
+  const [restructure, setRestructure] = useState(false);
+  const mic = useLongDictation((t) => setText((x) => joinText(x, t)), (m) => setMsg({ err: m }));
+  const { on, partial, clock } = mic;
+  const busy: '' | 'ouvir' | 'montar' = building ? 'montar' : mic.transcribing ? 'ouvir' : '';
+  const start = () => { setMsg({}); mic.start(); };
+  const stop = mic.stop;
+  const n = plan.workouts.length;
+  const stage: 'estrutura' | 'treino' = !n || restructure ? 'estrutura' : 'treino';
+  const w = plan.workouts[current];
   const build = async () => {
-    setBusy('montar');
+    setBuilding(true);
     setMsg({});
     try {
       const r = await proApi<{ plan: ParsedWorkoutPlan; summary: string; doubts: string }>('ia/ditado', { text, plan, current, stage, about });
@@ -122,7 +137,7 @@ export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }:
     } catch (e) {
       setMsg({ err: (e as Error).message });
     } finally {
-      setBusy('');
+      setBuilding(false);
     }
   };
   const question = stage === 'estrutura'
@@ -142,7 +157,7 @@ export function DictationCard({ plan, current, setCurrent, onPlan, about = '' }:
       <p className="pro-q"><b>{question.n === '1' ? 'Etapa 1' : 'Etapa 2'}</b> · {question.t}</p>
       <div className="row" style={{ gap: 10, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
         <button className={`pro-mic ${on ? 'on' : ''}`} onClick={on ? stop : start} disabled={!!busy} aria-label={on ? 'Parar de ouvir' : 'Começar a ditar'}>{on ? '■' : '🎙️'}</button>
-        <span className="small">{on ? <>A ouvir… <b>{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, '0')}</b><br />Fale à vontade, com pausas. Toque em ■ quando acabar.</> : busy === 'ouvir' ? 'A passar a texto…' : 'Toque no microfone e responda.'}</span>
+        <span className="small">{on ? <>A ouvir… <b>{clock}</b><br />Fale à vontade, com pausas. Toque em ■ quando acabar.</> : busy === 'ouvir' ? 'A passar a texto…' : 'Toque no microfone e responda.'}</span>
       </div>
       <textarea className="field" rows={4} style={{ marginTop: 10 }} maxLength={4000} value={on && partial ? `${text}${text ? ' ' : ''}${partial}` : text} onChange={(e) => setText(e.target.value)}
         placeholder="O que disser aparece aqui; também pode escrever ou corrigir." aria-label="Texto do ditado" />
@@ -175,6 +190,7 @@ export function ReviewCard({ plan, onPlan, profile = '' }: { plan: ParsedWorkout
   const [res, setRes] = useState<{ general: string[]; notes: ReviewNote[] } | null>(null);
   const [pick, setPick] = useState<Set<number>>(new Set());
   const [open, setOpen] = useState(false);
+  const mic = useLongDictation((t) => setAbout((x) => joinText(x, t).slice(0, 600)), (m) => setErr(m));
   const run = async () => {
     setBusy(true);
     setErr('');
@@ -194,9 +210,14 @@ export function ReviewCard({ plan, onPlan, profile = '' }: { plan: ParsedWorkout
     <section className="card pro-review">
       <div className="row"><h3 style={{ margin: 0 }}>✨ Revisão técnica com IA</h3><button className="x" aria-label="Fechar" onClick={() => setOpen(false)}>×</button></div>
       <p className="small mute">A IA olha para o plano todo (equilíbrio, volume, ordem, descansos) e sugere notas de execução para os exercícios sem nota. Você decide o que fica.</p>
-      <input className="field sm" style={{ width: '100%', boxSizing: 'border-box' }} value={about} maxLength={300} onChange={(e) => setAbout(e.target.value)} placeholder={profile ? 'Mais alguma coisa sobre o aluno (opcional)' : 'Sobre o aluno (opcional): ex. iniciante, quer hipertrofia, dor no joelho'} aria-label="Sobre o aluno" />
+      <p className="small" style={{ margin: '0 0 6px' }}><b>Fale do aluno</b> (opcional): objetivo, histórico, dores, rotina, o que quer que a IA tenha em conta.</p>
+      <div className="row" style={{ gap: 10, justifyContent: 'flex-start', flexWrap: 'nowrap', marginBottom: 8 }}>
+        <button className={`pro-mic sm ${mic.on ? 'on' : ''}`} onClick={mic.on ? mic.stop : () => { setErr(''); mic.start(); }} disabled={busy || mic.transcribing} aria-label={mic.on ? 'Parar de ouvir' : 'Falar sobre o aluno'}>{mic.on ? '■' : '🎙️'}</button>
+        <span className="small">{mic.on ? <>A ouvir… <b>{mic.clock}</b> · toque em ■ quando acabar</> : mic.transcribing ? 'A passar a texto…' : 'Toque e fale, ou escreva em baixo.'}</span>
+      </div>
+      <textarea className="field" rows={3} style={{ width: '100%', boxSizing: 'border-box' }} value={mic.on && mic.partial ? joinText(about, mic.partial) : about} maxLength={600} onChange={(e) => setAbout(e.target.value)} placeholder={profile ? 'Mais alguma coisa sobre o aluno (opcional)' : 'ex.: iniciante, quer hipertrofia, dor no joelho, treina 3× por semana'} aria-label="Sobre o aluno" />
       {profile && <p className="small mute" style={{ margin: '6px 0 0' }}>Usa também o perfil: {profile}</p>}
-      <button className="btn sm" style={{ marginTop: 8 }} disabled={busy} onClick={run}>{busy ? 'A rever…' : res ? 'Rever outra vez' : 'Rever o plano'}</button>
+      <button className="btn sm" style={{ marginTop: 8 }} disabled={busy || mic.on || mic.transcribing} onClick={run}>{busy ? 'A rever…' : res ? 'Rever outra vez' : 'Rever o plano'}</button>
       {err && <p className="small warn-t">{err}</p>}
       {res && (
         <>

@@ -752,6 +752,7 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .pro-mic{width:56px;height:56px;flex:0 0 56px;border-radius:50%;border:0;background:var(--neon);color:#00140d;font-size:22px;cursor:pointer}
 .pro-mic.on{background:#ff6b6b;color:#fff;animation:micPulse 1.2s ease-out infinite}
 .pro-mic:disabled{opacity:.5}
+.pro-mic.sm{width:46px;height:46px;flex-basis:46px;font-size:18px}
 .pro-voice textarea{width:100%;box-sizing:border-box}
 .pro-steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .pro-steps>*{font:inherit;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--mute)}
