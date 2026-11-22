@@ -27,9 +27,34 @@ export interface FullEval {
   magra?: number | null;
   fc?: number | null;
   medidas?: Partial<Record<MeasureKey, number | null>>;
+  /** outros dados do relatório, com o nome e a unidade do documento */
+  extra?: { label: string; v: number | null | undefined; u: string }[];
+}
+
+/** Chave de gráfico: uma medida conhecida ou "x:<nome>" para os outros dados do relatório. */
+export type ChartKey = Measure | `x:${string}`;
+export function valueOf(e: BodyEntry, k: ChartKey): number | undefined {
+  return k.startsWith('x:') ? e.extra?.[k.slice(2)]?.v : e[k as Measure];
+}
+/** Outros dados que aparecem no histórico (para os gráficos), com a unidade. */
+export function extraKeys(series: BodyEntry[]): [ChartKey, string, string][] {
+  const m = new Map<string, string>();
+  for (const e of series) for (const [k, x] of Object.entries(e.extra ?? {})) if (!m.has(k)) m.set(k, x.u);
+  return [...m].map(([k, u]) => [`x:${k}`, k, u]);
 }
 
 const has = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+function extra(e: FullEval, old?: BodyEntry['extra']) {
+  const out: NonNullable<BodyEntry['extra']> = { ...(old ?? {}) };
+  for (const x of e.extra ?? []) {
+    const label = x.label.trim().slice(0, 40);
+    if (!label) continue;
+    if (typeof x.v === 'number' && Number.isFinite(x.v) && x.v >= 0) out[label] = { v: x.v, u: x.u.slice(0, 10) };
+    else delete out[label];
+  }
+  return Object.keys(out).length ? { extra: out } : {};
+}
 
 /**
  * Guarda avaliações completas no histórico do corpo e atualiza o perfil (Answers) com a mais recente:
@@ -55,6 +80,7 @@ export function saveEvals(d: AppState, evals: FullEval[], fonte: 'manual' | 'rel
       ...(has(e.magra) ? { magra: e.magra } : {}),
       ...(has(e.fc) ? { fc: e.fc } : {}),
       ...(Object.keys(rest).length ? { medidas: rest } : {}),
+      ...(extra(e, log.find((x) => x.date === e.date)?.extra)),
       fonte,
       ...(por.trim() ? { por: por.trim().slice(0, 80) } : {}),
     };
@@ -97,26 +123,27 @@ export function bodySeries(S: Pick<AppState, 'bodyLog' | 'evals'>): BodyEntry[] 
 }
 
 /** Último valor de cada mês (últimos n meses, do mais antigo para o atual). */
-export function monthly(series: BodyEntry[], m: Measure, n = 12, now = new Date()) {
+export function monthly(series: BodyEntry[], m: ChartKey, n = 12, now = new Date()) {
   const out: { month: string; value: number | null }[] = [];
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = dayKey(d).slice(0, 7);
-    const inMonth = series.filter((e) => e.date.startsWith(key) && e[m] !== undefined);
-    out.push({ month: key, value: inMonth.length ? inMonth[inMonth.length - 1][m]! : null });
+    const inMonth = series.filter((e) => e.date.startsWith(key) && valueOf(e, m) !== undefined);
+    out.push({ month: key, value: inMonth.length ? valueOf(inMonth[inMonth.length - 1], m)! : null });
   }
   return out;
 }
 
 /** Variação de uma medida: desde o início e nos últimos 30 dias. */
-export function change(series: BodyEntry[], m: Measure, now = new Date()) {
-  const vals = series.filter((e) => e[m] !== undefined);
+export function change(series: BodyEntry[], m: ChartKey, now = new Date()) {
+  const vals = series.filter((e) => valueOf(e, m) !== undefined);
   if (!vals.length) return null;
   const last = vals[vals.length - 1];
   const cut = dayKey(new Date(now.getTime() - 30 * 86400000));
   const before30 = [...vals].reverse().find((e) => e.date <= cut);
   const r1 = (x: number) => Math.round(x * 10) / 10;
-  return { last: last[m]!, lastDate: last.date, first: vals[0][m]!, firstDate: vals[0].date, sinceStart: r1(last[m]! - vals[0][m]!), since30: before30 ? r1(last[m]! - before30[m]!) : null };
+  const v = (e: BodyEntry) => valueOf(e, m)!;
+  return { last: v(last), lastDate: last.date, first: v(vals[0]), firstDate: vals[0].date, sinceStart: r1(v(last) - v(vals[0])), since30: before30 ? r1(v(last) - v(before30)) : null };
 }
 
 export const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];

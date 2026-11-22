@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DecimalInput } from '../components/DecimalInput';
 import { bodyOf } from '../domain/body';
 import { BodyAdjust } from '../components/BodyAdjust';
-import { CHART_MEASURES, MEASURES, MONTHS, bodySeries, change, monthly, photoKey, type Measure } from '../domain/bodyLog';
+import { CHART_MEASURES, MEASURES, MONTHS, bodySeries, change, extraKeys, monthly, photoKey, type ChartKey, type Measure } from '../domain/bodyLog';
 import { newId } from '../domain/care';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { deleteFile, loadFile, saveFile } from '../domain/files';
@@ -126,14 +126,15 @@ function Photos() {
 export function Body() {
   const { S, update, toast } = useStore();
   const series = bodySeries(S);
-  const [m, setM] = useState<Measure>('peso');
+  const [m, setM] = useState<ChartKey>('peso');
   const [vals, setVals] = useState<Partial<Record<Measure, number>>>({});
   const [date, setDate] = useState(todayKey());
   const [toPlan, setToPlan] = useState(true);
   const w = change(series, 'peso');
   const latest = Object.fromEntries(MEASURES.map(([k]) => [k, change(series, k)?.last])) as Record<Measure, number | undefined>;
   const b = S.ans ? bodyOf({ ...S.ans, ...(latest.peso ? { peso: latest.peso } : {}), ...(latest.cintura ? { cintura: latest.cintura } : {}), ...(latest.anca ? { anca: latest.anca } : {}), ...(latest.pescoco ? { pescoco: latest.pescoco } : {}) }) : null;
-  const unit = CHART_MEASURES.find((x) => x[0] === m)![2];
+  const charts: [ChartKey, string, string][] = [...CHART_MEASURES.filter(([k]) => k === 'peso' || series.some((e) => e[k] !== undefined)), ...extraKeys(series)];
+  const unit = charts.find((x) => x[0] === m)?.[2] ?? '';
   const c = change(series, m);
   return (
     <>
@@ -197,7 +198,7 @@ export function Body() {
 
       <section className="card">
         <div className="chips" role="group" aria-label="Medida">
-          {CHART_MEASURES.filter(([k]) => k === 'peso' || series.some((e) => e[k] !== undefined)).map(([k, t]) => (
+          {charts.map(([k, t]) => (
             <button key={k} className={`chip sm ${m === k ? 'on' : ''}`} aria-pressed={m === k} onClick={() => setM(k)}>{t}</button>
           ))}
         </div>
@@ -209,7 +210,7 @@ export function Body() {
             <summary>Histórico ({series.length})</summary>
             {[...series].reverse().slice(0, 24).map((e) => (
               <p key={e.date} style={{ margin: '6px 0 0' }}>
-                <b>{shortDate(e.date)}</b> · {CHART_MEASURES.filter(([k]) => e[k] !== undefined).map(([k, t, u]) => `${t.toLowerCase()} ${fmtNum(e[k]!)} ${u === '%' ? '' : u}`.trim()).concat(PERIMETERS.filter(([k]) => e.medidas?.[k]).map(([k, t]) => `${t.toLowerCase()} ${fmtNum(e.medidas![k]!)} cm`)).join(' · ')}
+                <b>{shortDate(e.date)}</b> · {CHART_MEASURES.filter(([k]) => e[k] !== undefined).map(([k, t, u]) => `${t.toLowerCase()} ${fmtNum(e[k]!)} ${u === '%' ? '' : u}`.trim()).concat(PERIMETERS.filter(([k]) => e.medidas?.[k]).map(([k, t]) => `${t.toLowerCase()} ${fmtNum(e.medidas![k]!)} cm`)).concat(Object.entries(e.extra ?? {}).map(([k, x]) => `${k.toLowerCase()} ${fmtNum(x.v)} ${x.u}`.trim())).join(' · ')}
                 {e.fonte && <span className="mute"> · {e.fonte === 'relatorio' ? 'relatório' : 'avaliação'}{e.por ? ` (${e.por})` : ''}</span>}
               </p>
             ))}

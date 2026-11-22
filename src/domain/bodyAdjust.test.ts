@@ -17,6 +17,18 @@ describe('ajuste dos dados do corpo', () => {
     expect(s[2]).toMatchObject({ peso: 81, cintura: 82, anca: 95, gordura: 20, magra: 64.8, medidas: { braco_d: 34.8 }, fonte: 'relatorio', por: 'Nutricionista Exemplo' });
     expect(S.ans).toMatchObject({ peso: 81, altura: 179, cintura: 82, anca: 95, pescoco: 40, gorduraMedida: 20, magraMedida: 64.8, medidaData: '2026-10-08', medidaPor: 'Nutricionista Exemplo' });
   });
+  it('outros dados do relatório (dobras…) ficam no histórico e têm gráfico', async () => {
+    const { extraKeys, change } = await import('./bodyLog');
+    const S = base();
+    saveEvals(S, [
+      { date: '2026-03-05', extra: [{ label: 'Dobra tricipital', v: 15, u: 'mm' }] },
+      { date: '2026-10-08', peso: 81, extra: [{ label: 'Dobra tricipital', v: 4.5, u: 'mm' }, { label: 'Densidade corporal', v: 1.051, u: 'g/mL' }, { label: 'Vazio', v: undefined, u: '' }] },
+    ], 'relatorio');
+    const s = bodySeries(S);
+    expect(s[2].extra).toEqual({ 'Dobra tricipital': { v: 4.5, u: 'mm' }, 'Densidade corporal': { v: 1.051, u: 'g/mL' } });
+    expect(extraKeys(s).map((k) => k[0])).toEqual(['x:Dobra tricipital', 'x:Densidade corporal']);
+    expect(change(s, 'x:Dobra tricipital')!.sinceStart).toBe(-10.5);
+  });
   it('avaliação antiga não apaga o peso mais recente', () => {
     const S = base();
     S.bodyLog = [{ date: '2026-11-01', peso: 92 }];

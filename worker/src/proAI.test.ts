@@ -106,9 +106,9 @@ describe('relatório de acompanhamento do utilizador', () => {
     const r = cleanReport({
       is_report: true, sexo: 'm', idade: -1, profissional: 'Nutricionista Exemplo',
       avaliacoes: [
-        { ...m, data: '2026-10-08', altura_cm: 178, peso_kg: 79.2, gordura_pct: 19.4, massa_magra_kg: 63.8, fc_repouso: -1, cintura: 82, quadril: 95 },
-        { ...m, data: '2026-03-05', altura_cm: 178, peso_kg: 85.0, gordura_pct: 26.1, massa_magra_kg: 62.5, fc_repouso: -1, cintura: 90 },
-        { ...m, data: '', altura_cm: -1, peso_kg: -1, gordura_pct: -1, massa_magra_kg: -1, fc_repouso: -1 },
+        { ...m, outros: [{ nome: 'Dobra tricipital', valor: 4.5, unidade: 'mm' }, { nome: 'IMC', valor: 25, unidade: '' }, { nome: 'Densidade corporal', valor: 1.051, unidade: 'g/mL' }, { nome: 'Dobra tricipital', valor: 9, unidade: 'mm' }], data: '2026-10-08', altura_cm: 178, peso_kg: 79.2, gordura_pct: 19.4, massa_magra_kg: 63.8, fc_repouso: -1, cintura: 82, quadril: 95 },
+        { ...m, outros: [], data: '2026-03-05', altura_cm: 178, peso_kg: 85.0, gordura_pct: 26.1, massa_magra_kg: 62.5, fc_repouso: -1, cintura: 90 },
+        { ...m, outros: [], data: '', altura_cm: -1, peso_kg: -1, gordura_pct: -1, massa_magra_kg: -1, fc_repouso: -1 },
       ],
       kcal_dia: 2200, proteina_g: 9999,
     }) as { found: boolean; evals: { date: string; gordura: number; medidas: Record<string, number> }[]; kcal: number; protein: null; by: string; sexo: string };
@@ -116,6 +116,7 @@ describe('relatório de acompanhamento do utilizador', () => {
     expect(r.evals.map((e) => e.date)).toEqual(['2026-03-05', '2026-10-08']);
     expect(r.evals[1].gordura).toBe(19.4);
     expect(r.evals[1].medidas).toEqual({ cintura: 82, quadril: 95 });
+    expect((r.evals[1] as never as { extra: unknown }).extra).toEqual([{ label: 'Dobra tricipital', v: 4.5, u: 'mm' }, { label: 'Densidade corporal', v: 1.051, u: 'g/mL' }]);
     expect(r.kcal).toBe(2200);
     expect(r.protein).toBeNull();
     expect(r.by).toBe('Nutricionista Exemplo');

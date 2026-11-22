@@ -146,7 +146,7 @@ export interface HealthReport {
   sexo?: '' | 'f' | 'm';
   idade?: number | null;
   by?: string;
-  evals?: { date: string; altura: number | null; peso: number | null; gordura: number | null; magra: number | null; fc: number | null; medidas: Partial<Record<import('./proProfile').MeasureKey, number | null>> }[];
+  evals?: { date: string; altura: number | null; peso: number | null; gordura: number | null; magra: number | null; fc: number | null; medidas: Partial<Record<import('./proProfile').MeasureKey, number | null>>; extra?: { label: string; v: number; u: string }[] }[];
   kcal?: number | null;
   protein?: number | null;
 }

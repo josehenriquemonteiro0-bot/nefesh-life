@@ -82,7 +82,7 @@ export function BodyAdjust() {
   };
 
   const setM = (k: MeasureKey, v: number | undefined) => setF({ ...f, medidas: { ...(f.medidas ?? {}), [k]: v } });
-  const anything = [f.peso, f.altura, f.gordura, f.magra, f.fc, ...Object.values(f.medidas ?? {})].some((v) => num(v) !== undefined);
+  const anything = [f.peso, f.altura, f.gordura, f.magra, f.fc, ...Object.values(f.medidas ?? {}), ...(f.extra ?? []).map((x) => x.v)].some((v) => num(v) !== undefined);
 
   return (
     <section className="card">
@@ -147,6 +147,20 @@ export function BodyAdjust() {
               </label>
             ))}
           </div>
+          {(f.extra?.length ?? 0) > 0 && (
+            <>
+              <h3 style={{ margin: '14px 0 2px' }}>Outros dados do relatório</h3>
+              <p className="small mute" style={{ margin: '0 0 6px' }}>Campos criados a partir do documento. Ficam no seu histórico, com gráfico.</p>
+              <div className="body-inputs three">
+                {f.extra!.map((x, i) => (
+                  <label key={x.label} className="hin">
+                    <span>{x.label}{x.u ? ` (${x.u})` : ''}</span>
+                    <DecimalInput value={x.v ?? undefined} onValue={(v) => setF({ ...f, extra: f.extra!.map((y, j) => (j === i ? { ...y, v } : y)) })} aria-label={x.label} placeholder="—" />
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
           <input className="field sm" style={{ width: '100%', marginTop: 10 }} value={por} onChange={(e) => setPor(e.target.value)} placeholder="Quem fez a avaliação? (opcional, ex.: nutricionista, clínica)" aria-label="Quem fez a avaliação" />
           {goals && (
             <label className="check" style={{ marginTop: 10 }}>

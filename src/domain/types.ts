@@ -226,6 +226,8 @@ export interface AppState {
     /** avaliação mais completa (ajuste manual ou relatório anexado) */
     altura?: number; gordura?: number; magra?: number; fc?: number;
     medidas?: Partial<Record<import('./proProfile').MeasureKey, number>>;
+    /** outros dados do relatório (dobras, RCQ, densidade…), pelo nome do documento */
+    extra?: Record<string, { v: number; u: string }>;
     fonte?: 'manual' | 'relatorio'; por?: string;
   }[];
   /** fotos de progresso (só neste telemóvel, na base de ficheiros local) */

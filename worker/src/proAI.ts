@@ -258,8 +258,22 @@ const evalItem = {
     data: { type: 'string', description: 'data desta avaliação AAAA-MM-DD; "" se não aparecer' },
     altura_cm: n, peso_kg: n, gordura_pct: n, massa_magra_kg: n, fc_repouso: n,
     ...Object.fromEntries(MEASURE_KEYS.map((k) => [k, n])),
+    outros: {
+      type: 'array',
+      description: 'todos os outros valores numéricos medidos nesta data que não cabem nos campos acima (ex.: dobras cutâneas, relação cintura/quadril, densidade corporal, massa gorda, massa residual, circunferência muscular do braço, gordura visceral, água corporal, massa óssea, idade metabólica, somatório de dobras)',
+      items: {
+        type: 'object',
+        properties: {
+          nome: { type: 'string', description: 'nome curto como no documento, ex.: "Dobra tricipital"' },
+          valor: { type: 'number' },
+          unidade: { type: 'string', description: 'ex.: mm, kg, %, g/mL; "" se não tiver' },
+        },
+        required: ['nome', 'valor', 'unidade'],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ['data', 'altura_cm', 'peso_kg', 'gordura_pct', 'massa_magra_kg', 'fc_repouso', ...MEASURE_KEYS],
+  required: ['data', 'altura_cm', 'peso_kg', 'gordura_pct', 'massa_magra_kg', 'fc_repouso', ...MEASURE_KEYS, 'outros'],
   additionalProperties: false,
 } as const;
 const REPORT_SCHEMA = {
@@ -281,6 +295,7 @@ export const REPORT_SYSTEM = `Transcreves relatórios de acompanhamento de saúd
 - Cada avaliação com data própria (ex.: colunas de um quadro de evolução) é um item de "avaliacoes", da mais antiga para a mais recente (no máximo 12).
 - Perímetros em centímetros: pescoço, ombros, peito/tórax, cintura, abdómen, quadril (anca), braço direito/esquerdo (se só houver um, braco_d; prefere relaxado), antebraço, coxa direita/esquerda (se só houver uma, coxa_d), panturrilha.
 - % de gordura, massa magra ou "massa livre de gordura" (kg), FC em repouso, peso (kg), altura (cm; em metros multiplica por 100).
+- Tudo o resto que for um número medido nessa data (dobras cutâneas, RCQ, densidade, massa gorda, massa residual, gordura visceral, água corporal…) vai em "outros", com o nome e a unidade do documento. Não repitas lá o que já tem campo próprio, nem o IMC (a app calcula-o), nem classificações em texto.
 - Metas diárias (calorias, proteína) só se o profissional as prescreveu.
 - Converte vírgulas decimais. Não inventes valores: -1 quando não aparecer. Não interpretes nem comentes. Ignora análises de sangue e outros dados que não estão no esquema.`;
 
@@ -321,11 +336,28 @@ export function cleanReport(r: Record<string, unknown>) {
       altura: v(o, 'altura_cm'), peso: v(o, 'peso_kg'), gordura: v(o, 'gordura_pct'), magra: v(o, 'massa_magra_kg'), fc: v(o, 'fc_repouso'), dataAval: o.data,
       medidas: Object.fromEntries(MEASURE_KEYS.map((k) => [k, v(o, k)])),
     });
-    return { date: p.dataAval, altura: p.altura, peso: p.peso, gordura: p.gordura, magra: p.magra, fc: p.fc, medidas: p.medidas };
-  }).filter((e) => e.peso || e.gordura || e.magra || Object.keys(e.medidas ?? {}).length)
+    return { date: p.dataAval, altura: p.altura, peso: p.peso, gordura: p.gordura, magra: p.magra, fc: p.fc, medidas: p.medidas, extra: cleanExtra(o.outros) };
+  }).filter((e) => e.peso || e.gordura || e.magra || Object.keys(e.medidas ?? {}).length || e.extra.length)
     .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
   const top = cleanProfile({ sexo: r.sexo, idade: v(r, 'idade') });
   const kcal = typeof r.kcal_dia === 'number' && r.kcal_dia >= 800 && r.kcal_dia <= 6000 ? Math.round(r.kcal_dia) : null;
   const protein = typeof r.proteina_g === 'number' && r.proteina_g >= 20 && r.proteina_g <= 400 ? Math.round(r.proteina_g) : null;
   return { found: evals.length > 0 || !!kcal, sexo: top.sexo, idade: top.idade, by: String(r.profissional ?? '').replace(/\s+/g, ' ').trim().slice(0, 80), evals, kcal, protein };
+}
+
+/** Outros dados do relatório (dobras, RCQ, densidade…): nome e unidade como no documento, sem repetir nomes. */
+export function cleanExtra(v: unknown): { label: string; v: number; u: string }[] {
+  const out: { label: string; v: number; u: string }[] = [];
+  const seen = new Set<string>();
+  for (const x of Array.isArray(v) ? v : []) {
+    const o = (x ?? {}) as Record<string, unknown>;
+    const label = String(o.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    const val = Number(o.valor);
+    const key = label.toLowerCase();
+    if (!label || !Number.isFinite(val) || val < 0 || val > 10000 || seen.has(key) || /^(imc|[ií]ndice de massa corporal)/i.test(label)) continue;
+    seen.add(key);
+    out.push({ label, v: Math.round(val * 1000) / 1000, u: String(o.unidade ?? '').trim().slice(0, 10) });
+    if (out.length >= 30) break;
+  }
+  return out;
 }
