@@ -59,6 +59,15 @@ jobs:
           xcrun simctl io "$DEVICE" screenshot capturas/2-depois.png
           # confirma que a app continua aberta (não fechou com erro)
           xcrun simctl spawn "$DEVICE" launchctl list | grep -i nefesh || (echo "::error::A app fechou-se sozinha" && exit 1)
+      # versão pequena das capturas no registo do trabalho (para ver sem descarregar o artefacto)
+      - name: Capturas no registo
+        if: always()
+        run: |
+          for f in capturas/*.png; do
+            [ -f "$f" ] || continue
+            sips -Z 640 -s format jpeg -s formatOptions 45 "$f" --out "${f%.png}.jpg" >/dev/null
+            echo "CAPTURA $(basename "$f") $(base64 -i "${f%.png}.jpg" | tr -d '\n')"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
