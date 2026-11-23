@@ -3,7 +3,7 @@ import { getAuth } from '../domain/account';
 import { shortDate } from '../domain/dates';
 import { GYM } from '../domain/gymData';
 import { EXERCISES } from '../domain/training';
-import { inviteText, proApi, type ProInfo, type ProLog, type ProStudent } from '../domain/pro';
+import { inviteText, proApi, type ProArea, type ProInfo, type ProLog, type ProStudent } from '../domain/pro';
 import { FOCUS_PRESETS, GROUP_NAME, INTRO, OUTRO, addFromLibrary, applySplit, hasBookend, isFinal, isWarmup, letter, searchExercises, splitName, toggleBookend, type Bookend, type LibExercise } from '../domain/proLibrary';
 import type { ParsedWorkoutPlan, PlanWorkout, WorkoutExercise } from '../domain/planRead';
 import { whatsappShare } from '../domain/content';
@@ -410,11 +410,13 @@ function StudentLogs({ student, onClose, onComment }: { student: ProStudent; onC
 
 /** NEFESH Life Pro: o profissional monta treinos e acompanha os alunos. */
 export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
-  const { S } = useStore();
+  const { S, toast } = useStore();
   const auth = getAuth();
   const [pro, setPro] = useState<ProInfo | null | undefined>(undefined);
   const [students, setStudents] = useState<ProStudent[]>([]);
   const [err, setErr] = useState('');
+  const [areas, setAreas] = useState<ProArea[]>([]);
+  const [addArea, setAddArea] = useState<{ kind: string; reg: string } | null>(null);
   const [visitsOf, setVisitsOf] = useState<ProStudent | null>(null);
   const [form, setForm] = useState({ name: '', reg: '', kind: 'personal' });
   const [newName, setNewName] = useState('');
@@ -426,7 +428,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [askPlan, setAskPlan] = useState<ProStudent | null>(null);
   const [askProfile, setAskProfile] = useState<{ code: string; name: string } | null>(null);
   const [logs, setLogs] = useState<ProStudent | null>(null);
-  const load = () => proApi<{ pro: ProInfo | null; students?: ProStudent[] }>('estado').then((r) => { setPro(r.pro); setStudents(r.students ?? []); setErr(''); }).catch((e) => setErr((e as Error).message));
+  const load = () => proApi<{ pro: ProInfo | null; students?: ProStudent[]; areas?: ProArea[] }>('estado').then((r) => { setPro(r.pro); setStudents(r.students ?? []); setAreas(r.areas ?? []); setErr(''); }).catch((e) => setErr((e as Error).message));
   useEffect(() => { if (auth) load(); }, [auth?.token]); // eslint-disable-line react-hooks/exhaustive-deps
   const appUrl = `${location.origin}${import.meta.env.BASE_URL}`;
 
@@ -487,13 +489,24 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       {pro?.status === 'aprovado' && (
         <>
           <p className="small mute" style={{ marginTop: 0 }}>{pro.name} · {pro.reg}</p>
-          {isTestCopy() && (
-            <div className="pro-area-switch" role="group" aria-label="Área (cópia de teste)">
-              {AREAS.map(([k, icon, t]) => (
-                <button key={k} className={pro.kind === k ? 'on' : ''} aria-pressed={pro.kind === k} onClick={() => pro.kind !== k && proApi<{ pro: ProInfo }>('area', { kind: k }).then((r) => { setPro(r.pro); setEdit(null); load(); }).catch((e) => setErr((e as Error).message))}>{icon} {t.split(' ')[0]}</button>
-              ))}
-              <span className="small mute">Cópia de teste: troque de área para experimentar. Cada área tem os seus {nutri ? 'pacientes' : 'alunos'}.</span>
-            </div>
+          <div className="pro-area-switch" role="group" aria-label="As suas áreas">
+            {AREAS.map(([k, icon, t]) => {
+              const a = areas.find((x) => x.kind === k) ?? (pro.kind === k ? { kind: k, reg: pro.reg, status: pro.status } : null);
+              const name = t.split(' ')[0];
+              if (a?.status === 'aprovado') return <button key={k} className={pro.kind === k ? 'on' : ''} aria-pressed={pro.kind === k} onClick={() => pro.kind !== k && proApi<{ pro: ProInfo }>('area', { kind: k }).then((r) => { setPro(r.pro); setEdit(null); load(); }).catch((e) => setErr((e as Error).message))}>{icon} {name}</button>;
+              if (a?.status === 'pendente') return <button key={k} disabled title="À espera da validação da equipa NEFESH">⏳ {name} · em validação</button>;
+              return <button key={k} className="add" onClick={() => setAddArea({ kind: k, reg: '' })}>+ {name}</button>;
+            })}
+          </div>
+          {addArea && (
+            <section className="card pro-ask">
+              <p className="small" style={{ margin: '0 0 6px' }}><b>Também é {AREAS.find((x) => x[0] === addArea.kind)?.[2].toLowerCase()}?</b> {isTestCopy() ? 'Na cópia de teste fica ativo logo.' : 'A equipa NEFESH confirma o registo e ativa a área; os seus alunos e pacientes ficam separados por área.'}</p>
+              <input className="field sm" style={{ width: '100%' }} maxLength={40} value={addArea.reg} onChange={(e) => setAddArea({ ...addArea, reg: e.target.value })} placeholder={addArea.kind === 'nutricionista' ? 'Registo: CRN (Brasil) ou cédula da Ordem dos Nutricionistas' : addArea.kind === 'medico' ? 'Registo: CRM (Brasil) ou cédula da Ordem dos Médicos' : 'Registo: CREF (Brasil) ou título profissional'} aria-label="Registo profissional da nova área" />
+              <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
+                <button className="btn sm" disabled={addArea.reg.trim().length < 3} onClick={() => proApi<{ areas: ProArea[] }>('area/pedir', addArea).then((r) => { setAreas(r.areas); setAddArea(null); toast(isTestCopy() ? 'Área ativada. Toque nela para trocar.' : 'Pedido enviado: avisamos quando a área for validada.'); }).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir validação'}</button>
+                <button className="btn ghost sm" onClick={() => setAddArea(null)}>Cancelar</button>
+              </div>
+            </section>
           )}
           {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber {nutri ? 'quando os pacientes lhe escrevem' : 'quando os alunos concluem um treino'}.</p>}
           {students.some((s) => s.alerts?.length) && (

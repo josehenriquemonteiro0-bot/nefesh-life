@@ -144,6 +144,7 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     pro.status = 'aprovado';
   }
   if (pro.status !== 'aprovado') return ok({ pro });
+  const areas = await areasOf(db, uid, now);
   const nutriPro = isNutriPro(pro.kind);
   const { results } = await db.prepare('SELECT s.code, s.name, s.uid, s.plan, s.version, s.status, s.updated, k.kind AS module FROM pro_students s LEFT JOIN pro_student_kind k ON k.code = s.code WHERE s.pro = ? ORDER BY s.created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string; module: string | null }>();
   const students = [];
@@ -181,7 +182,7 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const team = await teamOf(db, s.uid, s.code, now);
     students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}), ...(team.length ? { team } : {}) });
   }
-  return ok({ pro, students });
+  return ok({ pro, students, areas });
 }
 
 async function ownStudent(db: DB, uid: string, code: unknown) {
@@ -775,13 +776,59 @@ export async function directory(db: DB): Promise<R> {
   return ok({ list: results.map((r) => ({ name: r.name, kind: KINDS.includes(r.kind) ? r.kind : 'outro', reg: r.reg, ...(JSON.parse(r.data) as object) })) });
 }
 
-/** Só no servidor de teste: trocar a área do profissional (personal / nutricionista / médico) para experimentar os dois módulos. */
-export async function switchArea(db: DB, uid: string, b: Record<string, unknown>, auto: boolean): Promise<R> {
-  if (!auto) return bad('A área profissional só muda com a confirmação da equipa NEFESH.', 403);
-  const kind = ['personal', 'nutricionista', 'medico'].includes(String(b.kind)) ? String(b.kind) : null;
+/* ───────── áreas profissionais (dupla formação: personal + nutricionista, etc.) ───────── */
+
+const AREA_KINDS = ['personal', 'nutricionista', 'medico'];
+export interface ProArea { kind: string; reg: string; status: string }
+/** As áreas do profissional: a atual (a do registo) e as pedidas depois, cada uma com o seu registo e estado. */
+export async function areasOf(db: DB, uid: string, now = new Date()): Promise<ProArea[]> {
+  const p = await proOf(db, uid);
+  if (!p) return [];
+  await db.prepare('INSERT OR IGNORE INTO pro_areas (uid, kind, reg, status, created) VALUES (?, ?, ?, ?, ?)').bind(uid, p.kind, p.reg, p.status, now.toISOString()).run();
+  // a área atual acompanha o estado do registo principal (aprovação ou suspensão pela equipa)
+  await db.prepare('UPDATE pro_areas SET status = ? WHERE uid = ? AND kind = ?').bind(p.status, uid, p.kind).run();
+  const { results } = await db.prepare('SELECT kind, reg, status FROM pro_areas WHERE uid = ? ORDER BY created').bind(uid).all<ProArea>();
+  return results.filter((r) => AREA_KINDS.includes(r.kind));
+}
+
+/** Pedir uma nova área (ex.: personal que também é nutricionista): fica pendente até a equipa validar o registo. */
+export async function requestArea(db: DB, uid: string, b: Record<string, unknown>, auto: boolean, now = new Date()): Promise<R> {
+  const p = await proOf(db, uid);
+  if (p?.status !== 'aprovado') return bad('A sua conta profissional ainda não foi aprovada.', 403);
+  const kind = AREA_KINDS.includes(String(b.kind)) ? String(b.kind) : null;
+  const reg = str(b.reg, 40);
+  if (!kind) return bad('Área inválida.');
+  if (reg.length < 3) return bad(kind === 'nutricionista' ? 'Escreva o seu registo de nutricionista (CRN ou cédula da Ordem).' : kind === 'medico' ? 'Escreva o seu registo médico (CRM ou cédula da Ordem).' : 'Escreva o seu registo (CREF ou título profissional).');
+  await areasOf(db, uid, now);
+  const cur = await db.prepare('SELECT status FROM pro_areas WHERE uid = ? AND kind = ?').bind(uid, kind).first<{ status: string }>();
+  if (cur?.status === 'aprovado') return ok({ areas: await areasOf(db, uid, now) });
+  await db.prepare('INSERT INTO pro_areas (uid, kind, reg, status, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(uid, kind) DO UPDATE SET reg = excluded.reg, status = excluded.status').bind(uid, kind, reg, auto ? 'aprovado' : 'pendente', now.toISOString()).run();
+  return ok({ areas: await areasOf(db, uid, now) });
+}
+
+/** Trocar de área: só para áreas aprovadas (no servidor de teste, qualquer uma). */
+export async function switchArea(db: DB, uid: string, b: Record<string, unknown>, auto: boolean, now = new Date()): Promise<R> {
+  const kind = AREA_KINDS.includes(String(b.kind)) ? String(b.kind) : null;
   if (!kind) return bad('Área inválida.');
   const cur = await proOf(db, uid);
   if (!cur) return bad('Ainda não tem acesso profissional.', 404);
-  await db.prepare('UPDATE pros SET kind = ? WHERE uid = ?').bind(kind, uid).run();
-  return ok({ pro: await proOf(db, uid) });
+  const areas = await areasOf(db, uid, now);
+  let area = areas.find((a) => a.kind === kind);
+  if (auto && area?.status !== 'aprovado') {
+    await db.prepare('INSERT INTO pro_areas (uid, kind, reg, status, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(uid, kind) DO UPDATE SET status = excluded.status').bind(uid, kind, area?.reg || cur.reg, 'aprovado', now.toISOString()).run();
+    area = { kind, reg: area?.reg || cur.reg, status: 'aprovado' };
+  }
+  if (area?.status !== 'aprovado') return bad('Esta área ainda não foi validada pela equipa NEFESH.', 403);
+  await db.prepare('UPDATE pros SET kind = ?, reg = ? WHERE uid = ?').bind(kind, area.reg, uid).run();
+  return ok({ pro: await proOf(db, uid), areas: await areasOf(db, uid, now) });
+}
+
+/** Página da equipa: pedidos de nova área. */
+export async function areaRequests(db: DB) {
+  const { results } = await db.prepare("SELECT a.uid, a.kind, a.reg, a.created, p.name, p.kind AS main FROM pro_areas a JOIN pros p ON p.uid = a.uid WHERE a.status = 'pendente' AND a.kind != p.kind ORDER BY a.created").all<{ uid: string; kind: string; reg: string; created: string; name: string; main: string }>();
+  return results;
+}
+export async function setAreaStatus(db: DB, uid: string, kind: string, status: string) {
+  if (!['aprovado', 'recusado'].includes(status)) return;
+  await db.prepare('UPDATE pro_areas SET status = ? WHERE uid = ? AND kind = ?').bind(status, uid, kind).run();
 }

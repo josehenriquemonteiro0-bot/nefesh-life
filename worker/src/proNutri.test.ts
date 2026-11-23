@@ -150,3 +150,25 @@ describe('áreas do NEFESH Pro (personal / nutrição)', () => {
     expect(await names()).toEqual(['Aluno A']);
   });
 });
+
+describe('dupla formação: pedir outra área', () => {
+  it('pede, fica pendente, a equipa valida, e só então pode trocar', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'jo', { name: 'José', reg: 'CREF 1', kind: 'personal' }, NOW, true);
+    expect((await pro.requestArea(db, 'jo', { kind: 'nutricionista', reg: 'x' }, false, NOW)).status).toBe(400);
+    const r = await pro.requestArea(db, 'jo', { kind: 'nutricionista', reg: 'CRN-3 999' }, false, NOW);
+    expect((r.body.areas as pro.ProArea[]).map((a) => `${a.kind} ${a.reg} ${a.status}`).sort()).toEqual(['nutricionista CRN-3 999 pendente', 'personal CREF 1 aprovado']);
+    expect((await pro.areaRequests(db)).map((a) => a.kind)).toEqual(['nutricionista']);
+    expect((await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, false, NOW)).status).toBe(403);
+    await pro.setAreaStatus(db, 'jo', 'nutricionista', 'aprovado');
+    const sw = await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, false, NOW);
+    expect(sw.body.pro).toMatchObject({ kind: 'nutricionista', reg: 'CRN-3 999', status: 'aprovado' });
+    expect((await pro.switchArea(db, 'jo', { kind: 'personal' }, false, NOW)).body.pro).toMatchObject({ kind: 'personal', reg: 'CREF 1' });
+    expect((await pro.proState(db, 'jo', NOW)).body.areas).toHaveLength(2);
+    expect(await pro.areaRequests(db)).toEqual([]);
+  });
+  it('página da equipa mostra os pedidos de nova área', async () => {
+    const { prosPage } = await import('./admin');
+    expect(prosPage('k', [], [{ uid: 'jo', kind: 'nutricionista', reg: 'CRN 9', created: '2026-11-23T10:00:00Z', name: 'José', main: 'personal' }])).toMatch(/pede a área <b>nutricionista<\/b>[\s\S]*CRN 9[\s\S]*Validar/);
+  });
+});

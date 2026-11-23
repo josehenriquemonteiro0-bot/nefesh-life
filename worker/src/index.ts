@@ -206,8 +206,11 @@ export default {
       if (!key || !env.DB) return html('Página indisponível.', 403);
       const f = await req.formData();
       if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
-      if (url.pathname === '/admin/profissional') await pro.setProStatus(env.DB, String(f.get('uid') ?? ''), String(f.get('status') ?? ''));
-      return html(admin.prosPage(key, await pro.proList(env.DB)));
+      if (url.pathname === '/admin/profissional') {
+        if (f.get('area')) await pro.setAreaStatus(env.DB, String(f.get('uid') ?? ''), String(f.get('area')), String(f.get('status') ?? ''));
+        else await pro.setProStatus(env.DB, String(f.get('uid') ?? ''), String(f.get('status') ?? ''));
+      }
+      return html(admin.prosPage(key, await pro.proList(env.DB), await pro.areaRequests(env.DB)));
     }
     if ((url.pathname === '/admin/premios' || url.pathname === '/admin/premio') && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
@@ -385,6 +388,7 @@ export default {
         'aluno/nota': () => pro.addNote(db, uid, b),
         'aluno/nota/apagar': () => pro.deleteNote(db, uid, b),
         area: () => pro.switchArea(db, uid, b, env.PRO_AUTO_APPROVE === 'true'),
+        'area/pedir': () => pro.requestArea(db, uid, b, env.PRO_AUTO_APPROVE === 'true'),
         diretorio: () => pro.myDirectory(db, uid),
         'diretorio/guardar': () => pro.saveDirectory(db, uid, b),
       };

@@ -43,6 +43,8 @@ export interface ProStudent {
   /** precisa de atenção (calculado no servidor) */
   alerts?: { kind: 'enviar' | 'dor' | 'parado' | 'saltou' | 'dificil' | 'subir' | 'fim'; text: string }[];
 }
+/** Uma área profissional do profissional (dupla formação): o registo e o estado da validação. */
+export interface ProArea { kind: string; reg: string; status: 'aprovado' | 'pendente' | 'recusado' | string }
 export interface ProInfo { uid: string; name: string; kind: string; reg: string; status: 'pendente' | 'aprovado' | 'recusado' }
 export interface ProLog { day: string; workout: string; at: string; status: string; minutes: number; note: string; changes: string[]; effort?: string; pain?: boolean; exercises: { name: string; sets: number; of: number; reps: string; load: string; effort?: string; pain?: boolean }[] }
 

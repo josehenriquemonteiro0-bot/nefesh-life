@@ -868,3 +868,5 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .nutri-steps button.on b{background:var(--neon);color:#04100c}
 .nutri-mealrow{gap:8px;flex-wrap:nowrap;padding:6px 0;border-bottom:1px solid var(--line)}
 .nutri-sug{padding:8px 0;border-bottom:1px solid var(--line)}
+.pro-area-switch button.add{border-style:dashed;color:var(--mute)}
+.pro-area-switch button:disabled{opacity:.7;cursor:default}

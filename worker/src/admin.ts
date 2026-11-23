@@ -128,7 +128,7 @@ ${items || '<p class="m">Ainda não há vencedores. O primeiro ranking fecha na 
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }
 
-export function prosPage(key: string, rows: { uid: string; name: string; kind: string; reg: string; status: string; created: string; students: number }[]) {
+export function prosPage(key: string, rows: { uid: string; name: string; kind: string; reg: string; status: string; created: string; students: number }[], areas: { uid: string; kind: string; reg: string; created: string; name: string; main: string }[] = []) {
   const fmt = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
   const btn = (uid: string, status: string, text: string, ghost = true) =>
     `<form method="post" action="/admin/profissional" style="display:inline"><input type="hidden" name="key" value="${esc(key)}"><input type="hidden" name="uid" value="${esc(uid)}"><input type="hidden" name="status" value="${status}"><button class="${ghost ? 'ghost' : ''}">${text}</button></form>`;
@@ -139,7 +139,17 @@ export function prosPage(key: string, rows: { uid: string; name: string; kind: s
 ${r.status !== 'aprovado' ? btn(r.uid, 'aprovado', 'Aprovar', false) : btn(r.uid, 'pendente', 'Suspender')}${r.status === 'pendente' ? btn(r.uid, 'recusado', 'Recusar') : ''}
 </div>`)
     .join('');
+  const areaBtn = (uid: string, kind: string, status: string, text: string, ghost = true) =>
+    `<form method="post" action="/admin/profissional" style="display:inline"><input type="hidden" name="key" value="${esc(key)}"><input type="hidden" name="uid" value="${esc(uid)}"><input type="hidden" name="area" value="${esc(kind)}"><input type="hidden" name="status" value="${status}"><button class="${ghost ? 'ghost' : ''}">${text}</button></form>`;
+  const areaItems = areas
+    .map((a) => `<div class="card">
+<p style="margin:0"><b>${esc(a.name)}</b> (${esc(a.main)}) pede a área <b>${esc(a.kind)}</b></p>
+<p class="m" style="margin:6px 0">Registo: ${esc(a.reg)} · pedido a ${fmt(a.created)}</p>
+${areaBtn(a.uid, a.kind, 'aprovado', 'Validar', false)}${areaBtn(a.uid, a.kind, 'recusado', 'Recusar')}
+</div>`)
+    .join('');
   return page(`<h1>NEFESH Life Pro</h1>
+${areaItems ? `<h2>Pedidos de nova área (dupla formação)</h2>${areaItems}` : ''}
 <div class="card"><p style="margin:0">Confirme o registo profissional (CREF no Brasil, título profissional em Portugal) antes de aprovar. Depois de aprovado, o profissional cria alunos e monta treinos na app.</p></div>
 ${items || '<p class="m">Ainda não há pedidos. O profissional pede acesso na app: Perfil → NEFESH Life Pro.</p>'}
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
