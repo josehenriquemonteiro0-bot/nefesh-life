@@ -13,7 +13,7 @@ import {
 import { profileText } from '../domain/proProfile';
 import { ANAMNESE } from '../domain/proNutri';
 import { useStore } from '../state/store';
-import { MealDictation, NutriReview } from './ProNutriAI';
+import { MealDictation, NutriReview, SuggestOption } from './ProNutriAI';
 
 const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const fmt = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
@@ -378,6 +378,16 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
           )}
           <DayVsTargets day={day} targets={rx.targets} />
           {day.meals.filter((m) => !mealFilled(m)).length > 0 && <p className="small warn-t" style={{ marginTop: 0 }}>Por montar: {day.meals.filter((m) => !mealFilled(m)).map((m) => m.label).join(', ')} (não aparecem ao paciente).</p>}
+          <section className="card">
+            <h3 style={{ margin: '0 0 4px' }}>Confirmar as refeições</h3>
+            <p className="small mute" style={{ margin: '0 0 6px' }}>Toque numa refeição para a corrigir. Se quiser, peça à IA uma alternativa equivalente: só entra no plano se a juntar.</p>
+            {day.meals.filter(mealFilled).map((m) => (
+              <div key={m.key} className="row" style={{ gap: 8, alignItems: 'flex-start', flexWrap: 'nowrap' }}>
+                <div style={{ flex: 1 }}><SuggestOption meal={m} dayName={day.name} about={about} onMeal={(nm) => setDay({ ...day, meals: day.meals.map((x) => (x === m ? nm : x)) })} /></div>
+                <button className="link small inline" onClick={() => { setMi(day.meals.indexOf(m)); go('refeicoes'); }}>corrigir</button>
+              </div>
+            ))}
+          </section>
           <NutriReview rx={rx} dayIndex={di} profile={prof ?? null} />
           <FastRxEditor value={jejum} onChange={setJejum} canSendAlone={false} busy={busy} onSend={send} />
           <section className="card">
