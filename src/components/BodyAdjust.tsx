@@ -150,10 +150,10 @@ export function BodyAdjust() {
         <>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
             <button className="btn sm" onClick={startManual}>✏️ Ajustar os meus dados</button>
-            <button className="btn ghost sm" disabled={busy} onClick={() => file.current?.click()}>{busy ? 'A ler o relatório…' : '📄 Anexar relatório de acompanhamento'}</button>
+            <button className="btn ghost sm" disabled={busy} onClick={() => file.current?.click()}>{busy ? 'A ler o relatório…' : '📄 Anexar relatório ou bioimpedância'}</button>
           </div>
           <p className="small mute" style={{ margin: '8px 0 0' }}>
-            Já tem acompanhamento? Anexe o PDF ou uma foto do relatório do nutricionista, médico ou academia. A IA lê só as medidas e as metas (incluindo avaliações anteriores, para o histórico); o documento não fica guardado e pode rever tudo antes de guardar.
+            Já tem acompanhamento ou fez uma bioimpedância (InBody, Tanita…)? Anexe o PDF ou uma foto do relatório do nutricionista, médico ou academia. A IA lê só as medidas e as metas (incluindo avaliações anteriores, para o histórico); o documento não fica guardado e pode rever tudo antes de guardar.
           </p>
           <input
             ref={file}

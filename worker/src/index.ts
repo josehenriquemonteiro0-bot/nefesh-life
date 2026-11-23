@@ -642,11 +642,11 @@ export default {
         return json({ error: 'Não foi possível perceber a gravação. Tente outra vez ou escreva.' }, 502, h);
       }
     }
-    // tabela nutricional (produto fora da Open Food Facts) e boletins de análises
-    if (path === '/rotulo' || path === '/analises') {
+    // tabela nutricional (produto fora da Open Food Facts), boletins de análises e receitas
+    if (path === '/rotulo' || path === '/analises' || path === '/receita') {
       try {
         const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-        return await handleDocRead(path === '/rotulo' ? 'rotulo' : 'analises', body as Record<string, unknown>, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+        return await handleDocRead(path.slice(1) as 'rotulo' | 'analises' | 'receita', body as Record<string, unknown>, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
       } catch (err) {
         return apiError(err, h);
       }

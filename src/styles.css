@@ -870,3 +870,4 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .nutri-sug{padding:8px 0;border-bottom:1px solid var(--line)}
 .pro-area-switch button.add{border-style:dashed;color:var(--mute)}
 .pro-area-switch button:disabled{opacity:.7;cursor:default}
+.rx-item{margin-top:10px;padding:10px 0 0;border-top:1px solid var(--line)}.rx-item.off{opacity:.55}

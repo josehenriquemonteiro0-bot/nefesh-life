@@ -296,6 +296,7 @@ export const REPORT_SYSTEM = `Transcreves relatórios de acompanhamento de saúd
 - Cada avaliação com data própria (ex.: colunas de um quadro de evolução) é um item de "avaliacoes", da mais antiga para a mais recente (no máximo 12).
 - Perímetros em centímetros: pescoço, ombros, peito/tórax, cintura, abdómen, quadril (anca), braço direito/esquerdo (se só houver um, braco_d; prefere relaxado), antebraço, coxa direita/esquerda (se só houver uma, coxa_d), panturrilha.
 - % de gordura, massa magra ou "massa livre de gordura" (kg), FC em repouso, peso (kg), altura (cm; em metros multiplica por 100).
+- Bioimpedância (InBody, Tanita, Omron…): % de gordura (PGC) = gordura_pct; massa livre de gordura = massa_magra_kg. Massa muscular esquelética (SMM), massa de gordura, água corporal total, proteína, minerais, nível de gordura visceral, taxa metabólica basal (kcal), ângulo de fase, idade metabólica, pontuação InBody e a análise segmentar (massa magra de cada braço, perna e tronco) vão em "outros".
 - Tudo o resto que for um número medido nessa data (dobras cutâneas, RCQ, densidade, massa gorda, massa residual, gordura visceral, água corporal…) vai em "outros", com o nome e a unidade do documento. Não repitas lá o que já tem campo próprio, nem o IMC (a app calcula-o), nem classificações em texto.
 - Metas diárias (calorias, proteína) só se o profissional as prescreveu.
 - Converte vírgulas decimais. Não inventes valores: -1 quando não aparecer. Não interpretes nem comentes. Ignora análises de sangue e outros dados que não estão no esquema.`;

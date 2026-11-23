@@ -82,3 +82,12 @@ export async function readLabs(file: Blob, fallbackDate: string) {
   return { date: r.date, results: toLabResults(r, fallbackDate) };
 }
 
+
+export interface RxItem { name: string; kind: 'medicamento' | 'suplemento'; dose: string; times: string[] }
+/** Receita médica ou prescrição de suplementos (foto ou PDF) → lista para confirmar e criar lembretes. */
+export async function readPrescription(file: Blob): Promise<{ by: string; items: RxItem[] }> {
+  notePremiumUse('lerPlano');
+  const r = await post<{ found: boolean; by: string; items: RxItem[] }>('receita', file);
+  if (!r.found || !r.items?.length) throw new Error('Não encontrei medicamentos nem suplementos neste documento. Tente uma foto mais nítida, com a receita inteira.');
+  return { by: r.by, items: r.items };
+}

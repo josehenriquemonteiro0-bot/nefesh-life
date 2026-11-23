@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LAB_KEYS, handleDocRead } from './docread';
+import { LAB_KEYS, cleanPrescription, handleDocRead } from './docread';
 import { LABS } from '../../src/domain/care';
 
 const kv = () => { const m = new Map<string, string>(); return { get: async (k: string) => m.get(k) ?? null, put: async (k: string, v: string) => void m.set(k, v) }; };
@@ -17,5 +17,24 @@ describe('leitura de rótulos e análises', () => {
     expect(calls[0].messages[0].content[0].type).toBe('document');
     expect((await handleDocRead('rotulo', { file: 'AAAA', media_type: 'application/pdf' }, kv(), client, 'm', 'd', 'i', json)).status).toBe(400);
     expect((await handleDocRead('analises', { file: '', media_type: 'image/jpeg' }, kv(), client, 'm', 'd', 'i', json)).status).toBe(400);
+  });
+});
+
+describe('receita lida', () => {
+  it('limpa horas, junta a duração à dose e ignora o que não é receita', () => {
+    const r = cleanPrescription({ is_prescription: true, by: 'Dra. Teste', items: [
+      { name: 'Vitamina D3 2000 UI', kind: 'suplemento', dose: '1 cápsula', times: ['8:00', '08:00', '25:00'], duration: 'uso contínuo' },
+      { name: 'Antibiótico X 500 mg', kind: 'medicamento', dose: '1 comprimido', times: ['07:00', '15:00', '23:00'], duration: '7 dias' },
+      { name: 'Magnésio', kind: 'outro', dose: '', times: [], duration: '' },
+      { name: '', kind: 'suplemento', dose: '', times: [], duration: '' },
+    ] });
+    expect(r.found).toBe(true);
+    expect(r.by).toBe('Dra. Teste');
+    expect(r.items).toEqual([
+      { name: 'Vitamina D3 2000 UI', kind: 'suplemento', dose: '1 cápsula · uso contínuo', times: ['08:00'] },
+      { name: 'Antibiótico X 500 mg', kind: 'medicamento', dose: '1 comprimido · 7 dias', times: ['07:00', '15:00', '23:00'] },
+      { name: 'Magnésio', kind: 'suplemento', dose: '', times: ['08:00'] },
+    ]);
+    expect(cleanPrescription({ is_prescription: false }).found).toBe(false);
   });
 });

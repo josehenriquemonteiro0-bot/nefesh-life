@@ -4,7 +4,7 @@ import { LABS, VISIT_KINDS, labDef, labFlag, labSeries, newId, preventionFor, ty
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { declaredWarnings, doseKey, medWarnings, medsToday, type Med } from '../domain/meds';
 import { useStore } from '../state/store';
-import { readLabs } from '../domain/docread';
+import { readLabs, readPrescription, type RxItem } from '../domain/docread';
 
 const fmt = (k: string) => k.split('-').reverse().join('/');
 const STATUS: Record<PrevStatus, [string, string]> = {
@@ -80,10 +80,100 @@ function MedForm({ onDone, med }: { onDone: () => void; med?: Med }) {
   );
 }
 
+/** Receita (foto ou PDF) lida pela IA: a pessoa confere, ajusta e escolhe o que entra nos lembretes. */
+function RxReader({ onClose }: { onClose: () => void }) {
+  const { update, toast } = useStore();
+  const file = useRef<HTMLInputElement>(null);
+  const [reading, setReading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [found, setFound] = useState<{ by: string; items: (RxItem & { keep: boolean })[] } | null>(null);
+  const set = (i: number, patch: Partial<RxItem & { keep: boolean }>) => found && setFound({ ...found, items: found.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+  return (
+    <div className="med-form">
+      <input
+        ref={file}
+        type="file"
+        accept="image/*,application/pdf"
+        hidden
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (!f) return;
+          setErr(null);
+          setReading(true);
+          try {
+            const r = await readPrescription(f);
+            setFound({ by: r.by, items: r.items.map((x) => ({ ...x, keep: true })) });
+          } catch (er) {
+            setErr((er as Error).message);
+          } finally {
+            setReading(false);
+          }
+        }}
+      />
+      {!found && (
+        <>
+          <p className="small" style={{ margin: 0 }}>Fotografe a receita (do médico ou do nutricionista) ou escolha o PDF. A app lê os medicamentos e suplementos, a dose e as horas, e cria os lembretes depois de confirmar.</p>
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 10 }}>
+            <button className="btn sm" disabled={reading} onClick={() => file.current?.click()}>{reading ? 'A ler a receita…' : '📄 Escolher foto ou PDF'}</button>
+            <button className="btn ghost sm" onClick={onClose}>Cancelar</button>
+          </div>
+        </>
+      )}
+      {err && <p className="small warn-t">{err}</p>}
+      {found && (
+        <>
+          <p className="small" style={{ margin: 0 }}><b>Encontrei {found.items.length} {found.items.length === 1 ? 'produto' : 'produtos'}{found.by ? ` (receitado por ${found.by})` : ''}.</b> Confira a dose e as horas e escolha o que quer guardar.</p>
+          {found.items.map((x, i) => (
+            <div key={i} className={`rx-item ${x.keep ? '' : 'off'}`}>
+              <label className="check">
+                <input type="checkbox" checked={x.keep} onChange={(e) => set(i, { keep: e.target.checked })} />
+                <span><b>{x.name}</b> <span className="small mute">· {x.kind}</span></span>
+              </label>
+              {x.keep && (
+                <>
+                  <input className="field sm" style={{ marginTop: 6 }} value={x.dose} onChange={(e) => set(i, { dose: e.target.value })} placeholder="Dose (ex.: 1 cápsula)" maxLength={80} aria-label={`Dose de ${x.name}`} />
+                  <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 6 }}>
+                    {x.times.map((t, k) => (
+                      <span key={k} className="time-chip">
+                        <input type="time" value={t} onChange={(e) => set(i, { times: x.times.map((y, j) => (j === k ? e.target.value : y)) })} aria-label={`Hora ${k + 1} de ${x.name}`} />
+                        {x.times.length > 1 && <button type="button" className="x" onClick={() => set(i, { times: x.times.filter((_, j) => j !== k) })} aria-label="Tirar esta hora">×</button>}
+                      </span>
+                    ))}
+                    {x.times.length < 6 && <button type="button" className="btn ghost sm" onClick={() => set(i, { times: [...x.times, '20:00'] })}>+ hora</button>}
+                  </div>
+                  {medWarnings(x.name).map((w) => <p key={w.text} className={`small med-warn ${w.level}`}>⚠️ {w.text}</p>)}
+                </>
+              )}
+            </div>
+          ))}
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 10 }}>
+            <button
+              className="btn sm"
+              disabled={!found.items.some((x) => x.keep) || !found.items.filter((x) => x.keep).every((x) => x.times.length > 0 && x.times.every((t) => /^\d\d:\d\d$/.test(t)))}
+              onClick={() => {
+                const add: Med[] = found.items.filter((x) => x.keep).map((x) => ({ id: newId(), name: x.name, dose: x.dose.trim() || undefined, kind: x.kind, times: [...new Set(x.times)].sort(), active: true, by: found.by || undefined }));
+                update((d) => { d.care = { ...(d.care ?? {}), meds: [...(d.care?.meds ?? []), ...add] }; });
+                toast(`${add.length} ${add.length === 1 ? 'lembrete criado' : 'lembretes criados'}. Pode ajustar em "Gerir a lista".`);
+                onClose();
+              }}
+            >
+              Guardar e criar lembretes
+            </button>
+            <button className="btn ghost sm" onClick={onClose}>Cancelar</button>
+          </div>
+          <p className="small mute" style={{ margin: '8px 0 0' }}>Leitura feita por IA: confira com a receita. Siga sempre as indicações de quem receitou. O documento não é guardado.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function MedsCard() {
   const { S, todayLog: l, updateToday, update } = useStore();
   const [adding, setAdding] = useState(false);
   const [edit, setEdit] = useState<Med | null>(null);
+  const [rx, setRx] = useState(false);
   const today = medsToday(S, l);
   const meds = S.care?.meds ?? [];
   const general = declaredWarnings(S);
@@ -91,8 +181,14 @@ function MedsCard() {
     <section className="card" data-tour="medicacao">
       <div className="row">
         <h2 style={{ margin: 0 }}>💊 Medicação e suplementos</h2>
-        {!adding && !edit && <button className="btn ghost sm" onClick={() => setAdding(true)}>+ Adicionar</button>}
+        {!adding && !edit && !rx && (
+          <span className="row" style={{ gap: 6 }}>
+            <button className="btn sm" onClick={() => setRx(true)}>📄 Receita</button>
+            <button className="btn ghost sm" onClick={() => setAdding(true)}>+ À mão</button>
+          </span>
+        )}
       </div>
+      {rx && <RxReader onClose={() => setRx(false)} />}
       {general.map((g) => <p key={g} className="small med-warn alto">⚠️ {g}</p>)}
       {[...new Map(meds.filter((m) => m.active).flatMap((m) => medWarnings(m.name).map((w) => [w.text, { ...w, name: m.name }] as const))).values()].map((w) => (
         <p key={w.text} className={`small med-warn ${w.level}`}>⚠️ <b>{w.name}:</b> {w.text}</p>
@@ -118,7 +214,7 @@ function MedsCard() {
           </div>
         </>
       )}
-      {!meds.length && !adding && <p className="small mute" style={{ margin: '8px 0 0' }}>Registe a medicação e os suplementos que toma: a app lembra-o à hora certa e avisa dos cuidados a ter com a Spirulina.</p>}
+      {!meds.length && !adding && !rx && <p className="small mute" style={{ margin: '8px 0 0' }}>Registe a medicação e os suplementos que toma, à mão ou a partir da foto da receita: a app lembra-o à hora certa e avisa dos cuidados a ter com a Spirulina.</p>}
       {(adding || edit) && <MedForm med={edit ?? undefined} onDone={() => { setAdding(false); setEdit(null); }} />}
       {meds.length > 0 && !adding && !edit && (
         <details className="small" style={{ marginTop: 10 }}>
