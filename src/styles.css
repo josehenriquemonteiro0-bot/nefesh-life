@@ -871,3 +871,9 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .pro-area-switch button.add{border-style:dashed;color:var(--mute)}
 .pro-area-switch button:disabled{opacity:.7;cursor:default}
 .rx-item{margin-top:10px;padding:10px 0 0;border-top:1px solid var(--line)}.rx-item.off{opacity:.55}
+.locale-pick{position:fixed;inset:0;z-index:200;background:var(--bg,#060d0e);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.locale-pick .inner{width:100%;max-width:380px;display:grid;gap:12px;text-align:center}
+.locale-pick .word{height:34px;margin:0 auto 8px}
+.locale-pick h1{margin:0;font-size:26px}
+.locale-pick p{margin:0 0 6px}
+.locale-pick .btn{font-size:17px;padding:14px}

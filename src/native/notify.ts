@@ -5,6 +5,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { LocalReminder } from '../domain/localReminders';
 import { isNative } from '../domain/platform';
+import { convertText } from '../i18n/locale';
 
 /** Pede autorização para notificações. Devolve null se ficou autorizado, ou a mensagem para a pessoa. */
 export async function enableNativeNotifications(): Promise<string | null> {
@@ -34,8 +35,8 @@ export async function syncNativeReminders(items: LocalReminder[]) {
           const [hour, minute] = (r.daily ?? '00:00').split(':').map(Number);
           return {
             id: r.id,
-            title: r.title,
-            body: r.body,
+            title: convertText(r.title),
+            body: convertText(r.body),
             schedule: r.daily ? { on: { hour, minute }, repeats: true, allowWhileIdle: true } : { at: r.at, allowWhileIdle: true },
           };
         }),

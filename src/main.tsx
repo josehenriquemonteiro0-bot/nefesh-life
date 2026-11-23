@@ -1,11 +1,16 @@
 import './testDate';
 import { PHOTO_API } from './domain/photo';
 import { isNative } from './domain/platform';
+import { startLocale } from './i18n/dom';
+import { currentLocale } from './i18n/locale';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { StoreProvider } from './state/store';
 import './styles.css';
+
+// idioma: aplica o vocabulário do país escolhido a todo o texto da app
+startLocale(currentLocale());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

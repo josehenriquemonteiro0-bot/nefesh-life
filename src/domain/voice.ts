@@ -3,6 +3,7 @@
  * telemóvel (sem custo e sem enviar áudio para servidores da NEFESH), e leitura das
  * respostas em voz alta. O texto ouvido segue pelo mesmo caminho do Coach.
  */
+import { convertText, storedLocale } from '../i18n/locale';
 import type { AppState } from './types';
 
 export type VoiceLang = 'pt-PT' | 'pt-BR';
@@ -37,6 +38,9 @@ export const ttsSupported = () => typeof window !== 'undefined' && 'speechSynthe
 /** Língua da voz: a escolhida no Coach, ou a do telemóvel (Brasil → pt-BR; resto → pt-PT). */
 export function voiceLang(S: Pick<AppState, 'voiceLang'>, nav = typeof navigator !== 'undefined' ? navigator.language : 'pt-PT'): VoiceLang {
   if (S.voiceLang) return S.voiceLang;
+  // sem escolha própria para a voz: segue o país escolhido na app
+  const chosen = storedLocale();
+  if (chosen) return chosen;
   return /^pt-BR/i.test(nav ?? '') ? 'pt-BR' : 'pt-PT';
 }
 
@@ -114,7 +118,7 @@ export function speak(text: string, lang: VoiceLang, onEnd?: () => void, rate = 
   try {
     const synth = window.speechSynthesis;
     synth.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ''));
+    const u = new SpeechSynthesisUtterance(convertText(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ''));
     u.lang = lang;
     const v = synth.getVoices().find((x) => x.lang?.replace('_', '-').toLowerCase() === lang.toLowerCase());
     if (v) u.voice = v;

@@ -1,3 +1,4 @@
+import { LocaleCard } from '../components/LocalePicker';
 import { isNative } from '../domain/platform';
 import { enableNativeNotifications } from '../native/notify';
 import { HOME_PROGRESSIVE } from '../domain/firstWeek';
@@ -253,6 +254,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         </div>
         <PushToggle />
       </section>
+
+      <LocaleCard />
 
       <PrivacyCard />
 

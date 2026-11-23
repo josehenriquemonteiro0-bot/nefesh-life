@@ -1,6 +1,7 @@
 /**
  * Onde a app está a correr: no navegador (versão web) ou dentro da app nativa (Capacitor, iPhone).
  */
+import { currentLocale } from '../i18n/locale';
 import { Capacitor } from '@capacitor/core';
 
 export const isNative = () => {
@@ -21,4 +22,4 @@ export function appUrl(): string {
 }
 
 /** Política de privacidade e termos (páginas públicas, com versão do Brasil e de Portugal). */
-export const legalUrl = (page: 'privacidade' | 'termos') => `${appUrl()}legal/${page}.html`;
+export const legalUrl = (page: 'privacidade' | 'termos') => `${appUrl()}legal/${page}.html?v=${currentLocale() === 'pt-PT' ? 'pt' : 'br'}`;

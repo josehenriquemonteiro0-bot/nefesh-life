@@ -42,6 +42,7 @@ import { bodySnapshot } from './domain/progress';
 import { sendDailyPing } from './domain/analytics';
 import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout, saveConsents } from './domain/account';
+import { LocalePicker } from './components/LocalePicker';
 import { useNativeSync } from './native/useNativeSync';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
@@ -393,6 +394,7 @@ export function App() {
           </button>
         ))}
       </nav>
+      <LocalePicker />
       {intro && (
         <Intro
           mode={intro}
