@@ -10,7 +10,7 @@ import type { DB } from './social';
 import { isQuiet } from './notify';
 import { cleanProfile, profileEmpty, type StudentProfile } from '../../src/domain/proProfile';
 import { POSES, cleanAssessment, results } from '../../src/domain/proAssess';
-import { cleanDayLog, cleanNutri, nutriAttention, nutriFilled, type NutriDayLog } from '../../src/domain/proNutri';
+import { checkinConcern, cleanCheckin, cleanDayLog, cleanNutri, nutriAttention, nutriFilled, type Checkin, type NutriDayLog } from '../../src/domain/proNutri';
 
 /** Nutricionistas e médicos: plano alimentar, jejum e anamnese. */
 export const isNutriPro = (kind?: string | null) => kind === 'nutricionista' || kind === 'medico';
@@ -343,7 +343,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_checkins WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_notes WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 
@@ -371,7 +371,9 @@ export async function studentPlan(db: DB, key: string, b: Record<string, unknown
   if (!s) return bad('Código não ligado a este telemóvel.', 404);
   let plan: unknown = null;
   try { plan = s.plan ? JSON.parse(s.plan) : null; } catch { plan = null; }
-  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno') });
+  const nutri = isNutriPro(s.pro_kind);
+  const visit = nutri ? await db.prepare("SELECT day, time, text FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(s.code, new Date().toISOString().slice(0, 10)).first<{ day: string; time: string; text: string }>() : null;
+  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, new Date())), nextVisit: visit ?? null } : {}) });
 }
 
 /** O aluno desliga-se do personal (o histórico do personal fica, sem novos registos). */
@@ -413,8 +415,78 @@ export async function logWorkout(db: DB, store: KeyStore, key: string, b: Record
 }
 
 /** Fase 2: check-in semanal com valores baixos e próxima consulta (para o painel de atenção). */
-async function nutriExtras(_db: DB, _code: string, _now: Date): Promise<{ checkinLow?: string | null; nextVisit?: string | null }> {
-  return {};
+async function nutriExtras(db: DB, code: string, now: Date): Promise<{ checkinLow?: string | null; nextVisit?: string | null }> {
+  const today = now.toISOString().slice(0, 10);
+  const c = await db.prepare("SELECT day, data FROM pro_checkins WHERE code = ? AND json_extract(data, '$.request') IS NULL ORDER BY id DESC LIMIT 1").bind(code).first<{ day: string; data: string }>();
+  let checkinLow: string | null = null;
+  if (c && c.day >= weekAgo(now)) { try { checkinLow = checkinConcern(JSON.parse(c.data) as Checkin); } catch { checkinLow = null; } }
+  const v = await db.prepare("SELECT day FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(code, today).first<{ day: string }>();
+  return { checkinLow, nextVisit: v?.day ?? null };
+}
+
+/* ───────── check-in semanal, notas da consulta e retornos (nutricionistas) ───────── */
+
+/** Check-in em falta: nenhum nos últimos 7 dias, ou o nutricionista pediu um depois do último. */
+async function checkinDue(db: DB, code: string, now: Date) {
+  const { results } = await db.prepare('SELECT day, data FROM pro_checkins WHERE code = ? ORDER BY id DESC LIMIT 5').bind(code).all<{ day: string; data: string }>();
+  const last = results.find((r) => !r.data.includes('"request"'));
+  const req = results.find((r) => r.data.includes('"request"'));
+  if (req && (!last || results.indexOf(req) < results.indexOf(last))) return true;
+  return !last || last.day < weekAgo(now);
+}
+
+export async function studentCheckin(db: DB, store: KeyStore, key: string, b: Record<string, unknown>, now = new Date(), fetcher: typeof fetch = fetch): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  const c = cleanCheckin(b.checkin);
+  if (!c) return bad('Responda pelo menos a uma pergunta.');
+  await db.prepare('INSERT INTO pro_checkins (code, day, data, created) VALUES (?, ?, ?, ?)').bind(s.code, now.toISOString().slice(0, 10), JSON.stringify(c), now.toISOString()).run();
+  const concern = checkinConcern(c);
+  await notify(db, store, s.pro, { title: `${s.name} respondeu ao check-in semanal`, body: concern ?? `Adesão ${c.adesao}/10${c.nota ? ` · "${c.nota.slice(0, 80)}"` : ''}`, tag: `nefesh-pro-${s.code}` }, now, fetcher);
+  return ok();
+}
+
+export async function listCheckins(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  const { results } = await db.prepare('SELECT id, day, data FROM pro_checkins WHERE code = ? ORDER BY id DESC LIMIT 30').bind(s.code).all<{ id: number; day: string; data: string }>();
+  return ok({ list: results.map((r) => ({ id: r.id, day: r.day, ...(JSON.parse(r.data) as object) })) });
+}
+
+export async function requestCheckin(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  await db.prepare('INSERT INTO pro_checkins (code, day, data, created) VALUES (?, ?, ?, ?)').bind(s.code, now.toISOString().slice(0, 10), JSON.stringify({ request: true }), now.toISOString()).run();
+  return ok();
+}
+
+/** Notas da consulta (só o profissional vê) e consultas de retorno (o paciente vê a data). */
+export async function listNotes(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  const { results } = await db.prepare('SELECT id, kind, day, time, text, created FROM pro_notes WHERE code = ? ORDER BY day DESC, id DESC LIMIT 100').bind(s.code).all<{ id: number; kind: string; day: string; time: string; text: string; created: string }>();
+  return ok({ list: results });
+}
+
+export async function addNote(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  const kind = b.kind === 'retorno' ? 'retorno' : 'nota';
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day)) ? String(b.day) : now.toISOString().slice(0, 10);
+  const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(b.time)) ? String(b.time) : '';
+  const text = str(b.text, kind === 'nota' ? 2000 : 200);
+  if (kind === 'nota' && text.length < 2) return bad('Escreva a nota.');
+  // só uma consulta de retorno marcada de cada vez: a nova substitui as futuras
+  if (kind === 'retorno') await db.prepare("DELETE FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ?").bind(s.code, now.toISOString().slice(0, 10)).run();
+  await db.prepare('INSERT INTO pro_notes (code, kind, day, time, text, created) VALUES (?, ?, ?, ?, ?, ?)').bind(s.code, kind, day, time, text, now.toISOString()).run();
+  return ok();
+}
+
+export async function deleteNote(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  await db.prepare('DELETE FROM pro_notes WHERE id = ? AND code = ?').bind(Math.round(Number(b.id) || 0), s.code).run();
+  return ok();
 }
 
 /** Dia de alimentação do paciente (refeições do plano, adesão, fome…): um registo por dia, corrigir substitui. */

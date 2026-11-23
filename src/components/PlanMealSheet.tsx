@@ -5,6 +5,7 @@ import { diaryMeal, planEntries, type PlanItem } from '../domain/planRead';
 import { useStore } from '../state/store';
 import { clearPlanMeal, savePlanMeal } from '../domain/planMeal';
 import { DecimalInput } from './DecimalInput';
+import { equivalents } from '../domain/foodSearch';
 
 const FACTORS = [0.5, 1, 1.5, 2];
 const scale = (it: PlanItem, f: number): PlanItem =>
@@ -22,7 +23,8 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
   const [edit, setEdit] = useState(false);
   const option = meal.options[opt] ?? meal.options[0];
   const [items, setItems] = useState(option.items.map(() => ({ eaten: true, factor: 1 })));
-  const [extras, setExtras] = useState<{ name: string; kcal?: number }[]>([]);
+  const [extras, setExtras] = useState<{ name: string; kcal?: number; p?: number; c?: number; f?: number }[]>([]);
+  const [swap, setSwap] = useState<number | null>(null);
   const [extraName, setExtraName] = useState('');
   const [extraKcal, setExtraKcal] = useState<number | undefined>();
   const [note, setNote] = useState(current?.note ?? '');
@@ -52,7 +54,7 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
     const entries = planEntries(eaten.map((x) => scale(x.it, x.factor)));
     for (const x of extras) {
       const food = FOODS.find((f) => f.name.toLowerCase() === x.name.toLowerCase());
-      entries.push(food ? entryOf(food, food.grams) : { id: `extra-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, name: x.name, grams: 0, kcal: Math.round(x.kcal ?? 0), p: 0, c: 0, f: 0 });
+      entries.push(food ? entryOf(food, food.grams) : { id: `extra-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, name: x.name, grams: 0, kcal: Math.round(x.kcal ?? 0), p: x.p ?? 0, c: x.c ?? 0, f: x.f ?? 0 });
     }
     const changes = describeChanges(option.items.map((it, i) => ({ name: it.name, ...items[i] })), extras.map((x) => x.name));
     save(changes.length ? 'alterado' : 'seguido', entries, changes);
@@ -122,6 +124,22 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
                     <input type="checkbox" checked={!!items[i]?.eaten} onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, eaten: e.target.checked } : x)))} />
                     <span style={{ flex: 1 }}><b>{it.name}</b> <span className="small mute">{it.quantity}</span></span>
                   </label>
+                  {items[i]?.eaten && S.plans?.nutri?.type === 'nefesh-pro' && (
+                    <button className="link small inline" style={{ marginTop: 6 }} onClick={() => setSwap(swap === i ? null : i)}>↔ Trocar por um equivalente</button>
+                  )}
+                  {swap === i && (
+                    <div className="swap-list">
+                      {equivalents(it.name, it.grams).map((q) => (
+                        <button key={q.name} className="chip sm" onClick={() => {
+                          setItems(items.map((x, j) => (j === i ? { ...x, eaten: false } : x)));
+                          setExtras([...extras, { name: `${q.name} (${q.grams} g, em vez de ${it.name.split(',')[0]})`, kcal: q.kcal, p: q.p, c: q.c, f: q.f }]);
+                          setSwap(null);
+                        }}>{q.name.replace(/\/\d+ ?minutos/, '')} · {q.grams} g</button>
+                      ))}
+                      {!equivalents(it.name, it.grams).length && <span className="small mute">Sem equivalentes na base para este alimento. Escreva em "Comi também".</span>}
+                      <span className="small mute" style={{ width: '100%' }}>Mesmo grupo e as mesmas calorias (ou proteína). Se tiver alergias ou intolerâncias, confirme com o seu nutricionista.</span>
+                    </div>
+                  )}
                   {items[i]?.eaten && (
                     <div className="chips" style={{ marginTop: 8 }} role="group" aria-label={`Quantidade de ${it.name}`}>
                       {FACTORS.map((f) => (

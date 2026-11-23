@@ -237,3 +237,32 @@ export function cleanAnamnese(x: unknown): Partial<Record<AnamKey, string>> {
   const o = (x ?? {}) as Record<string, unknown>;
   return Object.fromEntries(ANAMNESE.map(([k]) => [k, str(o[k], 300)]).filter(([, v]) => v)) as Partial<Record<AnamKey, string>>;
 }
+
+/* ───────── check-in semanal ───────── */
+
+export const CHECKIN = [
+  ['fome', 'Fome ao longo do dia', 'pouca', 'muita'],
+  ['saciedade', 'Saciedade depois das refeições', 'fico com fome', 'bem saciado'],
+  ['intestino', 'Intestino', 'preso / irregular', 'regular'],
+  ['energia', 'Energia', 'baixa', 'alta'],
+] as const;
+export type CheckinKey = (typeof CHECKIN)[number][0];
+export interface Checkin { fome: number; saciedade: number; intestino: number; energia: number; /** adesão ao plano, 0 a 10 */ adesao: number; nota: string }
+
+export function cleanCheckin(x: unknown): Checkin | null {
+  const o = (x ?? {}) as Record<string, unknown>;
+  const v = (k: string, max: number) => { const n2 = Math.round(Number(o[k])); return Number.isFinite(n2) && n2 >= (max === 10 ? 0 : 1) && n2 <= max ? n2 : 0; };
+  const c = { fome: v('fome', 5), saciedade: v('saciedade', 5), intestino: v('intestino', 5), energia: v('energia', 5), adesao: v('adesao', 10), nota: str(o.nota, 300) };
+  return c.fome || c.saciedade || c.intestino || c.energia || c.nota || Number(o.adesao) === 0 || c.adesao ? c : null;
+}
+
+/** O que no check-in merece atenção do nutricionista (texto curto) ou null. */
+export function checkinConcern(c: Checkin): string | null {
+  const out: string[] = [];
+  if (c.adesao && c.adesao <= 4) out.push(`adesão ${c.adesao}/10`);
+  if (c.fome >= 4) out.push('muita fome');
+  if (c.saciedade && c.saciedade <= 2) out.push('pouca saciedade');
+  if (c.intestino && c.intestino <= 2) out.push('intestino irregular');
+  if (c.energia && c.energia <= 2) out.push('energia baixa');
+  return out.length ? `Check-in semanal: ${out.join(', ')}` : null;
+}

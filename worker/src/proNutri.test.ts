@@ -52,3 +52,52 @@ describe('NEFESH Pro para nutricionistas (servidor)', () => {
     expect((await pro.logNutriDay(db, 'd:outro-telemovel', { code, data: {} }, NOW)).status).toBe(404);
   });
 });
+
+describe('fase 2: check-in semanal, consultas e IA', () => {
+  const setup = async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
+    const code = (await pro.newStudent(db, 'ana', { name: 'Maria' }, NOW)).body.code as string;
+    await pro.savePlan(db, 'ana', { code, plan: { workouts: [], nutri } }, NOW);
+    await pro.linkStudent(db, 'd:telemovel-123', { code }, NOW);
+    return { db, code };
+  };
+  const keys = { get: async () => null, put: async () => undefined } as never;
+  it('check-in: em falta ao início, respondido some, pedido volta a aparecer; alerta no painel', async () => {
+    const { db, code } = await setup();
+    expect((await pro.studentPlan(db, 'd:telemovel-123', { code })).body.checkinDue).toBe(true);
+    expect((await pro.studentCheckin(db, keys, 'd:telemovel-123', { code, checkin: { fome: 5, saciedade: 2, intestino: 3, energia: 3, adesao: 4, nota: 'muita fome à tarde' } }, NOW, (async () => new Response('')) as never)).status).toBe(200);
+    const due = (await pro.studentPlan(db, 'd:telemovel-123', { code })).body.checkinDue;
+    expect(due).toBe(false);
+    await pro.requestCheckin(db, 'ana', { code }, new Date(NOW.getTime() + 1000));
+    expect((await pro.studentPlan(db, 'd:telemovel-123', { code })).body.checkinDue).toBe(true);
+    const list = (await pro.listCheckins(db, 'ana', { code })).body.list as { adesao?: number; request?: boolean }[];
+    expect(list.find((c) => !c.request)).toMatchObject({ adesao: 4 });
+    const st = ((await pro.proState(db, 'ana', NOW)).body.students as { alerts: { kind: string; text: string }[] }[])[0];
+    expect(st.alerts.find((a) => a.kind === 'checkin')?.text).toMatch(/adesão 4\/10, muita fome, pouca saciedade/);
+  });
+  it('consultas: nota privada e retorno (o paciente vê a data; o novo substitui o anterior)', async () => {
+    const { db, code } = await setup();
+    expect((await pro.addNote(db, 'ana', { code, kind: 'nota', text: 'S: mais fome à tarde. P: lanche com proteína.' }, NOW)).status).toBe(200);
+    await pro.addNote(db, 'ana', { code, kind: 'retorno', day: '2026-12-10', time: '18:00', text: 'Consultório' }, NOW);
+    await pro.addNote(db, 'ana', { code, kind: 'retorno', day: '2026-11-24', time: '09:30', text: '' }, NOW);
+    expect((await pro.studentPlan(db, 'd:telemovel-123', { code })).body.nextVisit).toMatchObject({ day: '2026-11-24', time: '09:30' });
+    const notes = (await pro.listNotes(db, 'ana', { code })).body.list as { kind: string }[];
+    expect(notes.filter((n) => n.kind === 'retorno')).toHaveLength(1);
+    expect(notes.filter((n) => n.kind === 'nota')).toHaveLength(1);
+    const st = ((await pro.proState(db, 'ana', NOW)).body.students as { alerts: { kind: string }[] }[])[0];
+    expect(st.alerts.map((a) => a.kind)).toContain('retorno');
+    // as notas não vão para o paciente
+    expect(JSON.stringify((await pro.studentPlan(db, 'd:telemovel-123', { code })).body)).not.toMatch(/lanche com proteína/);
+  });
+  it('IA: ditado devolve refeições limpas; revisão devolve sugestões', async () => {
+    const { dictateNutri, reviewNutri } = await import('./proAI');
+    const kv = () => { const m = new Map<string, string>(); return { get: async (k: string) => m.get(k) ?? null, put: async (k: string, v: string) => void m.set(k, v) }; };
+    const fake = (out: unknown) => ({ beta: { messages: { create: async () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(out) }] }) } } }) as never;
+    const d = await dictateNutri(fake({ meals: [{ key: 'pa', label: 'Pequeno-almoço', time: '07:30', notes: '', options: [{ name: 'Opção A', items: [{ food: 'Ovo, de galinha, inteiro, cozido', grams: 100, measure: '2 ovos', kcal: 146, p: 13.3, c: 0.6, f: 9.5, fib: 0 }] }] }], summary: 'Juntei o pequeno-almoço.', doubts: '' }), 'm', kv(), 'ana', 'ip', { text: 'pequeno-almoço 2 ovos cozidos', meals: [] });
+    expect(d.status).toBe(200);
+    expect((d.body.meals as { options: { items: { grams: number }[] }[] }[])[0].options[0].items[0].grams).toBe(100);
+    const r = await reviewNutri(fake({ general: ['Proteína abaixo da meta.'], notes: [{ meal: 'Almoço', note: 'Iogurte tem lactose: a paciente é intolerante.' }] }), 'm', kv(), 'ana', 'ip', { meals: [], targets: {}, totals: {} });
+    expect(r.body).toMatchObject({ general: ['Proteína abaixo da meta.'] });
+  });
+});

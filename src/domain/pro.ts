@@ -90,8 +90,17 @@ export function applyNutriPlan(S: AppState, r: { code: string; pro: string; plan
   const rx = r.plan.nutri;
   if (!rx) return;
   const name = `NEFESH Pro · ${r.pro}`;
+  const before = S.nutriPlan?.meals.map((m) => m.label) ?? [];
   S.proNutriRx = rx;
   S.nutriPlan = { ...toDailyPlan(rx, now, r.pro), at: todayKey(now), name };
+  // plano atualizado a meio do dia: as refeições já marcadas hoje seguem a refeição com o mesmo nome
+  const day = S.logs[todayKey(now)];
+  if (day?.planLog && before.length) {
+    const after = S.nutriPlan.meals.map((m) => m.label);
+    const moved: typeof day.planLog = {};
+    for (const [i, v] of Object.entries(day.planLog)) { const j = after.indexOf(before[Number(i)]); if (j >= 0) moved[String(j)] = v; }
+    S.logs[todayKey(now)] = { ...day, planLog: moved };
+  }
   S.plans = { ...(S.plans ?? {}), nutri: { name, type: 'nefesh-pro', size: 0, at: todayKey(now), by: r.pro } };
   if (rx.targets.kcal || rx.targets.protein) S.nutriPro = { kcal: rx.targets.kcal || undefined, protein: rx.targets.protein || undefined, by: r.pro, at: todayKey(now) };
   if (rx.spirulina) S.proDose = { g: rx.spirulina, by: r.pro, at: todayKey(now) };
@@ -181,7 +190,7 @@ export function clearProPlan(S: AppState) {
 
 /** Ao abrir a app: há versão nova do plano? */
 export async function checkProPlan(code: string) {
-  return proApi<{ code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number; unread?: number }>('aluno/plano', { code });
+  return proApi<{ code: string; pro: string; kind?: string; plan: ParsedWorkoutPlan | null; version: number; unread?: number; checkinDue?: boolean; nextVisit?: { day: string; time: string; text: string } | null }>('aluno/plano', { code });
 }
 
 /** Resumo do treino feito, para o personal. */

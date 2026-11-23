@@ -328,6 +328,7 @@ export default {
         'aluno/escrever': () => pro.studentWrite(db, env.LIMITS as never, key!, b),
         'aluno/partilha': () => pro.studentShare(db, key!, b),
         'aluno/dia': () => pro.logNutriDay(db, key!, b),
+        'aluno/checkin': () => pro.studentCheckin(db, env.LIMITS as never, key!, b),
       };
       const key = pro.studentKey(uid, b.device);
       // relatório de acompanhamento do próprio utilizador (Corpo): a IA lê as medidas; o documento não é guardado
@@ -372,8 +373,26 @@ export default {
         'aluno/mensagens': () => pro.proMessages(db, uid, b),
         'aluno/mensagem': () => pro.proWrite(db, env.LIMITS as never, uid, b),
         'aluno/relatorio': () => pro.shareReport(db, uid, b),
+        'aluno/checkins': () => pro.listCheckins(db, uid, b),
+        'aluno/checkin/pedir': () => pro.requestCheckin(db, uid, b),
+        'aluno/notas': () => pro.listNotes(db, uid, b),
+        'aluno/nota': () => pro.addNote(db, uid, b),
+        'aluno/nota/apagar': () => pro.deleteNote(db, uid, b),
       };
       // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
+      if (action === 'ia/nutri-ditado' || action === 'ia/nutri-rever') {
+        const me = await pro.proOf(db, uid);
+        if (me?.status !== 'aprovado' || !pro.isNutriPro(me.kind)) return json({ error: 'Só para nutricionistas e médicos aprovados.' }, 403, h);
+        try {
+          const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+          const model = env.MODEL?.trim() || 'claude-opus-5-5';
+          const ipx = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+          const r = action === 'ia/nutri-ditado' ? await proAI.dictateNutri(client, model, env.LIMITS, uid, ipx, b) : await proAI.reviewNutri(client, model, env.LIMITS, uid, ipx, b);
+          return json(r.body, r.status, h);
+        } catch (err) {
+          return apiError(err, h);
+        }
+      }
       if (action === 'ia/ditado' || action === 'ia/rever' || action === 'ia/avaliacao') {
         if ((await pro.proOf(db, uid))?.status !== 'aprovado') return json({ error: 'Acesso de profissional ainda não aprovado.' }, 403, h);
         try {

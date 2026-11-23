@@ -10,6 +10,7 @@ import { LIBRARY, normalizeBookends } from '../../src/domain/proLibrary';
 import { check, count, type CounterStore, type Limits } from './limits';
 import { cleanPlan } from './pro';
 import { MEASURE_KEYS, cleanProfile } from '../../src/domain/proProfile';
+import { cleanNutri } from '../../src/domain/proNutri';
 
 export const DICTATE_LIMITS: Limits = { device: 80, ip: 200, global: 4000 };
 export const REVIEW_LIMITS: Limits = { device: 30, ip: 100, global: 2000 };
@@ -360,4 +361,97 @@ export function cleanExtra(v: unknown): { label: string; v: number; u: string }[
     if (out.length >= 30) break;
   }
   return out;
+}
+
+/* ───────── nutricionistas: ditado do plano alimentar e revisão ───────── */
+
+const NUTRI_ITEM = {
+  type: 'object',
+  properties: {
+    food: { type: 'string', description: 'nome do alimento como numa tabela de composição (ex.: "Arroz, integral, cozido", "Frango, peito, sem pele, grelhado", "Ovo, de galinha, inteiro, cozido")' },
+    grams: { type: 'number', description: 'quantidade em gramas (ou ml)' },
+    measure: { type: 'string', description: 'medida caseira dita (ex.: "4 colheres de sopa", "1 filé médio"); "" se não disse' },
+    kcal: { type: 'number' }, p: { type: 'number' }, c: { type: 'number' }, f: { type: 'number' }, fib: { type: 'number' },
+  },
+  required: ['food', 'grams', 'measure', 'kcal', 'p', 'c', 'f', 'fib'],
+  additionalProperties: false,
+} as const;
+const NUTRI_DICTATE_SCHEMA = {
+  type: 'object',
+  properties: {
+    meals: {
+      type: 'array',
+      description: 'TODAS as refeições do dia depois do ditado (as que já existiam e não foram mudadas ficam iguais)',
+      items: {
+        type: 'object',
+        properties: {
+          key: { type: 'string', enum: ['pa', 'lanche_m', 'almoco', 'lanche', 'jantar', 'ceia'] },
+          label: { type: 'string' },
+          time: { type: 'string', description: 'HH:MM' },
+          notes: { type: 'string' },
+          options: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, items: { type: 'array', items: NUTRI_ITEM } }, required: ['name', 'items'], additionalProperties: false } },
+        },
+        required: ['key', 'label', 'time', 'notes', 'options'],
+        additionalProperties: false,
+      },
+    },
+    removed: { type: 'array', items: { type: 'string', enum: ['pa', 'lanche_m', 'almoco', 'lanche', 'jantar', 'ceia'] }, description: 'refeições que o(a) nutricionista mandou tirar' },
+    summary: { type: 'string', description: 'uma frase com o que mudou' },
+    doubts: { type: 'string', description: 'o que não percebeu ou falta (ex.: quantidade em falta), "" se nada' },
+  },
+  required: ['meals', 'removed', 'summary', 'doubts'],
+  additionalProperties: false,
+} as const;
+
+export const NUTRI_DICTATE_SYSTEM = `Transcreves o ditado de um(a) nutricionista para o plano alimentar de um paciente na app NEFESH Life Pro (Portugal e Brasil).
+- Recebes as refeições atuais do dia e o ditado. Devolves TODAS as refeições do dia, já com as mudanças ditadas; o que não foi mencionado fica igual.
+- Refeições: pa = pequeno-almoço/café da manhã, lanche_m = lanche da manhã/colação, almoco, lanche = lanche da tarde, jantar, ceia. Horas HH:MM (usa as ditas; senão mantém).
+- "Opção B", "ou então", "alternativa" = outra opção da mesma refeição.
+- Cada alimento com o nome como numa tabela de composição (TACO), em gramas; converte medidas caseiras (1 colher de sopa de arroz ≈ 25 g, 1 concha de feijão ≈ 100 g, 1 filé médio de frango ≈ 120 g, 1 ovo ≈ 50 g, 1 fatia de pão ≈ 25 g, 1 banana ≈ 90 g, 1 copo ≈ 200 ml) e guarda a medida dita em measure.
+- kcal, p (proteína), c (hidratos), f (gordura), fib (fibra) para a quantidade, pelos valores habituais da TACO. Não inventes alimentos que não foram ditos.
+- Se faltar a quantidade, usa uma porção habitual e diz em doubts.`;
+
+const NUTRI_REVIEW_SCHEMA = {
+  type: 'object',
+  properties: {
+    general: { type: 'array', items: { type: 'string' }, description: 'até 6 observações gerais (metas, distribuição, adequação às condições da ficha)' },
+    notes: { type: 'array', items: { type: 'object', properties: { meal: { type: 'string', description: 'nome da refeição' }, note: { type: 'string' } }, required: ['meal', 'note'], additionalProperties: false } },
+  },
+  required: ['general', 'notes'],
+  additionalProperties: false,
+} as const;
+
+export const NUTRI_REVIEW_SYSTEM = `És um revisor técnico para um(a) nutricionista na app NEFESH Life Pro. Recebes a ficha do paciente (anamnese), as metas e o plano de um dia com os totais.
+- Aponta só o que é útil e concreto: metas não atingidas (proteína, fibra, energia), distribuição da proteína pelas refeições, alimentos que colidem com alergias/intolerâncias ou com o que o paciente não come, cuidados com as condições declaradas (ex.: pré-diabetes: hidratos simples, fibra; hipertensão: sódio; insulina: intervalos longos), variedade, hidratação.
+- São sugestões para o(a) nutricionista decidir: tom profissional e curto, sem diagnósticos, sem alterar o plano. Frases com no máximo 30 palavras. Se estiver tudo bem, diz-o numa frase.`;
+
+const mealsText = (meals: unknown) => (Array.isArray(meals) ? meals : []).map((m) => {
+  const x = (m ?? {}) as Record<string, unknown>;
+  const opts = (Array.isArray(x.options) ? x.options : []) as { name?: string; items?: { food?: string; grams?: number; measure?: string; kcal?: number; p?: number }[] }[];
+  return `- ${x.label} (${x.key}, ${x.time}): ${opts.map((o) => `${o.name}: ${(o.items ?? []).map((i) => `${i.food} ${i.grams} g${i.measure ? ` (${i.measure})` : ''}${i.kcal !== undefined ? ` [${i.kcal} kcal, P ${i.p}]` : ''}`).join('; ') || 'vazia'}`).join(' | ')}${x.notes ? ` · nota: ${x.notes}` : ''}`;
+}).join('\n');
+
+export async function dictateNutri(client: Anthropic, model: string, store: CounterStore, uid: string, ip: string, b: Record<string, unknown>): Promise<R> {
+  const text = String(b.text ?? '').trim().slice(0, 4000);
+  if (text.length < 3) return { status: 400, body: { error: 'Diga ou escreva o que quer no plano.' } };
+  const allowed = await check(store, DICTATE_LIMITS, uid, ip, new Date(), 'nd');
+  if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de ditados de hoje. Tente amanhã.' } };
+  const user = `${b.about ? `Paciente: ${String(b.about).slice(0, 600)}\n` : ''}Dia: ${String(b.day ?? 'Todos os dias').slice(0, 40)}\nRefeições atuais:\n${mealsText(b.meals) || '(nenhuma)'}\n\nDitado do(a) nutricionista:\n${text}`;
+  const r = await ask<{ meals: unknown[]; removed?: string[]; summary: string; doubts: string }>(client, model, NUTRI_DICTATE_SYSTEM, user, NUTRI_DICTATE_SCHEMA, 'low');
+  if (!r) return { status: 502, body: { error: 'A IA não conseguiu perceber agora. Tente outra vez.' } };
+  await count(store, DICTATE_LIMITS, uid, ip, new Date(), 'nd');
+  const rx = cleanNutri({ days: [{ name: 'Dia', weekdays: [], meals: r.meals }] });
+  return { status: 200, body: { meals: rx?.days[0].meals ?? [], removed: (Array.isArray(r.removed) ? r.removed : []).filter((k) => ['pa', 'lanche_m', 'almoco', 'lanche', 'jantar', 'ceia'].includes(k)), summary: String(r.summary ?? '').slice(0, 300), doubts: String(r.doubts ?? '').slice(0, 300) } };
+}
+
+export async function reviewNutri(client: Anthropic, model: string, store: CounterStore, uid: string, ip: string, b: Record<string, unknown>): Promise<R> {
+  const allowed = await check(store, REVIEW_LIMITS, uid, ip, new Date(), 'nr');
+  if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de revisões de hoje. Tente amanhã.' } };
+  const t = (b.targets ?? {}) as Record<string, number>;
+  const tot = (b.totals ?? {}) as Record<string, number>;
+  const user = `Ficha do paciente: ${String(b.about ?? 'sem ficha').slice(0, 1500)}\nMetas: ${t.kcal || '—'} kcal, proteína ${t.protein || '—'} g, hidratos ${t.carbs || '—'} g, gordura ${t.fat || '—'} g, fibra ${t.fiber || '—'} g, água ${t.water || '—'} L\nTotais do dia (opção A): ${tot.kcal} kcal, P ${tot.p} g, H ${tot.c} g, G ${tot.f} g, fibra ${tot.fib} g\nDia: ${String(b.day ?? '').slice(0, 40)}\nRefeições:\n${mealsText(b.meals)}`;
+  const r = await ask<{ general: string[]; notes: { meal: string; note: string }[] }>(client, model, NUTRI_REVIEW_SYSTEM, user, NUTRI_REVIEW_SCHEMA, 'medium');
+  if (!r) return { status: 502, body: { error: 'A IA não conseguiu rever agora. Tente outra vez.' } };
+  await count(store, REVIEW_LIMITS, uid, ip, new Date(), 'nr');
+  return { status: 200, body: { general: (r.general ?? []).map((g) => String(g).trim().slice(0, 300)).filter(Boolean).slice(0, 6), notes: (r.notes ?? []).map((n) => ({ meal: String(n.meal ?? '').slice(0, 40), note: String(n.note ?? '').trim().slice(0, 240) })).filter((n) => n.note).slice(0, 10) } };
 }

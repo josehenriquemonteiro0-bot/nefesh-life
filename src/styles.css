@@ -850,3 +850,5 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .nutri-g input{width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:4px 6px;font:600 14px Sora,sans-serif;text-align:right}
 .nutri-totals .macrobars{display:grid;gap:4px}
 .nutri-time{width:124px;flex:none;padding:6px 8px;font-size:15px}
+.swap-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.note-row{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);margin-top:8px}

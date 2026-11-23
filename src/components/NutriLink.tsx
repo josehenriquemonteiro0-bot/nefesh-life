@@ -3,8 +3,43 @@ import { shortDate, todayKey } from '../domain/dates';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
 import { applyNutriPlan, checkProPlan, clearNutriPlan, codeLooksValid, normCode, proApi, sendNutriDays, syncNutriShare } from '../domain/pro';
 import { isNutriKind } from '../domain/proNutriClient';
+import { CHECKIN } from '../domain/proNutri';
 import { useStore } from '../state/store';
 import { ChatThread } from './ProChat';
+import { ShoppingList } from './ShoppingList';
+
+/** Check-in semanal pedido pelo nutricionista: fome, saciedade, intestino, energia, adesão e uma nota. */
+function WeeklyCheckin({ code, pro, onDone }: { code: string; pro: string; onDone: () => void }) {
+  const { toast } = useStore();
+  const [v, setV] = useState<Record<string, number>>({});
+  const [nota, setNota] = useState('');
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    try {
+      await proApi('aluno/checkin', { code, checkin: { ...v, nota } });
+      toast(`Check-in enviado a ${pro}. Obrigado!`);
+      onDone();
+    } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="pro-ask" style={{ marginTop: 10 }}>
+      <p className="small" style={{ margin: '0 0 6px' }}><b>📝 Check-in semanal para {pro}</b> · 1 minuto</p>
+      {CHECKIN.map(([k, t, lo, hi]) => (
+        <div className="metric" key={k} role="group" aria-label={t}>
+          <div className="lbl"><span className="small">{t}</span><span className="mute small">{lo} → {hi}</span></div>
+          <div className="chips">{[1, 2, 3, 4, 5].map((n) => <button key={n} className={`chip sm ${v[k] === n ? 'on' : ''}`} aria-pressed={v[k] === n} onClick={() => setV({ ...v, [k]: n })}>{n}</button>)}</div>
+        </div>
+      ))}
+      <div className="metric" role="group" aria-label="Adesão ao plano">
+        <div className="lbl"><span className="small">Quanto conseguiu seguir o plano esta semana?</span><span className="mute small">0 → 10</span></div>
+        <div className="chips">{[0, 2, 4, 6, 8, 10].map((n) => <button key={n} className={`chip sm ${v.adesao === n ? 'on' : ''}`} aria-pressed={v.adesao === n} onClick={() => setV({ ...v, adesao: n })}>{n}</button>)}</div>
+      </div>
+      <textarea className="field" rows={2} maxLength={300} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6 }} value={nota} onChange={(e) => setNota(e.target.value)} placeholder={`Algo que queira contar a ${pro}? (opcional)`} aria-label="Nota do check-in" />
+      <button className="btn sm" style={{ marginTop: 6 }} disabled={busy || (!Object.keys(v).length && !nota.trim())} onClick={send}>{busy ? 'A enviar…' : 'Enviar check-in'}</button>
+    </div>
+  );
+}
 
 /** Paciente: o código do nutricionista (NEFESH Life Pro) põe o plano alimentar no diário; conversa e partilha do resumo. */
 export function NutriLinkCard() {
@@ -16,12 +51,25 @@ export function NutriLinkCard() {
   const [chat, setChat] = useState(false);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [shop, setShop] = useState(false);
+  const [due, setDue] = useState(false);
+  const [visit, setVisit] = useState<{ day: string; time: string; text: string } | null>(null);
 
   const check = (manual = false) => {
     if (!link) return Promise.resolve();
     return checkProPlan(link.code)
       .then((r) => {
         setUnread(r.unread ?? 0);
+        setDue(!!r.checkinDue);
+        setVisit(r.nextVisit ?? null);
+        // consulta de retorno: lembrete na véspera às 19h (uma vez por data)
+        if (r.nextVisit) {
+          const v = r.nextVisit;
+          const id = `cv${v.day.replace(/-/g, '')}`;
+          const eve = new Date(`${v.day}T12:00:00`); eve.setDate(eve.getDate() - 1);
+          const date = `${eve.getFullYear()}-${String(eve.getMonth() + 1).padStart(2, '0')}-${String(eve.getDate()).padStart(2, '0')}`;
+          if (date >= todayKey() && !(S.reminders ?? []).some((x) => x.id === id)) update((d) => { d.reminders = [...(d.reminders ?? []), { id, date, time: '19:00', text: `Amanhã tem consulta com ${link.pro}${v.time ? ` às ${v.time}` : ''}.` }]; });
+        }
         if (S.nutriShare?.on && S.nutriShare.at !== todayKey()) syncNutriShare(S, true).then(() => update((d) => { d.nutriShare = { ...d.nutriShare!, on: true, at: todayKey() }; })).catch(() => undefined);
         if (r.version > link.version || (r.plan?.nutri && !S.proNutriRx)) {
           update((d) => applyNutriPlan(d, r));
@@ -57,11 +105,15 @@ export function NutriLinkCard() {
         <p className="small mute" style={{ margin: 0 }}>
           {S.proNutriRx ? `${S.nutriPlan?.meals.length ?? 0} refeições hoje${S.proNutriRx.days.length > 1 && S.nutriPlan && 'day' in S.nutriPlan ? ` (${(S.nutriPlan as { day?: string }).day})` : ''} · atualizado a ${shortDate(link.at)}. Marque as refeições no plano: ${link.pro} vê a sua adesão.` : `${link.pro} ainda não enviou o plano. Aparece aqui sozinho.`}
         </p>
+        {visit && <p className="small" style={{ margin: '8px 0 0' }}>📅 Próxima consulta: <b>{shortDate(visit.day)}{visit.time ? ` às ${visit.time}` : ''}</b>{visit.text ? ` · ${visit.text}` : ''}</p>}
+        {due && <WeeklyCheckin code={link.code} pro={link.pro} onDone={() => setDue(false)} />}
         <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 10 }}>
           <button className="btn sm" onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
           {!S.proNutriRx && <button className="btn ghost sm" onClick={() => check(true)}>Ver se já chegou</button>}
+          {S.proNutriRx && <button className="btn ghost sm" onClick={() => setShop(true)}>🛒 Lista de compras</button>}
           <button className="btn ghost sm" onClick={() => setOpen(!open)} aria-expanded={open}>Partilha</button>
         </div>
+        {shop && S.proNutriRx && <ShoppingList rx={S.proNutriRx} pro={link.pro} onClose={() => setShop(false)} />}
         {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
         {open && (
           <div className="pro-share">

@@ -75,7 +75,7 @@ describe('NEFESH Pro para nutricionistas: plano alimentar', () => {
 
 describe('paciente: o plano do nutricionista no diário', () => {
   it('aplica o plano (diário, metas, dose) e muda o tipo de dia à meia-noite', async () => {
-    const { applyNutriPlan, refreshNutriDay, nutriDayLog, applyProPlan } = await import('./pro');
+    const { refreshNutriDay, nutriDayLog, applyProPlan } = await import('./pro');
     const S = { logs: {}, evals: [], ans: { sexo: 'f', idade: 40, altura: 165, peso: 70 } } as never as import('./types').AppState;
     const r = rx(); r.spirulina = 3;
     applyProPlan(S, { code: 'NP-AAAA-BBBB', pro: 'Ana', kind: 'nutricionista', plan: { is_workout: true, workouts: [], per_week: 3, professional: 'Ana', notes: '', nutri: r }, version: 1 });
@@ -90,5 +90,47 @@ describe('paciente: o plano do nutricionista no diário', () => {
     expect(refreshNutriDay(S, new Date('2026-11-23T20:00:00'))).toBe(false);
     S.logs['2026-11-23'] = { planLog: { '0': { status: 'alterado', option: 0, changes: ['sem arroz'] } }, hunger: 3 } as never;
     expect(nutriDayLog(S, '2026-11-23')).toMatchObject({ pct: 50, hunger: 3, meals: [{ label: 'Pós-treino', status: 'alterado', changes: ['sem arroz'] }] });
+  });
+});
+
+describe('substituições equivalentes', () => {
+  it('troca por alimentos do mesmo grupo com as mesmas calorias (ou proteína)', async () => {
+    const { equivalents } = await import('./foodSearch');
+    const rice = equivalents('Arroz, integral, cozido', 120);
+    expect(rice.length).toBeGreaterThan(0);
+    expect(rice.every((x) => Math.abs(x.kcal - 149) <= 25)).toBe(true);
+    const chicken = equivalents('Frango, peito, sem pele, grelhado', 120);
+    expect(chicken.length).toBeGreaterThan(0);
+    expect(chicken.every((x) => Math.abs(x.p - 38.4) <= 4)).toBe(true);
+    expect(equivalents('Coisa inventada', 100)).toEqual([]);
+  });
+});
+
+describe('ditado pela IA', () => {
+  it('as refeições ditadas substituem; as outras ficam; as retiradas saem', async () => {
+    const { mergeMeals } = await import('../components/ProNutriAI');
+    const cur = emptyRx().days[0].meals; // pa, almoco, lanche, jantar
+    const got = [{ ...cur[1], label: 'Almoço novo' }, { key: 'lanche_m' as const, label: 'Lanche da manhã', time: '10:30', options: [{ name: 'Opção A', items: [] }], notes: '' }];
+    const m = mergeMeals(cur, got, ['jantar']);
+    expect(m.map((x) => x.label)).toEqual(['Pequeno-almoço', 'Lanche da manhã', 'Almoço novo', 'Lanche da tarde']);
+  });
+});
+
+describe('plano atualizado a meio do dia', () => {
+  it('as marcações de hoje seguem a refeição com o mesmo nome', async () => {
+    const { applyNutriPlan } = await import('./pro');
+    const { todayKey } = await import('./dates');
+    const S = { logs: {}, evals: [] } as never as import('./types').AppState;
+    const r1 = rx();
+    r1.days = [r1.days[0]];
+    applyNutriPlan(S, { code: 'NP-AAAA-BBBB', pro: 'Ana', plan: { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '', nutri: r1 }, version: 1 });
+    const almoco = S.nutriPlan!.meals.findIndex((m) => m.label === 'Almoço');
+    S.logs[todayKey()] = { planLog: { [String(almoco)]: { status: 'seguido', option: 0 } } } as never;
+    const r2 = structuredClone(r1);
+    for (const d of r2.days) d.meals.unshift({ key: 'pa', label: 'Pequeno-almoço', time: '07:00', options: [{ name: 'Opção A', items: [itemFrom(rice, 50)] }], notes: '' });
+    applyNutriPlan(S, { code: 'NP-AAAA-BBBB', pro: 'Ana', plan: { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '', nutri: r2 }, version: 2 });
+    const now = S.nutriPlan!.meals.findIndex((m) => m.label === 'Almoço');
+    expect(now).not.toBe(almoco);
+    expect(S.logs[todayKey()].planLog).toEqual({ [String(now)]: { status: 'seguido', option: 0 } });
   });
 });

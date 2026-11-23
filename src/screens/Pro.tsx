@@ -14,7 +14,7 @@ import { libraryVideo, loadVideos } from '../domain/exVideos';
 import { StudentAssessments } from '../components/ProAssess';
 import { ChatThread } from '../components/ProChat';
 import { ShareReport } from '../components/ProReport';
-import { FastRxEditor, NutriEditor, NutriLogs } from '../components/ProNutri';
+import { FastRxEditor, NutriEditor, NutriLogs, NutriVisits } from '../components/ProNutri';
 import { isNutriKind } from '../domain/proNutriClient';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
@@ -407,6 +407,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [pro, setPro] = useState<ProInfo | null | undefined>(undefined);
   const [students, setStudents] = useState<ProStudent[]>([]);
   const [err, setErr] = useState('');
+  const [visitsOf, setVisitsOf] = useState<ProStudent | null>(null);
   const [form, setForm] = useState({ name: '', reg: '', kind: 'personal' });
   const [newName, setNewName] = useState('');
   const [edit, setEdit] = useState<ProStudent | null>(null);
@@ -440,6 +441,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
   if (profileOf) return <ProfileEditor nutri={nutri} student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
+  if (visitsOf) return <NutriVisits student={visitsOf} onClose={() => { setVisitsOf(null); load(); }} />;
   if (logs && nutri) return <NutriLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
   if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
 
@@ -540,6 +542,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
                 <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{nutri ? (s.profile ? 'Ficha' : '+ Ficha') : s.profile ? 'Perfil' : '+ Perfil'}</button>
                 <button className="btn ghost sm" onClick={() => setChatOf({ s, ref: '' })}>💬 Conversa{s.unread ? <span className="badge">{s.unread}</span> : null}</button>
                 {s.shareAt && <button className="btn ghost sm" onClick={() => setReportOf(s)}>📊 Relatório</button>}
+                {nutri && <button className="btn ghost sm" onClick={() => setVisitsOf(s)}>🗓️ Consultas</button>}
                 <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
                 {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appUrl))} target="_blank" rel="noreferrer">Enviar código</a>}

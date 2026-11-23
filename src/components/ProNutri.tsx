@@ -335,3 +335,67 @@ export function NutriLogs({ student, onClose, onComment }: { student: ProStudent
 }
 
 export { DayVsTargets };
+
+interface NoteRow { id: number; kind: 'nota' | 'retorno'; day: string; time: string; text: string; created: string }
+interface CheckinRow { id: number; day: string; request?: boolean; fome?: number; saciedade?: number; intestino?: number; energia?: number; adesao?: number; nota?: string }
+
+/** Consultas: próximo retorno (o paciente vê e recebe lembrete), notas da consulta (só o profissional vê) e check-ins semanais. */
+export function NutriVisits({ student, onClose }: { student: ProStudent; onClose: () => void }) {
+  const { toast } = useStore();
+  const [notes, setNotes] = useState<NoteRow[] | null>(null);
+  const [checkins, setCheckins] = useState<CheckinRow[]>([]);
+  const [text, setText] = useState('');
+  const [vDay, setVDay] = useState('');
+  const [vTime, setVTime] = useState('');
+  const [vText, setVText] = useState('');
+  const [err, setErr] = useState('');
+  const load = () => {
+    proApi<{ list: NoteRow[] }>('aluno/notas', { code: student.code }).then((r) => setNotes(r.list)).catch((e) => setErr((e as Error).message));
+    proApi<{ list: CheckinRow[] }>('aluno/checkins', { code: student.code }).then((r) => setCheckins(r.list)).catch(() => undefined);
+  };
+  useEffect(load, [student.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  const today = new Date().toISOString().slice(0, 10);
+  const next = notes?.filter((n) => n.kind === 'retorno' && n.day >= today).sort((a, b) => a.day.localeCompare(b.day))[0];
+  const add = (body: Record<string, unknown>, msg: string) => proApi('aluno/nota', { code: student.code, ...body }).then(() => { toast(msg); load(); }).catch((e) => setErr((e as Error).message));
+  return (
+    <>
+      <button className="btn ghost sm" onClick={onClose}>← Pacientes</button>
+      <h1 style={{ marginBottom: 4 }}>Consultas de {student.name}</h1>
+      {err && <p className="small warn-t">{err}</p>}
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>📅 Próximo retorno</h2>
+        {next ? <p className="small" style={{ marginTop: 0 }}><b>{shortDate(next.day)}{next.time ? ` às ${next.time}` : ''}</b>{next.text ? ` · ${next.text}` : ''} · {student.name} vê na app e recebe um lembrete na véspera.</p> : <p className="small mute" style={{ marginTop: 0 }}>Sem retorno marcado.</p>}
+        <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+          <input className="field sm" type="date" min={today} value={vDay} onChange={(e) => setVDay(e.target.value)} aria-label="Dia do retorno" />
+          <input className="field sm nutri-time" type="time" value={vTime} onChange={(e) => setVTime(e.target.value)} aria-label="Hora do retorno" />
+        </div>
+        <input className="field sm" style={{ width: '100%', marginTop: 8 }} maxLength={200} value={vText} onChange={(e) => setVText(e.target.value)} placeholder="Local ou link da videochamada (opcional)" aria-label="Local do retorno" />
+        <button className="btn sm" style={{ marginTop: 8 }} disabled={!vDay} onClick={() => { add({ kind: 'retorno', day: vDay, time: vTime, text: vText }, `Retorno marcado para ${shortDate(vDay)}.`); setVDay(''); setVTime(''); setVText(''); }}>{next ? 'Mudar o retorno' : 'Marcar retorno'}</button>
+      </section>
+      <section className="card">
+        <div className="row"><h2 style={{ margin: 0 }}>📝 Check-ins semanais</h2>
+          <button className="link small inline" onClick={() => proApi('aluno/checkin/pedir', { code: student.code }).then(() => { toast(`Pedido enviado: ${student.name} vê o check-in na app.`); load(); })}>Pedir agora</button>
+        </div>
+        <p className="small mute" style={{ margin: '4px 0 8px' }}>O paciente responde na app de 7 em 7 dias (ou quando pedir): fome, saciedade, intestino, energia e adesão.</p>
+        {checkins.filter((c) => !c.request).length === 0 && <p className="small mute">Ainda sem respostas.</p>}
+        {checkins.filter((c) => !c.request).map((c) => (
+          <p key={c.id} className="small" style={{ margin: '0 0 6px' }}>
+            <b>{shortDate(c.day)}</b> · fome {c.fome || '—'}/5 · saciedade {c.saciedade || '—'}/5 · intestino {c.intestino || '—'}/5 · energia {c.energia || '—'}/5 · adesão <b>{c.adesao ?? '—'}/10</b>{c.nota ? ` · "${c.nota}"` : ''}
+          </p>
+        ))}
+      </section>
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>🔒 Notas da consulta</h2>
+        <p className="small mute" style={{ margin: '0 0 8px' }}>Só você vê. Use o formato que preferir (ex.: S/O/A/P).</p>
+        <textarea className="field" rows={4} maxLength={2000} style={{ width: '100%', boxSizing: 'border-box' }} value={text} onChange={(e) => setText(e.target.value)} placeholder="ex.: S: refere mais fome à tarde. O: −1,2 kg em 3 semanas, cintura −3 cm. A: boa adesão ao almoço. P: aumentar proteína no lanche; retorno em 3 semanas." aria-label="Nota da consulta" />
+        <button className="btn sm" style={{ marginTop: 8 }} disabled={text.trim().length < 2} onClick={() => { add({ kind: 'nota', text }, 'Nota guardada.'); setText(''); }}>Guardar nota</button>
+        {notes?.filter((n) => n.kind === 'nota').map((n) => (
+          <div key={n.id} className="note-row">
+            <p className="small" style={{ margin: 0, whiteSpace: 'pre-wrap' }}><b>{shortDate(n.day)}</b> · {n.text}</p>
+            <button className="link small inline" onClick={() => confirm('Apagar esta nota?') && proApi('aluno/nota/apagar', { code: student.code, id: n.id }).then(load)}>apagar</button>
+          </div>
+        ))}
+      </section>
+    </>
+  );
+}

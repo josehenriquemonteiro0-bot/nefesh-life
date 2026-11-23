@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtNum } from '../domain/dates';
 import { MEALS, type MealKey } from '../domain/foods';
 import { PHOTO_API, type PhotoError, analyzePhoto, compressImage, mealForHour, photoEntry, type PhotoResult } from '../domain/photo';
+import { diaryMeal } from '../domain/planRead';
 import { useStore } from '../state/store';
 import { DecimalInput } from './DecimalInput';
 import { Icon } from './Icon';
@@ -10,7 +11,7 @@ import { PremiumTag } from './PremiumTag';
 const CONF: Record<string, string> = { alta: 'pos-up', media: 'pos-ok', baixa: 'pos-low' };
 
 function PhotoSheet({ onClose }: { onClose: () => void }) {
-  const { S, updateToday, toast } = useStore();
+  const { S, updateToday, toast, todayLog } = useStore();
   const hide = !!S.hideCalories;
   const file = useRef<HTMLInputElement>(null);
   const [img, setImg] = useState<{ data: string; media_type: 'image/jpeg' } | null>(null);
@@ -58,6 +59,18 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
   const entries = result ? result.items.map((it, i) => (keep[i] && grams[i] ? photoEntry(it, grams[i]!) : null)).filter((e) => e !== null) : [];
   const total = entries.reduce((t, e) => t + e!.kcal, 0);
   const label = MEALS.find((m) => m[0] === meal)![1];
+  // plano do nutricionista: a refeição correspondente, para comparar com a foto
+  const [markPlan, setMarkPlan] = useState(true);
+  const photoP = entries.reduce((t, e) => t + (e?.p ?? 0), 0);
+  const planIdx = S.nutriPlan ? S.nutriPlan.meals.findIndex((m) => diaryMeal(m.meal) === meal) : -1;
+  const planCmp = planIdx >= 0 && entries.length ? (() => {
+    const m = S.nutriPlan!.meals[planIdx];
+    const items = m.options[0]?.items ?? [];
+    const kcal = Math.round(items.reduce((t, x) => t + (x.kcal || 0), 0));
+    const p = Math.round(items.reduce((t, x) => t + (x.protein_g || 0), 0));
+    const totalNow = entries.reduce((t, e) => t + (e?.kcal ?? 0), 0);
+    return { idx: planIdx, label: m.label, kcal, p, marked: !!todayLog.planLog?.[String(planIdx)], close: kcal > 0 && Math.abs(totalNow - kcal) / kcal <= 0.15 && Math.abs(photoP - p) <= Math.max(5, p * 0.2) };
+  })() : null;
 
   return (
     <div className="modal show" onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
@@ -126,6 +139,16 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
                 <button key={k} className={meal === k ? 'on' : ''} aria-pressed={meal === k} onClick={() => setMeal(k)}>{n.replace('Pequeno-almoço', 'P. almoço')}</button>
               ))}
             </div>
+            {planCmp && (
+              <div className="pro-ask" style={{ margin: '0 0 12px' }}>
+                <p className="small" style={{ margin: 0 }}><b>Comparado com o plano ({planCmp.label}):</b> plano {planCmp.kcal} kcal · {planCmp.p} g proteína — foto {total} kcal · {Math.round(photoP)} g proteína</p>
+                <p className={`small ${planCmp.close ? 'neon' : 'gold'}`} style={{ margin: '4px 0 0' }}>{planCmp.close ? '✓ Muito parecido com o plano.' : `Diferença de ${total - planCmp.kcal > 0 ? '+' : ''}${total - planCmp.kcal} kcal e ${Math.round(photoP - planCmp.p) > 0 ? '+' : ''}${Math.round(photoP - planCmp.p)} g de proteína.`}</p>
+                {!planCmp.marked && (
+                  <label className="check" style={{ marginTop: 6 }}><input type="checkbox" checked={markPlan} onChange={(e) => setMarkPlan(e.target.checked)} />
+                    <span className="small">Marcar no plano como {planCmp.close ? '"segui"' : '"com alterações"'} (o nutricionista vê)</span></label>
+                )}
+              </div>
+            )}
             <button
               className="btn full"
               disabled={!entries.length}
@@ -133,6 +156,10 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
                 updateToday((d) => {
                   d.meals = { ...(d.meals || {}) };
                   d.meals[meal] = [...(d.meals[meal] || []), ...(entries as NonNullable<(typeof entries)[number]>[])];
+                  if (planCmp && !planCmp.marked && markPlan) {
+                    const diff = total - planCmp.kcal;
+                    d.planLog = { ...(d.planLog ?? {}), [String(planCmp.idx)]: { status: planCmp.close ? 'seguido' : 'alterado', option: 0, ...(planCmp.close ? {} : { changes: [`pela foto: ${diff > 0 ? '+' : ''}${diff} kcal, ${Math.round(photoP - planCmp.p) > 0 ? '+' : ''}${Math.round(photoP - planCmp.p)} g proteína`] }) } };
+                  }
                 });
                 toast(`${entries.length} ${entries.length === 1 ? 'alimento adicionado' : 'alimentos adicionados'} ao ${label.toLowerCase()}${hide ? '' : ` (${total} kcal)`}.`);
                 onClose();
