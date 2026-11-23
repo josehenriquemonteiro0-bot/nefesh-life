@@ -171,3 +171,98 @@ export async function shareImage(blob: Blob, text: string, filename = 'nefesh-li
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   return 'descarregado';
 }
+
+/**
+ * Imagem da "Chave do dia" no formato das histórias do Instagram (1080×1920): a frase em destaque,
+ * a referência e a marca NEFESH com o endereço da app (divulgação).
+ */
+export async function drawChaveCard(c: { texto: string; referencia: string; link: string }): Promise<Blob> {
+  try {
+    await document.fonts?.ready;
+  } catch {
+    /* sem fontes: usa as do sistema */
+  }
+  const SW = 1080;
+  const SH = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = SW;
+  canvas.height = SH;
+  const ctx = canvas.getContext('2d')!;
+  const font = (w: number, size: number) => `${w} ${size}px Sora, "Segoe UI", system-ui, sans-serif`;
+  const g = ctx.createLinearGradient(0, 0, SW, SH);
+  g.addColorStop(0, '#003a40');
+  g.addColorStop(0.55, '#06181a');
+  g.addColorStop(1, '#060d0e');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, SW, SH);
+  const glow = ctx.createRadialGradient(SW * 0.5, SH * 0.45, 40, SW * 0.5, SH * 0.45, 760);
+  glow.addColorStop(0, 'rgba(201,168,92,.18)');
+  glow.addColorStop(1, 'rgba(201,168,92,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, SW, SH);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  // marca no topo (fora da zona tapada pelo nome no Instagram)
+  ctx.font = font(700, 60);
+  const mw = ctx.measureText('nefesh').width;
+  ctx.font = font(600, 32);
+  const lw = ctx.measureText('L I F E').width;
+  const bx = SW / 2 - (mw + 50 + lw) / 2;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = NEON;
+  ctx.font = font(700, 60);
+  ctx.fillText('nefesh', bx, 300);
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.fillRect(bx + mw + 22, 258, 3, 52);
+  ctx.fillStyle = GOLD;
+  ctx.font = font(600, 32);
+  ctx.fillText('L I F E', bx + mw + 47, 296);
+  ctx.textAlign = 'center';
+
+  // etiqueta
+  ctx.fillStyle = GOLD;
+  ctx.font = font(700, 40);
+  ctx.fillText('C H A V E   D O   D I A', SW / 2, 560);
+  ctx.fillRect(SW / 2 - 60, 600, 120, 4);
+
+  // frase: o maior tamanho que cabe (até 9 linhas)
+  let size = 84;
+  let lines: string[] = [];
+  for (; size >= 44; size -= 4) {
+    ctx.font = font(700, size);
+    lines = wrap(ctx, c.texto, SW - 200);
+    if (lines.length * size * 1.3 <= 820) break;
+  }
+  const lh = size * 1.3;
+  let y = 1000 - (lines.length * lh) / 2 + size * 0.8;
+  ctx.fillStyle = '#ffffff';
+  for (const l of lines) {
+    ctx.fillText(l, SW / 2, y);
+    y += lh;
+  }
+  // referência
+  ctx.fillStyle = 'rgba(238,243,240,.75)';
+  ctx.font = font(500, 42);
+  ctx.fillText(c.referencia, SW / 2, y + 50);
+
+  // rodapé: convite à app (acima da zona da caixa de resposta do Instagram)
+  ctx.fillStyle = 'rgba(238,243,240,.9)';
+  ctx.font = font(600, 38);
+  ctx.fillText('Uma chave nova todos os dias na', SW / 2, SH - 330);
+  ctx.fillStyle = NEON;
+  ctx.font = font(700, 44);
+  ctx.fillText('NEFESH Life', SW / 2, SH - 270);
+  const u = (() => {
+    try {
+      return new URL(c.link);
+    } catch {
+      return null;
+    }
+  })();
+  ctx.fillStyle = 'rgba(238,243,240,.6)';
+  ctx.font = font(400, 30);
+  ctx.fillText(u ? u.host + u.pathname.replace(/\/$/, '') : c.link, SW / 2, SH - 215);
+
+  return new Promise((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('sem imagem'))), 'image/png'));
+}
