@@ -192,3 +192,27 @@ export function bodyContext(S: Pick<AppState, 'bodyLog' | 'evals'>, max = 16): s
   const last = lastAssessment(series);
   return `Medidas do corpo: ${parts.join('; ')}.${last ? ` Última avaliação completa em ${dmy(last.date)}${last.por ? ` (${last.por})` : ''}.` : ''}`;
 }
+
+/**
+ * Junta as avaliações lidas de vários relatórios: uma por data, da mais antiga para a mais recente.
+ * Na mesma data, os números juntam-se (o que um documento não tem, o outro completa).
+ */
+export function mergeEvals(lists: FullEval[][]): FullEval[] {
+  const by = new Map<string, FullEval>();
+  const ok = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+  for (const e of lists.flat()) {
+    const cur = by.get(e.date);
+    if (!cur) {
+      by.set(e.date, { ...e, medidas: { ...(e.medidas ?? {}) }, extra: [...(e.extra ?? [])] });
+      continue;
+    }
+    for (const k of ['altura', 'peso', 'gordura', 'magra', 'fc'] as const) if (ok(e[k])) cur[k] = e[k];
+    for (const [k, v] of Object.entries(e.medidas ?? {})) if (ok(v)) cur.medidas = { ...cur.medidas, [k]: v };
+    for (const x of e.extra ?? []) {
+      if (!ok(x.v)) continue;
+      const i = (cur.extra ?? []).findIndex((y) => y.label.toLowerCase() === x.label.toLowerCase());
+      cur.extra = i >= 0 ? cur.extra!.map((y, j) => (j === i ? x : y)) : [...(cur.extra ?? []), x];
+    }
+  }
+  return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+}

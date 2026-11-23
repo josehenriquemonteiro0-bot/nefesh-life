@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { bodyOf, targetsFor } from '../domain/body';
-import { bodySeries, saveEvals, type FullEval } from '../domain/bodyLog';
+import { bodySeries, mergeEvals, saveEvals, type FullEval } from '../domain/bodyLog';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { readHealthReport } from '../domain/pro';
 import { MEASURES as PERIMETERS, type MeasureKey } from '../domain/proProfile';
@@ -83,27 +83,49 @@ export function BodyAdjust() {
     setOpen(true);
   };
 
-  const readFile = async (fl: File) => {
+  const [progress, setProgress] = useState('');
+  /** Lê um ou vários relatórios (um de cada vez) e junta tudo por data numa só revisão. */
+  const readFiles = async (files: File[]) => {
     setBusy(true);
     setErr(null);
+    const lists: FullEval[][] = [];
+    const fails: string[] = [];
+    let latestGoals: Goals | null = null;
+    let latestGoalsDate = '';
+    let by = '';
     try {
-      const r = await readHealthReport(fl);
-      const evals = (r.evals ?? []).map((e) => ({ ...e, date: e.date || todayKey() }));
-      if (!r.found || (!evals.length && !r.kcal)) {
-        setErr('Não encontrámos medidas neste documento. Pode preencher à mão.');
+      for (const [i, fl] of files.entries()) {
+        setProgress(files.length > 1 ? ` ${i + 1} de ${files.length}` : '');
+        try {
+          const r = await readHealthReport(fl);
+          const evals = (r.evals ?? []).map((e) => ({ ...e, date: e.date || todayKey() }));
+          if (!r.found || (!evals.length && !r.kcal)) { fails.push(fl.name); continue; }
+          lists.push(evals);
+          const last = evals[evals.length - 1]?.date ?? '';
+          if (r.by && last >= latestGoalsDate) by = r.by;
+          if ((r.kcal || r.protein) && last >= latestGoalsDate) { latestGoals = { kcal: r.kcal ?? null, protein: r.protein ?? null, by: r.by ?? '' }; latestGoalsDate = last; }
+        } catch (e) {
+          if (files.length === 1) throw e;
+          fails.push(fl.name);
+        }
+      }
+      const all = mergeEvals(lists);
+      if (!all.length && !latestGoals) {
+        setErr(files.length > 1 ? 'Não encontrámos medidas nestes documentos. Pode preencher à mão.' : 'Não encontrámos medidas neste documento. Pode preencher à mão.');
         return;
       }
-      const newest = evals[evals.length - 1];
-      setF(newest ?? { date: todayKey() });
-      setOlder(evals.slice(0, -1));
-      setPor(r.by ?? '');
-      setGoals(r.kcal || r.protein ? { kcal: r.kcal ?? null, protein: r.protein ?? null, by: r.by ?? '' } : null);
+      setF(all[all.length - 1] ?? { date: todayKey() });
+      setOlder(all.slice(0, -1));
+      setPor(by);
+      setGoals(latestGoals);
       setUseGoals(true);
       setOpen(true);
+      if (fails.length) setErr(`Não consegui ler: ${fails.join(', ')}. Os outros foram lidos.`);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setBusy(false);
+      setProgress('');
     }
   };
 
@@ -150,20 +172,21 @@ export function BodyAdjust() {
         <>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
             <button className="btn sm" onClick={startManual}>✏️ Ajustar os meus dados</button>
-            <button className="btn ghost sm" disabled={busy} onClick={() => file.current?.click()}>{busy ? 'A ler o relatório…' : '📄 Anexar relatório ou bioimpedância'}</button>
+            <button className="btn ghost sm" disabled={busy} onClick={() => file.current?.click()}>{busy ? `A ler${progress}…` : '📄 Anexar relatórios ou bioimpedância'}</button>
           </div>
           <p className="small mute" style={{ margin: '8px 0 0' }}>
-            Já tem acompanhamento ou fez uma bioimpedância (InBody, Tanita…)? Anexe o PDF ou uma foto do relatório do nutricionista, médico ou academia. A IA lê só as medidas e as metas (incluindo avaliações anteriores, para o histórico); o documento não fica guardado e pode rever tudo antes de guardar.
+            Já tem acompanhamento ou fez uma bioimpedância (InBody, Tanita…)? Anexe o PDF ou uma foto do relatório do nutricionista, médico ou academia. Tem vários? Escolha-os todos de uma vez (até 10): juntamos tudo pela data no seu histórico e nos gráficos. A IA lê só as medidas e as metas (incluindo avaliações anteriores, para o histórico); o documento não fica guardado e pode rever tudo antes de guardar.
           </p>
           <input
             ref={file}
             type="file"
             accept="application/pdf,image/*"
+            multiple
             hidden
             onChange={(e) => {
-              const fl = e.target.files?.[0];
+              const fls = [...(e.target.files ?? [])].slice(0, 10);
               e.target.value = '';
-              if (fl) readFile(fl);
+              if (fls.length) readFiles(fls);
             }}
           />
           {err && <p className="small warn-t" style={{ margin: '8px 0 0' }}>{err}</p>}
