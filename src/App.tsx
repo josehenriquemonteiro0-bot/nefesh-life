@@ -42,6 +42,7 @@ import { bodySnapshot } from './domain/progress';
 import { sendDailyPing } from './domain/analytics';
 import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout, saveConsents } from './domain/account';
+import { useNativeSync } from './native/useNativeSync';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { saveInviteFromUrl } from './domain/social';
@@ -100,6 +101,8 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [S.ans]);
   const cloud = useCloudSync();
+  // app do iPhone: Apple Health e lembretes agendados no telemóvel
+  useNativeSync(S, update);
   useSocialSync();
   /** para onde ir depois do ecrã de conta */
   const [afterAccount, setAfterAccount] = useState<'quiz' | 'perfil' | 'guardar'>('perfil');

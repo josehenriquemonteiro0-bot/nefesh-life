@@ -1,3 +1,5 @@
+import { isNative } from '../domain/platform';
+import { enableNativeNotifications } from '../native/notify';
 import { HOME_PROGRESSIVE } from '../domain/firstWeek';
 import { TEST_DAYS_KEY, isTestCopy, testDays } from '../testDate';
 import { useState } from 'react';
@@ -31,7 +33,9 @@ function PushToggle() {
   if (S.notifications)
     return (
       <>
-        {S.community && (
+        {isNative() && <p className="small mute" style={{ margin: '12px 0 0' }}>Os lembretes (Spirulina, medicação, assistente, ciclo e jejum) ficam agendados neste iPhone e tocam mesmo com a app fechada.</p>}
+        {/* avisos da comunidade chegam por Web Push: na app do iPhone ficam para quando houver notificações do servidor (APNs) */}
+        {S.community && !isNative() && (
           <label className="check" style={{ marginTop: 12 }}>
             <input
               type="checkbox"
@@ -57,7 +61,7 @@ function PushToggle() {
           className="link small inline"
           style={{ marginTop: 10 }}
           onClick={async () => {
-            await disablePush();
+            if (!isNative()) await disablePush();
             update((d) => { d.notifications = false; });
             toast('Notificações desligadas.');
           }}
@@ -74,7 +78,8 @@ function PushToggle() {
         disabled={busy}
         onClick={async () => {
           setBusy(true);
-          const err = await enablePush(S.reminder);
+          // na app do iPhone os lembretes são agendados no próprio telemóvel
+          const err = isNative() ? await enableNativeNotifications() : await enablePush(S.reminder);
           setBusy(false);
           setMsg(err);
           if (!err) {
@@ -85,11 +90,11 @@ function PushToggle() {
       >
         <Icon name="bell" /> Ativar notificações
       </button>
-      {(msg || (isIOS() && !isInstalled())) && (
+      {(msg || (isIOS() && !isInstalled() && !isNative())) && (
         <p className="small key-warn">{msg ?? 'No iPhone, as notificações só funcionam com a app no ecrã principal: no Safari, toque em Partilhar → Adicionar ao ecrã principal.'}</p>
       )}
-      {!pushSupported() && !isIOS() && <p className="small mute">Este navegador não permite notificações.</p>}
-      <p className="small mute" style={{ margin: '8px 0 0' }}>Recebe o lembrete da Spirulina, as mensagens dos amigos e o aviso de fim da liga ao domingo.</p>
+      {!pushSupported() && !isIOS() && !isNative() && <p className="small mute">Este navegador não permite notificações.</p>}
+      <p className="small mute" style={{ margin: '8px 0 0' }}>{isNative() ? 'Recebe o lembrete da Spirulina, da medicação e os que combinar com o assistente, mesmo com a app fechada.' : 'Recebe o lembrete da Spirulina, as mensagens dos amigos e o aviso de fim da liga ao domingo.'}</p>
     </>
   );
 }

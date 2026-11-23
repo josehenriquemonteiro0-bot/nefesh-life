@@ -33,6 +33,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>A câmara serve para fotografar o prato (estimativa de calorias), o código de barras e a tabela nutricional dos produtos, receitas, relatórios e as fotos de evolução.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>A NEFESH Life lê do Apple Health os passos, o sono e os minutos de exercício (e, se autorizar, a frequência cardíaca em repouso e o peso) para o seu acompanhamento diário. Nunca são usados para publicidade.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>A NEFESH Life não escreve no Apple Health sem a sua autorização.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>A localização serve para medir a distância e o ritmo das suas corridas e caminhadas. O percurso fica no seu telemóvel.</string>
 	<key>NSMicrophoneUsageDescription</key>

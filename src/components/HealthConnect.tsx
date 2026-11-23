@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { healthKey, syncedLabel, useAuth } from '../domain/account';
-import { HEALTH_SHORTCUT_URL } from '../domain/healthSync';
+import { HEALTH_SHORTCUT_URL, applyHealthDays } from '../domain/healthSync';
+import { isNative } from '../domain/platform';
+import { connectNativeHealth, readNativeHealth } from '../native/health';
 import { PHOTO_API } from '../domain/photo';
 import { todayKey } from '../domain/dates';
 import { useStore } from '../state/store';
@@ -28,6 +30,7 @@ export function HealthConnectSheet({ onClose, openAccount, refresh }: { onClose:
   const [key, setKey] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [manual, setManual] = useState(!HEALTH_SHORTCUT_URL);
+  const [busy, setBusy] = useState(false);
   const endpoint = `${PHOTO_API}/saude`;
 
   useEffect(() => {
@@ -49,6 +52,61 @@ export function HealthConnectSheet({ onClose, openAccount, refresh }: { onClose:
       toast('Selecione o texto e copie.');
     }
   };
+
+  // app nativa do iPhone: lê o Apple Health diretamente (sem atalho e sem conta)
+  if (isNative()) {
+    const on = !!S.health2?.native;
+    const connect = async () => {
+      setBusy(true);
+      const err = await connectNativeHealth();
+      if (err) {
+        setBusy(false);
+        return toast(err);
+      }
+      const days = await readNativeHealth().catch(() => ({}));
+      update((d) => {
+        d.health2 = { since: d.health2?.since ?? todayKey(), native: true, lastAt: new Date().toISOString() };
+        applyHealthDays(d, days, 'device');
+      });
+      setBusy(false);
+      toast(Object.keys(days).length ? 'Ligado ao Apple Health. Os passos, o sono e o exercício entram sozinhos.' : 'Ligado. Se não aparecerem dados, confirme em Definições → Saúde → Acesso a dados → NEFESH Life.');
+    };
+    const refreshNow = async () => {
+      setBusy(true);
+      const days = await readNativeHealth().catch(() => ({}));
+      update((d) => {
+        applyHealthDays(d, days, 'device');
+        if (d.health2) d.health2.lastAt = new Date().toISOString();
+      });
+      setBusy(false);
+      toast('Dados atualizados.');
+    };
+    return (
+      <div className="modal show" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="sheet" role="dialog" aria-modal="true" aria-label="Ligar ao Apple Health">
+          <h2>Ligar ao Apple Health</h2>
+          <p className="small mute" style={{ marginTop: 0 }}>
+            A NEFESH Life lê do Apple Health os <b>passos</b>, o <b>sono</b> e os <b>minutos de exercício</b>, sempre que abre a app. Vale para o iPhone, o <b>Apple Watch</b> e os relógios cuja app escreve no Apple Health (Garmin, Samsung, Xiaomi, Fitbit, Polar, entre outros).
+          </p>
+          {on ? (
+            <div className="ok-box small">
+              Ligado desde {S.health2!.since.split('-').reverse().join('/')}. Últimos dados: {syncedLabel(S.health2!.lastAt)}.
+              <button className="link small inline" style={{ marginLeft: 8 }} disabled={busy} onClick={refreshNow}>atualizar agora</button>
+            </div>
+          ) : (
+            <button className="btn full" disabled={busy} onClick={connect}>{busy ? 'A ligar…' : '❤️ Ligar ao Apple Health'}</button>
+          )}
+          <p className="small mute">O iPhone pergunta que dados quer partilhar e pode mudar quando quiser em Definições → Saúde → Acesso a dados → NEFESH Life. Os dados do Apple Health só servem para o seu acompanhamento: nunca para publicidade.</p>
+          {on && (
+            <button className="link small inline" onClick={() => { update((d) => { delete d.health2; }); toast('Apple Health desligado nesta app.'); }}>desligar</button>
+          )}
+          <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+            <button className="btn ghost sm" onClick={onClose}>Fechar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal show" onClick={(e) => e.target === e.currentTarget && onClose()}>
