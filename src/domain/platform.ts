@@ -19,3 +19,6 @@ export function appUrl(): string {
   if (isNative()) return import.meta.env.VITE_PUBLIC_URL || 'https://josehenriquemonteiro0-bot.github.io/nefesh-life/';
   return `${location.origin}${import.meta.env.BASE_URL}`;
 }
+
+/** Política de privacidade e termos (páginas públicas, com versão do Brasil e de Portugal). */
+export const legalUrl = (page: 'privacidade' | 'termos') => `${appUrl()}legal/${page}.html`;

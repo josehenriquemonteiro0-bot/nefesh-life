@@ -1,3 +1,4 @@
+import { legalUrl } from '../domain/platform';
 import { useState } from 'react';
 import { CONSENT_TEXT, marketingOn, rdOn } from '../domain/consents';
 import { useAuth } from '../domain/account';
@@ -53,6 +54,9 @@ export function PrivacyCard() {
         </span>
       </label>
 
+      <p className="small" style={{ margin: '0 0 8px' }}>
+        <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Política de Privacidade</a> · <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a>
+      </p>
       <button className="link small inline" onClick={() => setOpen(!open)}>{open ? 'Fechar' : 'O que acontece com os dados de investigação?'}</button>
       {open && (
         <p className="small mute" style={{ margin: '6px 0 0' }}>
