@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   simulator:
-    runs-on: macos-15
+    # as máquinas Mac M1+ (arm64) do GitHub andam esgotadas; as Intel compilam igual para o simulador
+    runs-on: macos-15-intel
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
