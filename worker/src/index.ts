@@ -117,6 +117,8 @@ function json(body: unknown, status: number, headers: Record<string, string>) {
 function apiError(err: unknown, h: Record<string, string>) {
   if (err instanceof Anthropic.AuthenticationError) return json({ error: 'chave da Anthropic inválida no servidor' }, 500, h);
   if (err instanceof Anthropic.RateLimitError) return json({ error: 'Muitos pedidos. Tente daqui a um minuto.' }, 429, h);
+  // sem créditos na conta da IA: não é culpa da foto
+  if (err instanceof Anthropic.APIError && /credit balance/i.test(String(err.message))) return json({ error: 'A análise por IA está em pausa por momentos. Tente mais tarde ou registe à mão.', detail: 'sem créditos na conta da Anthropic' }, 503, h);
   // o detalhe da API ajuda a perceber o problema (não tem dados da pessoa nem chaves)
   if (err instanceof Anthropic.BadRequestError) return json({ error: 'O ficheiro não pôde ser lido.', detail: String(err.message).slice(0, 300) }, 400, h);
   if (err instanceof Anthropic.APIError) return json({ error: `serviço indisponível (${err.status})` }, 502, h);
