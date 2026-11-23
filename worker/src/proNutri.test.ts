@@ -101,3 +101,37 @@ describe('fase 2: check-in semanal, consultas e IA', () => {
     expect(r.body).toMatchObject({ general: ['Proteína abaixo da meta.'] });
   });
 });
+
+describe('fase 3: equipa e diretório', () => {
+  it('com autorização do paciente, nutricionista e personal veem o essencial um do outro', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 1', kind: 'personal' }, NOW, true);
+    const cn = (await pro.newStudent(db, 'ana', { name: 'Maria' }, NOW)).body.code as string;
+    const cp = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
+    await pro.savePlan(db, 'ana', { code: cn, plan: { workouts: [], nutri, jejum: { protocol: '14:10', open: '10:00' } } }, NOW);
+    await pro.savePlan(db, 'isa', { code: cp, plan: { workouts: [{ name: 'Treino A', focus: 'Inferior', exercises: [{ name: 'Agachamento', sets: 3 }] }], per_week: 3 } }, NOW);
+    await pro.linkStudent(db, 'u-maria', { code: cn }, NOW);
+    await pro.linkStudent(db, 'u-maria', { code: cp }, NOW);
+    const teamOfAna = async () => ((await pro.proState(db, 'ana', NOW)).body.students as { team?: { pro: string; summary: string[] }[] }[])[0].team;
+    expect(await teamOfAna()).toBeUndefined();
+    await pro.studentTeam(db, 'u-maria', { code: cn, on: true }, NOW);
+    expect(await teamOfAna()).toEqual([{ pro: 'Isabela', kind: 'personal', summary: ['Treino: Treino A (Inferior) · 3× por semana', 'Treinos feitos nos últimos 7 dias: 0'] }]);
+    const isaTeam = ((await pro.proState(db, 'isa', NOW)).body.students as { team?: { summary: string[] }[] }[])[0].team!;
+    expect(isaTeam[0].summary.join(' | ')).toMatch(/1800 kcal · 120 g de proteína.*Almoço 13:00.*Jejum 14:10/);
+    await pro.studentTeam(db, 'u-maria', { code: cp, on: false }, NOW);
+    expect(await teamOfAna()).toBeUndefined();
+  });
+  it('diretório: só aprovados que quiseram aparecer, com contacto válido', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'zé', { name: 'Zé', reg: 'X', kind: 'personal' }, NOW);
+    expect((await pro.saveDirectory(db, 'ana', { on: true, contact: 'javascript:alert(1)' }, NOW)).status).toBe(400);
+    expect((await pro.saveDirectory(db, 'ana', { on: true, city: 'Lisboa', online: true, areas: 'Emagrecimento, diabetes', contact: '+351 912 345 678' }, NOW)).status).toBe(200);
+    expect((await pro.saveDirectory(db, 'zé', { on: true, contact: 'ze@x.pt' }, NOW)).status).toBe(403);
+    const list = (await pro.directory(db)).body.list as { name: string; contact: string; online: boolean }[];
+    expect(list).toEqual([expect.objectContaining({ name: 'Ana Nutri', kind: 'nutricionista', contact: '+351912345678', online: true, city: 'Lisboa' })]);
+    await pro.saveDirectory(db, 'ana', { on: false }, NOW);
+    expect((await pro.directory(db)).body.list).toEqual([]);
+  });
+});

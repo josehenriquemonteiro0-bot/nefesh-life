@@ -329,8 +329,14 @@ export default {
         'aluno/partilha': () => pro.studentShare(db, key!, b),
         'aluno/dia': () => pro.logNutriDay(db, key!, b),
         'aluno/checkin': () => pro.studentCheckin(db, env.LIMITS as never, key!, b),
+        'aluno/equipa': () => pro.studentTeam(db, key!, b),
       };
       const key = pro.studentKey(uid, b.device);
+      // diretório público de profissionais verificados (sem conta)
+      if (action === 'diretorio/lista') {
+        const r = await pro.directory(db);
+        return json(r.body, r.status, h);
+      }
       // relatório de acompanhamento do próprio utilizador (Corpo): a IA lê as medidas; o documento não é guardado
       if (action === 'corpo/relatorio') {
         if (!key) return json({ error: 'pedido inválido' }, 400, h);
@@ -378,6 +384,8 @@ export default {
         'aluno/notas': () => pro.listNotes(db, uid, b),
         'aluno/nota': () => pro.addNote(db, uid, b),
         'aluno/nota/apagar': () => pro.deleteNote(db, uid, b),
+        diretorio: () => pro.myDirectory(db, uid),
+        'diretorio/guardar': () => pro.saveDirectory(db, uid, b),
       };
       // IA no montador (ditado por voz e revisão técnica): só profissionais aprovados
       if (action === 'ia/nutri-ditado' || action === 'ia/nutri-rever') {

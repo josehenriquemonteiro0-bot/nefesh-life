@@ -6,6 +6,7 @@ import type { ParsedWorkoutPlan } from '../domain/planRead';
 import { isNutriKind } from '../domain/proNutriClient';
 import { useStore } from '../state/store';
 import { ChatThread } from './ProChat';
+import { TeamToggle } from './TeamToggle';
 
 /** Aluno: o código do personal (NEFESH Life Pro) carrega o treino; com o código ligado, mostra quem é e permite desligar. */
 export function ProCodeCard() {
@@ -59,6 +60,7 @@ export function ProCodeCard() {
         )}
         <button className="btn sm" style={{ marginTop: 10 }} onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
         {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
+        <TeamToggle />
         <div className="pro-share">
           <label className="row" style={{ gap: 10, flexWrap: 'nowrap', alignItems: 'flex-start', cursor: 'pointer' }}>
             <input type="checkbox" checked={!!S.proShare?.on} style={{ marginTop: 2, width: 22, height: 22, flex: "0 0 22px", accentColor: "var(--neon)" }} aria-label="Partilhar o resumo de bem-estar" onChange={async (e) => {

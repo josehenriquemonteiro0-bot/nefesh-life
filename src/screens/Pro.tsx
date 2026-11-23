@@ -14,7 +14,8 @@ import { libraryVideo, loadVideos } from '../domain/exVideos';
 import { StudentAssessments } from '../components/ProAssess';
 import { ChatThread } from '../components/ProChat';
 import { ShareReport } from '../components/ProReport';
-import { FastRxEditor, NutriEditor, NutriLogs, NutriVisits } from '../components/ProNutri';
+import { DirectoryEditor } from '../components/ProDirectory';
+import { FastRxEditor, NutriEditor, NutriLogs, NutriVisits, TeamCard } from '../components/ProNutri';
 import { isNutriKind } from '../domain/proNutriClient';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
@@ -193,6 +194,7 @@ function PlanEditor({ student, others, onClose, onSaved, kind = 'personal' }: { 
       <h1 style={{ marginBottom: 4 }}>Treino de {student.name}</h1>
       {student.draft && student.plan && <p className="small gold" style={{ marginTop: 0 }}>📝 A editar o rascunho. O aluno continua a ver o treino enviado antes.</p>}
       {about && <p className="small mute pro-prof-line" style={{ marginTop: 0 }} title={about}>👤 {about}</p>}
+      <TeamCard team={student.team} />
       {templates.length > 0 && (
         <label className="small" style={{ display: 'block', margin: '0 0 12px' }}>
           Partir do treino de outro aluno:{' '}
@@ -464,6 +466,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               <option value="outro">Outro</option>
             </select>
           </label>
+          {isNutriKind(form.kind) && <p className="small mute" style={{ margin: '6px 0 0' }}>{form.kind === 'medico' ? 'Para médicos: ficha clínica e anamnese, plano alimentar e jejum, análises e medidas partilhadas pelo paciente, check-ins semanais, consultas de retorno e notas privadas.' : 'Para nutricionistas: ficha e anamnese, construtor de planos alimentares com a tabela TACO, jejum, adesão diária, check-ins semanais, consultas e notas privadas.'}</p>}
           <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional ({form.kind === 'nutricionista' ? 'CRN no Brasil, cédula da Ordem dos Nutricionistas em Portugal' : form.kind === 'medico' ? 'CRM no Brasil, cédula da Ordem dos Médicos em Portugal' : 'CREF no Brasil, título profissional em Portugal'})<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => proApi<{ pro: ProInfo }>('registar', form).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
         </section>
@@ -536,6 +539,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               )}
               {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 {nutri ? 'Plano' : 'Treino'} guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
               {s.profile && profileText(s.profile) && <p className="small mute pro-prof-line" style={{ margin: '0 0 6px' }}>👤 {profileText(s.profile)}</p>}
+              <TeamCard team={s.team} compact />
               {s.last && <p className="small mute" style={{ margin: '0 0 6px' }}>Último: {s.last.workout}, {shortDate(s.last.day)} · {STATUS[s.last.status] ?? s.last.status}{s.last.note ? ` · "${s.last.note}"` : ''}</p>}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                 <button className="btn sm" onClick={() => setEdit(s)}>{nutri ? (s.draft ? 'Continuar plano' : s.plan ? 'Editar plano' : 'Montar plano') : s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
@@ -550,6 +554,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               </div>
             </section>
           ))}
+          <DirectoryEditor />
         </>
       )}
     </>

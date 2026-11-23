@@ -21,6 +21,8 @@ export interface ProStudent {
   /** nutricionistas: último dia registado pelo paciente e dias com registos na última semana */
   nutriLast?: (import('./proNutri').NutriDayLog & { day: string }) | null;
   nutriWeek?: number;
+  /** os outros profissionais do mesmo paciente (só com autorização dele) */
+  team?: { pro: string; kind: string; summary: string[] }[];
   code: string;
   name: string;
   linked: boolean;
@@ -306,4 +308,10 @@ export function planWeek(plan: Pick<ParsedWorkoutPlan, 'weeks' | 'start' | 'phas
 export async function syncShare(S: AppState, on: boolean) {
   if (!S.proLink) return;
   await proApi('aluno/partilha', on ? { code: S.proLink.code, on: true, summary: shareSummary(S) } : { code: S.proLink.code, on: false });
+}
+
+/** A pessoa autoriza (ou não) que o personal e o nutricionista vejam o essencial um do outro. */
+export async function syncTeam(S: AppState, on: boolean) {
+  const codes = [S.proLink?.code, S.nutriLink?.code].filter(Boolean) as string[];
+  await Promise.all(codes.map((code) => proApi('aluno/equipa', { code, on })));
 }

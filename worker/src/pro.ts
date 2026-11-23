@@ -174,7 +174,8 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const unread = await unreadFor(db, s.code, 'pro');
     const sh = await db.prepare('SELECT updated FROM pro_share WHERE code = ?').bind(s.code).first<{ updated: string }>();
     const lastW = recentLogs.find((l) => l.workout !== NUTRI_LOG) ?? null;
-    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}) });
+    const team = await teamOf(db, s.uid, s.code, now);
+    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}), ...(team.length ? { team } : {}) });
   }
   return ok({ pro, students });
 }
@@ -687,4 +688,81 @@ export async function proList(db: DB) {
 export async function setProStatus(db: DB, uid: string, status: string) {
   if (!['aprovado', 'pendente', 'recusado'].includes(status)) return;
   await db.prepare('UPDATE pros SET status = ? WHERE uid = ?').bind(status, uid).run();
+}
+
+/* ───────── equipa multidisciplinar (com autorização do paciente) ───────── */
+
+/** O paciente autoriza (ou não) que os profissionais dele vejam o essencial uns dos outros. */
+export async function studentTeam(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  await db.prepare('INSERT INTO pro_team (key, on_, updated) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET on_ = excluded.on_, updated = excluded.updated').bind(key, b.on === true ? 1 : 0, now.toISOString()).run();
+  return ok();
+}
+
+export interface TeamMember { pro: string; kind: string; summary: string[] }
+/** Os outros profissionais do mesmo paciente (só com autorização): o que cada um definiu, em poucas linhas. */
+export async function teamOf(db: DB, studentUid: string | null, code: string, now = new Date()): Promise<TeamMember[]> {
+  if (!studentUid) return [];
+  const t = await db.prepare('SELECT on_ FROM pro_team WHERE key = ?').bind(studentUid).first<{ on_: number }>();
+  if (!t?.on_) return [];
+  const { results } = await db.prepare('SELECT s.code, s.plan, p.name, p.kind FROM pro_students s JOIN pros p ON p.uid = s.pro WHERE s.uid = ? AND s.code != ?').bind(studentUid, code).all<{ code: string; plan: string | null; name: string; kind: string }>();
+  const out: TeamMember[] = [];
+  for (const r of results) {
+    let plan: ReturnType<typeof cleanPlan> | null = null;
+    try { plan = r.plan ? (JSON.parse(r.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
+    const summary: string[] = [];
+    if (isNutriPro(r.kind)) {
+      const n = plan?.nutri;
+      if (n) {
+        const tg = n.targets;
+        if (tg.kcal || tg.protein) summary.push(`Metas: ${tg.kcal ? `${tg.kcal} kcal` : ''}${tg.kcal && tg.protein ? ' · ' : ''}${tg.protein ? `${tg.protein} g de proteína` : ''}${tg.water ? ` · água ${String(tg.water).replace('.', ',')} L` : ''}`);
+        summary.push(`Refeições: ${n.days[0].meals.map((m) => `${m.label} ${m.time}`).join(', ')}`);
+        if (n.days.length > 1) summary.push(`Tipos de dia: ${n.days.map((d) => d.name).join(', ')}`);
+      } else summary.push('Plano alimentar ainda não enviado.');
+      if (plan?.jejum) summary.push(`Jejum ${plan.jejum.protocol}${plan.jejum.protocol !== '5:2' ? ` (janela a partir das ${plan.jejum.open})` : ''}`);
+    } else {
+      if (plan?.workouts.length) {
+        summary.push(`Treino: ${plan.workouts.map((w) => `${w.name}${w.focus ? ` (${w.focus})` : ''}`).join(', ')} · ${plan.per_week}× por semana`);
+        const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND workout != '__nutri' AND json_extract(data, '$.status') != 'saltado'").bind(r.code, weekAgo(now)).first<{ n: number }>();
+        summary.push(`Treinos feitos nos últimos 7 dias: ${wk?.n ?? 0}`);
+      } else summary.push('Treino ainda não enviado.');
+    }
+    out.push({ pro: r.name, kind: r.kind, summary });
+  }
+  return out;
+}
+
+/* ───────── diretório de profissionais verificados ───────── */
+
+const KINDS = ['personal', 'nutricionista', 'medico', 'outro'];
+/** Contacto público: link https, e-mail ou telefone (só dígitos e +). */
+export function cleanContact(v: unknown): string {
+  const t = String(v ?? '').trim().slice(0, 200);
+  if (/^https:\/\/[^\s<>"']+$/i.test(t)) return t;
+  if (/^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(t)) return t;
+  const ph = t.replace(/[^\d+]/g, '');
+  return /^\+?\d{9,15}$/.test(ph) ? ph : '';
+}
+
+export async function myDirectory(db: DB, uid: string): Promise<R> {
+  const r = await db.prepare('SELECT data FROM pro_directory WHERE uid = ?').bind(uid).first<{ data: string }>();
+  return ok({ entry: r ? JSON.parse(r.data) : null });
+}
+
+export async function saveDirectory(db: DB, uid: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const p = await proOf(db, uid);
+  if (p?.status !== 'aprovado') return bad('Só profissionais aprovados aparecem no diretório.', 403);
+  if (b.on !== true) { await db.prepare('DELETE FROM pro_directory WHERE uid = ?').bind(uid).run(); return ok({ entry: null }); }
+  const contact = cleanContact(b.contact);
+  if (!contact) return bad('Indique um contacto válido: telefone, e-mail ou link https.');
+  const entry = { city: str(b.city, 60), online: b.online === true, areas: str(b.areas, 160), bio: str(b.bio, 300), contact };
+  await db.prepare('INSERT INTO pro_directory (uid, data, updated) VALUES (?, ?, ?) ON CONFLICT(uid) DO UPDATE SET data = excluded.data, updated = excluded.updated').bind(uid, JSON.stringify(entry), now.toISOString()).run();
+  return ok({ entry });
+}
+
+/** Lista pública: só profissionais aprovados que quiseram aparecer. */
+export async function directory(db: DB): Promise<R> {
+  const { results } = await db.prepare("SELECT p.name, p.kind, p.reg, d.data FROM pro_directory d JOIN pros p ON p.uid = d.uid WHERE p.status = 'aprovado' ORDER BY p.kind, p.name LIMIT 300").all<{ name: string; kind: string; reg: string; data: string }>();
+  return ok({ list: results.map((r) => ({ name: r.name, kind: KINDS.includes(r.kind) ? r.kind : 'outro', reg: r.reg, ...(JSON.parse(r.data) as object) })) });
 }

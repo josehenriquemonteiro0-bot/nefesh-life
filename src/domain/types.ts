@@ -154,6 +154,8 @@ export interface AppState {
   nutriLink?: { code: string; pro: string; version: number; at: string };
   proNutriRx?: import('./proNutri').NutriRx | null;
   nutriShare?: { on: boolean; at?: string; body?: boolean; labs?: boolean };
+  /** os profissionais da pessoa (personal e nutricionista) veem o essencial uns dos outros */
+  teamShare?: boolean;
   /** jejum intermitente: definições, jejuns feitos e prescrição de um profissional por ativar */
   fasting?: import('./fasting').FastingSettings | null;
   fastSessions?: import('./fasting').FastSession[];

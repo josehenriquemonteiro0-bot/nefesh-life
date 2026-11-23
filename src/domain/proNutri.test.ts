@@ -134,3 +134,12 @@ describe('plano atualizado a meio do dia', () => {
     expect(S.logs[todayKey()].planLog).toEqual({ [String(now)]: { status: 'seguido', option: 0 } });
   });
 });
+
+describe('diretório', () => {
+  it('contacto: WhatsApp, e-mail ou site', async () => {
+    const { contactHref } = await import('../components/ProDirectory');
+    expect(contactHref('+351912345678', 'Olá')).toBe('https://wa.me/351912345678?text=Ol%C3%A1');
+    expect(contactHref('ana@x.pt')).toBe('mailto:ana@x.pt');
+    expect(contactHref('https://ana.pt')).toBe('https://ana.pt');
+  });
+});

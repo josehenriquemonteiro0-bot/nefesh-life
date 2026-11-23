@@ -7,6 +7,7 @@ import { CHECKIN } from '../domain/proNutri';
 import { useStore } from '../state/store';
 import { ChatThread } from './ProChat';
 import { ShoppingList } from './ShoppingList';
+import { TeamToggle } from './TeamToggle';
 
 /** Check-in semanal pedido pelo nutricionista: fome, saciedade, intestino, energia, adesão e uma nota. */
 function WeeklyCheckin({ code, pro, onDone }: { code: string; pro: string; onDone: () => void }) {
@@ -106,6 +107,7 @@ export function NutriLinkCard() {
           {S.proNutriRx ? `${S.nutriPlan?.meals.length ?? 0} refeições hoje${S.proNutriRx.days.length > 1 && S.nutriPlan && 'day' in S.nutriPlan ? ` (${(S.nutriPlan as { day?: string }).day})` : ''} · atualizado a ${shortDate(link.at)}. Marque as refeições no plano: ${link.pro} vê a sua adesão.` : `${link.pro} ainda não enviou o plano. Aparece aqui sozinho.`}
         </p>
         {visit && <p className="small" style={{ margin: '8px 0 0' }}>📅 Próxima consulta: <b>{shortDate(visit.day)}{visit.time ? ` às ${visit.time}` : ''}</b>{visit.text ? ` · ${visit.text}` : ''}</p>}
+        <TeamToggle />
         {due && <WeeklyCheckin code={link.code} pro={link.pro} onDone={() => setDue(false)} />}
         <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 10 }}>
           <button className="btn sm" onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
@@ -156,7 +158,7 @@ export function NutriLinkCard() {
   };
   return (
     <section className="card">
-      <h2 style={{ marginTop: 0 }}>Tem nutricionista na NEFESH?</h2>
+      <h2 style={{ marginTop: 0 }}>Tem nutricionista ou médico na NEFESH?</h2>
       <p className="small mute" style={{ marginTop: 0 }}>O seu nutricionista monta o plano no NEFESH Life Pro e envia-lhe um código. O plano entra no diário, refeição a refeição, e ele acompanha como está a correr.</p>
       <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
         <input className="field sm" style={{ flex: 1, textTransform: 'uppercase' }} placeholder="NP-XXXX-XXXX" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Código do nutricionista" autoCapitalize="characters" />

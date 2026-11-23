@@ -1,5 +1,6 @@
 import { PROS, whatsappLink } from '../domain/content';
 import { useStore } from '../state/store';
+import { DirectoryList } from '../components/ProDirectory';
 
 export function Pros({ openReport }: { openReport: () => void }) {
   const { S, toast } = useStore();
@@ -21,6 +22,7 @@ export function Pros({ openReport }: { openReport: () => void }) {
           </div>
         </section>
       ))}
+      <DirectoryList />
       <p className="small mute">O pedido de contacto abre o WhatsApp da NEFESH com a mensagem já escrita, e a equipa encaminha-o para o profissional certo. Em "Enviar relatório" pode mandar o seu relatório pelo WhatsApp.</p>
     </>
   );

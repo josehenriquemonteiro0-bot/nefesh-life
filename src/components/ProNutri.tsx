@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { results, type Assessment } from '../domain/proAssess';
 import { shortDate } from '../domain/dates';
 import { PROTOCOLS } from '../domain/fasting';
 import { saveMyFood, searchNFoods, type NFood } from '../domain/foodSearch';
@@ -9,6 +11,7 @@ import {
   type Macros, type NDay, type NItem, type NMeal, type NMealKey, type NTargets, type NutriDayLog, type NutriRx,
 } from '../domain/proNutri';
 import { profileText } from '../domain/proProfile';
+import { ANAMNESE } from '../domain/proNutri';
 import { useStore } from '../state/store';
 import { NutriAICard } from './ProNutriAI';
 
@@ -238,6 +241,7 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
         </label>
       )}
 
+      <TeamCard team={student.team} />
       <NutriAICard rx={rx} dayIndex={di} profile={prof ?? null} onRx={(r) => setRx(r)} />
 
       <section className="card">
@@ -342,6 +346,7 @@ interface CheckinRow { id: number; day: string; request?: boolean; fome?: number
 /** Consultas: próximo retorno (o paciente vê e recebe lembrete), notas da consulta (só o profissional vê) e check-ins semanais. */
 export function NutriVisits({ student, onClose }: { student: ProStudent; onClose: () => void }) {
   const { toast } = useStore();
+  const [printing, setPrinting] = useState(false);
   const [notes, setNotes] = useState<NoteRow[] | null>(null);
   const [checkins, setCheckins] = useState<CheckinRow[]>([]);
   const [text, setText] = useState('');
@@ -361,6 +366,8 @@ export function NutriVisits({ student, onClose }: { student: ProStudent; onClose
     <>
       <button className="btn ghost sm" onClick={onClose}>← Pacientes</button>
       <h1 style={{ marginBottom: 4 }}>Consultas de {student.name}</h1>
+      <button className="btn ghost sm" style={{ marginBottom: 12 }} onClick={() => setPrinting(true)}>📄 Exportar ficha (PDF)</button>
+      {printing && <PatientPrint student={student} onDone={() => setPrinting(false)} />}
       {err && <p className="small warn-t">{err}</p>}
       <section className="card">
         <h2 style={{ marginTop: 0 }}>📅 Próximo retorno</h2>
@@ -397,5 +404,100 @@ export function NutriVisits({ student, onClose }: { student: ProStudent; onClose
         ))}
       </section>
     </>
+  );
+}
+
+const KIND_NAME: Record<string, string> = { personal: 'personal', nutricionista: 'nutricionista', medico: 'médico(a)', outro: 'profissional' };
+/** Os outros profissionais do mesmo paciente (o paciente autorizou): o essencial que cada um definiu. */
+export function TeamCard({ team, compact = false }: { team?: ProStudent['team']; compact?: boolean }) {
+  if (!team?.length) return null;
+  if (compact) return <p className="small mute" style={{ margin: '0 0 6px' }}>👥 Em equipa com {team.map((t) => `${t.pro} (${KIND_NAME[t.kind] ?? t.kind})`).join(', ')}</p>;
+  return (
+    <section className="card team-card">
+      <h3 style={{ margin: '0 0 6px' }}>👥 Equipa</h3>
+      {team.map((t) => (
+        <div key={t.pro} style={{ marginBottom: 6 }}>
+          <p className="small" style={{ margin: 0 }}><b>{t.pro}</b> · {KIND_NAME[t.kind] ?? t.kind}</p>
+          {t.summary.map((x) => <p key={x} className="small mute" style={{ margin: '2px 0 0' }}>{x}</p>)}
+        </div>
+      ))}
+      <p className="small mute" style={{ margin: '6px 0 0' }}>O paciente autorizou esta partilha e pode desligá-la a qualquer momento.</p>
+    </section>
+  );
+}
+
+/** Ficha do paciente para imprimir ou guardar em PDF: ficha e anamnese, avaliações, plano, check-ins, adesão e notas. */
+export function PatientPrint({ student, onDone }: { student: ProStudent; onDone: () => void }) {
+  const [data, setData] = useState<{ notes: NoteRow[]; checkins: CheckinRow[]; assess: (Assessment & { id: number })[]; logs: (ProLog & Partial<NutriDayLog>)[] } | null>(null);
+  useEffect(() => {
+    Promise.all([
+      proApi<{ list: NoteRow[] }>('aluno/notas', { code: student.code }).catch(() => ({ list: [] })),
+      proApi<{ list: CheckinRow[] }>('aluno/checkins', { code: student.code }).catch(() => ({ list: [] })),
+      proApi<{ list: (Assessment & { id: number })[] }>('aluno/avaliacoes', { code: student.code }).catch(() => ({ list: [] })),
+      proApi<{ logs: (ProLog & Partial<NutriDayLog>)[] }>('aluno/registos', { code: student.code }).catch(() => ({ logs: [] })),
+    ]).then(([n, c, a, l]) => setData({ notes: n.list, checkins: c.list.filter((x) => !x.request), assess: a.list, logs: l.logs.filter((x) => x.workout === '__nutri') }));
+  }, [student.code]);
+  useEffect(() => {
+    if (!data) return;
+    const done = () => onDone();
+    window.addEventListener('afterprint', done);
+    const t = setTimeout(() => window.print(), 300);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!data) return null;
+  const p = student.profile;
+  const rx = student.plan?.nutri;
+  const adh = data.logs.slice(0, 14);
+  const avg = adh.length ? Math.round(adh.reduce((t, x) => t + (x.pct ?? 0), 0) / adh.length) : null;
+  return createPortal(
+    <div className="print-report">
+      <div className="pr-head"><span>NEFESH Life Pro</span><div><b>Ficha de {student.name}</b><span>{new Date().toLocaleDateString('pt-PT')}</span></div></div>
+      <section>
+        <h3>Ficha</h3>
+        <p>{profileText(p) || 'Sem ficha registada.'}</p>
+        {p?.anamnese && <ul>{ANAMNESE.filter(([k]) => p.anamnese?.[k]).map(([k, l]) => <li key={k}><b>{l}:</b> {p.anamnese![k]}</li>)}</ul>}
+      </section>
+      {data.assess.length > 0 && (
+        <section>
+          <h3>Avaliações físicas</h3>
+          <table className="pr-table"><thead><tr><th>Data</th><th>Peso</th><th>% gordura</th><th>Massa gorda</th><th>Massa magra</th><th>Cintura</th></tr></thead>
+            <tbody>{data.assess.map((a) => { const r = results(a); return <tr key={a.id}><td>{shortDate(a.day)}</td><td>{a.peso ?? '—'} kg</td><td>{r.gordura ?? '—'}%</td><td>{r.gorda ?? '—'}</td><td>{r.magra ?? '—'}</td><td>{a.medidas.cintura ?? '—'}</td></tr>; })}</tbody>
+          </table>
+        </section>
+      )}
+      {rx && (
+        <section>
+          <h3>Plano alimentar atual</h3>
+          <p className="pr-small">Metas: {rx.targets.kcal || '—'} kcal · proteína {rx.targets.protein || '—'} g · hidratos {rx.targets.carbs || '—'} g · gordura {rx.targets.fat || '—'} g · fibra {rx.targets.fiber || '—'} g · água {rx.targets.water ? fmt(rx.targets.water) : '—'} L{rx.spirulina ? ` · Spirulina ${rx.spirulina} g/dia` : ''}</p>
+          {rx.days.map((d) => (
+            <div key={d.name}>
+              <p><b>{d.name}</b>{d.weekdays.length ? ` (${d.weekdays.map((w) => WD[w]).join(', ')})` : ''} · total {dayTotals(d).kcal} kcal, P {fmt(dayTotals(d).p)} g</p>
+              <ul>{d.meals.map((m) => <li key={m.label}><b>{m.time} {m.label}:</b> {m.options.filter((o) => o.items.length).map((o) => `${o.name}: ${o.items.map((i) => `${i.food} ${i.grams} g${i.measure ? ` (${i.measure})` : ''}`).join('; ')}`).join(' | ')}</li>)}</ul>
+            </div>
+          ))}
+          {rx.notes && <p className="pr-small">Recomendações: {rx.notes}</p>}
+          {student.plan?.jejum && <p className="pr-small">Jejum intermitente: {student.plan.jejum.protocol}{student.plan.jejum.protocol !== '5:2' ? `, janela a partir das ${student.plan.jejum.open}` : ''}</p>}
+        </section>
+      )}
+      <section>
+        <h3>Adesão ao plano (últimos registos)</h3>
+        <p>{avg !== null ? `Média de ${avg}% em ${adh.length} ${adh.length === 1 ? 'dia registado' : 'dias registados'}.` : 'Sem registos.'}</p>
+        {adh.length > 0 && <p className="pr-small">{adh.map((x) => `${shortDate(x.day)} ${x.pct ?? 0}%`).join(' · ')}</p>}
+      </section>
+      {data.checkins.length > 0 && (
+        <section>
+          <h3>Check-ins semanais</h3>
+          <ul>{data.checkins.slice(0, 8).map((c) => <li key={c.id}>{shortDate(c.day)}: fome {c.fome || '—'}/5, saciedade {c.saciedade || '—'}/5, intestino {c.intestino || '—'}/5, energia {c.energia || '—'}/5, adesão {c.adesao ?? '—'}/10{c.nota ? ` — "${c.nota}"` : ''}</li>)}</ul>
+        </section>
+      )}
+      {data.notes.filter((n) => n.kind === 'nota').length > 0 && (
+        <section>
+          <h3>Notas da consulta</h3>
+          <ul>{data.notes.filter((n) => n.kind === 'nota').map((n) => <li key={n.id} style={{ whiteSpace: 'pre-wrap' }}><b>{shortDate(n.day)}:</b> {n.text}</li>)}</ul>
+        </section>
+      )}
+      <p className="pr-foot">Documento confidencial com dados de saúde, gerado no NEFESH Life Pro. Guarde-o de acordo com as regras de proteção de dados (RGPD/LGPD).</p>
+    </div>,
+    document.body,
   );
 }
