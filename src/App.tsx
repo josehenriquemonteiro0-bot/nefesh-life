@@ -1,4 +1,4 @@
-import { endFast, fastState, fastingReminders, isDaily, startFast } from './domain/fasting';
+import { activeFast, endFast, fastState, fastingReminders, isDaily, startFast } from './domain/fasting';
 import { liveScores } from './domain/liveIndex';
 import { notePremiumUse } from './domain/analytics';
 import { useEffect, useRef, useState } from 'react';
@@ -180,9 +180,10 @@ export function App() {
   useEffect(() => {
     const prev = prevMeals.current;
     prevMeals.current = mealN;
-    if (!isDaily(S.fasting) || mealN <= prev) return;
-    const st = fastState(S.fasting!, S.fastSessions ?? [], new Date());
-    if (st.kind !== 'jejum') return;
+    if (mealN <= prev) return;
+    const pont = activeFast(S.fastSessions);
+    const st = isDaily(S.fasting) ? fastState(S.fasting!, S.fastSessions ?? [], new Date()) : pont ? { kind: 'jejum' as const, ...pont } : null;
+    if (st?.kind !== 'jejum') return;
     update((d) => { if (!(d.fastSessions ?? []).some((x) => !x.end)) startFast(d, st.since); endFast(d); });
     const h = `${Math.floor(st.hours)} h ${String(Math.floor((st.hours % 1) * 60)).padStart(2, '0')} min`;
     toast(st.reached ? `Jejum terminado: ${h} ✓ Bom apetite!` : `Jejum terminado mais cedo (${h}). Está tudo bem: o que conta é a semana.`);

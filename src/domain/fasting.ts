@@ -154,11 +154,20 @@ export function ensureSession(S: AppState, now = new Date()): boolean {
   return true;
 }
 
-/** Começar o jejum (agora ou a uma hora indicada). */
-export function startFast(S: AppState, at = new Date()) {
-  if (!S.fasting) return;
+/** Começar o jejum (agora ou a uma hora indicada). Sem jejum configurado é um jejum pontual (meta indicada ou 16 h). */
+export function startFast(S: AppState, at = new Date(), target?: number) {
   const sessions = (S.fastSessions ?? []).filter((s) => s.end);
-  S.fastSessions = [...sessions, { start: at.toISOString(), target: protocolOf(S.fasting.protocol).fast }].slice(-90);
+  const t = target && target > 0 ? Math.min(48, target) : isDaily(S.fasting) ? protocolOf(S.fasting!.protocol).fast : 16;
+  S.fastSessions = [...sessions, { start: at.toISOString(), target: t }].slice(-90);
+}
+
+/** Jejum explícito em curso (pontual ou do protocolo), se houver. */
+export function activeFast(sessions: FastSession[] | undefined, now = new Date()) {
+  const s = (sessions ?? []).find((x) => !x.end && now.getTime() - Date.parse(x.start) < 48 * 3600e3);
+  if (!s) return null;
+  const since = new Date(s.start);
+  const hours = (now.getTime() - since.getTime()) / 3600e3;
+  return { since, hours, target: s.target, endsAt: new Date(since.getTime() + s.target * 3600e3), reached: hours >= s.target };
 }
 
 /** Terminar o jejum em curso (primeira refeição ou botão). Devolve as horas feitas. */
@@ -253,6 +262,8 @@ export function fastSummary(S: Pick<AppState, 'fastSessions' | 'logs'>, n = 7, n
 /** Uma linha para o assistente. */
 export function fastingContext(S: AppState, now = new Date()): string {
   const f = S.fasting;
+  const pont = activeFast(S.fastSessions, now);
+  if (!f?.on && pont) return `Está num jejum pontual há ${Math.floor(pont.hours)} h (meta ${pont.target} h). O jejum regular (protocolo e janela) configura-se em Nutrição.`;
   if (!f?.on) return S.fastingRx ? `Tem uma prescrição de jejum ${S.fastingRx.protocol} de ${S.fastingRx.by} por ativar.` : '';
   if (f.protocol === '5:2') {
     const low = lowDayToday(S, now);

@@ -6,7 +6,7 @@
  * o modelo só escolhe os alimentos e as quantidades.
  */
 import { bodyContext } from './bodyLog';
-import { endFast, fastState, fastingContext, startFast } from './fasting';
+import { activeFast, endFast, fastState, fastingContext, fastingSafety, isDaily, protocolOf, startFast } from './fasting';
 import { GOAL_LABEL, QUESTIONS, TRAINING } from './content';
 import { daysSince, fmtNum, keyDaysAgo, shortDate, todayKey } from './dates';
 import { foodById, entryOf, MEALS, totals, type FoodEntry, type MealKey } from './foods';
@@ -300,18 +300,27 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
       }
       case 'jejum': {
         const f = S.fasting;
-        if (!f?.on || f.protocol === '5:2') { done.push('🌙 O jejum com janela configura-se em Nutrição'); break; }
         let at = new Date(now);
         if (a.time) { const [h, m] = a.time.split(':').map(Number); at.setHours(h, m, 0, 0); if (at > now) at = new Date(at.getTime() - 864e5); }
-        const st = fastState(f, S.fastSessions ?? [], now);
+        const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         if (a.value) {
-          startFast(S, at);
-          done.push(`🌙 Jejum começado às ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
-        } else if (st.kind === 'jejum') {
-          if (!(S.fastSessions ?? []).some((x) => !x.end)) startFast(S, st.since);
+          const target = a.option && a.option > 0 ? a.option : isDaily(f) ? protocolOf(f!.protocol).fast : 16;
+          // as mesmas regras de segurança do jejum configurado
+          const safe = fastingSafety(S, { protocol: target > 20 ? '20:4' : '16:8', diabetesMeds: f?.diabetesMeds, eatingDisorder: f?.eatingDisorder, supervised: f?.supervised });
+          if (safe.block.length) { done.push(`⛔ Jejum não iniciado: ${safe.block[0]}`); break; }
+          if (target > 24) { done.push('⛔ Jejum não iniciado: jejuns de mais de 24 horas só com acompanhamento de um profissional.'); break; }
+          startFast(S, at, target);
+          const end = new Date(at.getTime() + target * 3600e3);
+          done.push(`🌙 Jejum começado às ${hhmm(at)} · meta ${target % 1 ? `${Math.floor(target)} h ${Math.round((target % 1) * 60)} min` : `${target} h`} (até às ${hhmm(end)})${f?.on ? '' : ' · jejum pontual'}`);
+          break;
+        }
+        const pont = activeFast(S.fastSessions, now);
+        const st = isDaily(f) ? fastState(f!, S.fastSessions ?? [], now) : null;
+        if (pont || st?.kind === 'jejum') {
+          if (!pont && st?.kind === 'jejum') startFast(S, st.since);
           const r = endFast(S, at);
           done.push(r ? `🌙 Jejum terminado: ${Math.floor(r.hours)} h ${String(Math.floor((r.hours % 1) * 60)).padStart(2, '0')} min${r.reached ? ' ✓' : ''}` : '🌙 Jejum terminado');
-        } else done.push('🌙 A sua janela já estava aberta');
+        } else done.push('🌙 Não havia nenhum jejum a decorrer');
         break;
       }
       case 'peso': {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { targetsFor } from '../domain/body';
 import { todayKey } from '../domain/dates';
 import {
-  PROTOCOLS, canActivate, endFast, fastState, fastSummary, fastingSafety, isDaily, lowDayToday, mealPlan, protocolOf, proteinPerMeal, setFastStart, startFast, windowOn,
+  PROTOCOLS, activeFast, canActivate, endFast, fastState, fastSummary, fastingSafety, isDaily, lowDayToday, mealPlan, protocolOf, proteinPerMeal, setFastStart, startFast, windowOn,
   type FastProtocol, type FastingSettings,
 } from '../domain/fasting';
 import { useStore } from '../state/store';
@@ -11,6 +11,8 @@ const WD = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábad
 const WD_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MEAL_NAME = { pa: 'Pequeno-almoço', almoco: 'Almoço', lanche: 'Lanche', jantar: 'Jantar' } as const;
 const hm = (h: number) => `${Math.floor(h)} h ${String(Math.floor((h % 1) * 60)).padStart(2, '0')} min`;
+/** meta em horas: 16 → "16 h"; 15,25 → "15 h 15 min" */
+const th = (h: number) => (h % 1 ? `${Math.floor(h)} h ${Math.round((h % 1) * 60)} min` : `${h} h`);
 const clock = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 /** Atualiza a cada 30 s (contador do jejum). */
@@ -24,11 +26,11 @@ function useNow() {
 function FastRing({ hours, target }: { hours: number; target: number }) {
   const p = Math.min(1, hours / Math.max(1, target)), R = 44, C = 2 * Math.PI * R;
   return (
-    <svg className="r" viewBox="0 0 104 104" role="img" aria-label={`${hm(hours)} de ${target} horas`}>
+    <svg className="r" viewBox="0 0 104 104" role="img" aria-label={`${hm(hours)} de ${th(target)}`}>
       <circle cx={52} cy={52} r={R} stroke="rgba(255,255,255,.1)" strokeWidth={9} fill="none" />
       <circle cx={52} cy={52} r={R} stroke={p >= 1 ? 'var(--neon)' : '#C9A85C'} strokeWidth={9} fill="none" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - p)} transform="rotate(-90 52 52)" />
       <text x={52} y={52} textAnchor="middle" fill="#eef3f0" fontFamily="Sora" fontWeight={700} fontSize={19}>{Math.floor(hours)}h{String(Math.floor((hours % 1) * 60)).padStart(2, '0')}</text>
-      <text x={52} y={69} textAnchor="middle" fill="#97a69f" fontSize={11}>de {target} h</text>
+      <text x={52} y={69} textAnchor="middle" fill="#97a69f" fontSize={11}>de {th(target)}</text>
     </svg>
   );
 }
@@ -47,7 +49,7 @@ function FastingSetup({ initial, onClose }: { initial?: FastingSettings | null; 
     const nf: FastingSettings = { ...f, on: true, weekendOpen: weekend && daily ? f.weekendOpen ?? f.open : undefined, since: initial?.since ?? todayKey() };
     update((d) => {
       d.fasting = nf;
-      if (!initial) d.fastSessions = [];
+      if (!initial) d.fastSessions = (d.fastSessions ?? []).filter((x) => x.end);
       // a toma diária da Spirulina passa para a abertura da janela
       if (daily && nf.spirulinaInWindow) {
         const r = d.reminder;
@@ -139,6 +141,28 @@ export function FastingCard() {
 
   if (setup) return <section className="card"><h2 style={{ marginTop: 0 }}>🌙 Jejum intermitente</h2><FastingSetup initial={f?.on ? f : null} onClose={() => setSetup(false)} /></section>;
 
+  // jejum pontual (pedido por voz ou com o botão), sem protocolo configurado
+  const pont = !f?.on ? activeFast(S.fastSessions, now) : null;
+  if (pont)
+    return (
+      <section className="card fast-card">
+        <h2 style={{ margin: 0 }}>🌙 Jejum de hoje</h2>
+        <div className="health" style={{ marginTop: 10 }}>
+          <FastRing hours={pont.hours} target={pont.target} />
+          <div>
+            <p style={{ margin: 0, font: '600 20px Sora' }}>{pont.reached ? 'Meta cumprida ✓' : `Em jejum há ${hm(pont.hours)}`}</p>
+            <p className="small" style={{ margin: '2px 0 0' }}>{pont.reached ? 'Pode comer quando quiser.' : `Meta de ${th(pont.target)} às ${clock(pont.endsAt)}`}</p>
+            <p className="small mute" style={{ margin: '2px 0 0' }}>Começou às {clock(pont.since)} · a primeira refeição registada termina o jejum</p>
+          </div>
+        </div>
+        <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <button className="btn ghost sm" onClick={() => { update((d) => { endFast(d); }); toast(pont.reached ? `Jejum de ${hm(pont.hours)} ✓` : `Jejum terminado (${hm(pont.hours)}).`); }}>Terminar o jejum</button>
+          <button className="btn ghost sm" onClick={() => setSetup(true)}>Fazer jejum com regularidade</button>
+        </div>
+        <p className="small mute" style={{ margin: '8px 0 0' }}>No jejum: água, chá e café sem açúcar. Se sentir tonturas, fraqueza ou mal-estar, coma e fale com um profissional.</p>
+      </section>
+    );
+
   if (!f?.on) {
     if (rx)
       return (
@@ -150,7 +174,7 @@ export function FastingCard() {
           {rx.notes && <p className="small" style={{ marginTop: 0 }}>“{rx.notes}”</p>}
           <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
             <button className="btn sm" onClick={() => {
-              update((d) => { d.fasting = { on: true, protocol: rx.protocol, open: rx.open, lowDays: rx.lowDays, by: rx.by, supervised: true, spirulinaInWindow: true, reminders: true, since: todayKey() }; d.fastSessions = []; d.fastingRx = null; });
+              update((d) => { d.fasting = { on: true, protocol: rx.protocol, open: rx.open, lowDays: rx.lowDays, by: rx.by, supervised: true, spirulinaInWindow: true, reminders: true, since: todayKey() }; d.fastSessions = (d.fastSessions ?? []).filter((x) => x.end); d.fastingRx = null; });
               toast(`Jejum ${rx.protocol} ativado, como indicado por ${rx.by}.`);
             }}>Ativar</button>
             <button className="btn ghost sm" onClick={() => update((d) => { d.fastingRx = null; })}>Agora não</button>
@@ -201,7 +225,7 @@ export function FastingCard() {
           <FastRing hours={st.hours} target={st.target} />
           <div>
             <p style={{ margin: 0, font: '600 20px Sora' }}>{st.reached ? 'Meta cumprida ✓' : `Em jejum há ${hm(st.hours)}`}</p>
-            <p className="small" style={{ margin: '2px 0 0' }}>{st.reached ? `${hm(st.hours)} de jejum. Pode comer quando quiser.` : `Meta de ${st.target} h às ${clock(st.endsAt)}`}</p>
+            <p className="small" style={{ margin: '2px 0 0' }}>{st.reached ? `${hm(st.hours)} de jejum. Pode comer quando quiser.` : `Meta de ${th(st.target)} às ${clock(st.endsAt)}`}</p>
             <p className="small mute" style={{ margin: '2px 0 0' }}>Começou às {clock(st.since)} · a janela abre às {w.openText}</p>
           </div>
         </div>
@@ -253,6 +277,13 @@ export function FastingMini({ onOpen }: { onOpen: () => void }) {
   const { S } = useStore();
   const now = useNow();
   const f = S.fasting;
+  const pont = !f?.on ? activeFast(S.fastSessions, now) : null;
+  if (pont)
+    return (
+      <button className="status-strip fast-mini" onClick={onOpen} aria-label="Abrir o jejum na Nutrição">
+        <span>🌙 {pont.reached ? `Jejum cumprido: ${hm(pont.hours)} ✓` : `Em jejum há ${hm(pont.hours)} · meta às ${clock(pont.endsAt)}`}</span><span className="small mute">›</span>
+      </button>
+    );
   if (!f?.on) return null;
   let text: string;
   if (f.protocol === '5:2') {

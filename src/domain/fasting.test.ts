@@ -103,3 +103,25 @@ describe('jejum prescrito por um profissional', () => {
     expect(fastDays(S, 7, at('2026-11-24T13:00:00'))[0]).toMatchObject({ hours: 16.5, reached: true });
   });
 });
+
+describe('jejum pontual pelo assistente (sem configurar)', () => {
+  const act = (value: number, option = 0, time = '') => ({ type: 'jejum', value, option, time, meal: '', intensity: '', title: '' }) as never;
+  it('"vou fazer jejum agora até às 16h" começa um jejum pontual com a meta certa', async () => {
+    const { applyCoachActions } = await import('./coach');
+    const { activeFast } = await import('./fasting');
+    const S = base({ fasting: null });
+    const d = applyCoachActions(S, [act(1, 15.25)], at('2026-11-23T00:45:00'));
+    expect(d[0]).toContain('meta 15 h 15 min (até às 16:00)');
+    expect(d[0]).toContain('jejum pontual');
+    expect(activeFast(S.fastSessions, at('2026-11-23T10:00:00'))).toMatchObject({ target: 15.25, reached: false });
+    const e = applyCoachActions(S, [act(0)], at('2026-11-23T16:10:00'));
+    expect(e[0]).toContain('✓');
+  });
+  it('as regras de segurança também valem para o jejum pontual', async () => {
+    const { applyCoachActions } = await import('./coach');
+    const S = base({ fasting: null, ans: { safe: ['gravidez'], idade: 30, altura: 165, peso: 60 } } as never);
+    expect(applyCoachActions(S, [act(1, 16)], at('2026-11-23T00:45:00'))[0]).toContain('⛔');
+    expect(applyCoachActions(base({ fasting: null }), [act(1, 30)], at('2026-11-23T00:45:00'))[0]).toContain('24 horas');
+    expect(S.fastSessions ?? []).toHaveLength(0);
+  });
+});
