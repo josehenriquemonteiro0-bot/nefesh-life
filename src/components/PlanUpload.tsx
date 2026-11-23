@@ -75,6 +75,8 @@ export function PlanUpload({ kind }: { kind: 'nutri' | 'treino' }) {
     toast('Plano removido.');
   };
 
+  // plano montado no NEFESH Life Pro: não há ficheiro (o cartão do profissional mostra-o)
+  if (meta?.type === 'nefesh-pro') return null;
   return (
     <section className="card plan-up">
       <input ref={input} type="file" accept={ACCEPT_PLAN} hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />

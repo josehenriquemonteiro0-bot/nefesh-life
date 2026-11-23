@@ -1,4 +1,3 @@
-import { PROTOCOLS } from '../domain/fasting';
 import { useEffect, useState } from 'react';
 import { getAuth } from '../domain/account';
 import { shortDate } from '../domain/dates';
@@ -15,13 +14,15 @@ import { libraryVideo, loadVideos } from '../domain/exVideos';
 import { StudentAssessments } from '../components/ProAssess';
 import { ChatThread } from '../components/ProChat';
 import { ShareReport } from '../components/ProReport';
+import { FastRxEditor, NutriEditor, NutriLogs } from '../components/ProNutri';
+import { isNutriKind } from '../domain/proNutriClient';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const EFFORT: Record<string, string> = { facil: 'fácil', ok: 'na medida', dificil: 'difícil' };
-const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅' };
+const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅', adesao: '📉', fome: '🍽️', peso: '⚖️', checkin: '📝', retorno: '📅' };
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
 
@@ -80,32 +81,6 @@ function ExerciseInput({ value, focus, onPick, onType, label }: { value: string;
 }
 
 /** Montar ou editar o treino de um aluno: divisão (A, AB, ABC…), um treino de cada vez, sugestões pelo foco. */
-/** Nutricionistas e médicos: prescrever jejum intermitente ao aluno/paciente (ele ativa na app). */
-function FastRxEditor({ value, onChange, canSendAlone, busy, onSend }: { value?: ParsedWorkoutPlan['jejum']; onChange: (j: ParsedWorkoutPlan['jejum']) => void; canSendAlone: boolean; busy: boolean; onSend: () => void }) {
-  const [open, setOpen] = useState(!!value);
-  const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const j = value;
-  if (!open) return <button className="btn ghost sm" style={{ margin: '0 0 12px' }} onClick={() => { setOpen(true); onChange({ protocol: '14:10', open: '10:00', notes: '' }); }}>🌙 Indicar jejum intermitente</button>;
-  return (
-    <section className="card">
-      <div className="row"><h2 style={{ margin: 0 }}>🌙 Jejum intermitente</h2><button className="link small inline" onClick={() => { setOpen(false); onChange(undefined); }}>Retirar</button></div>
-      <div className="chips" role="group" aria-label="Protocolo" style={{ marginTop: 8 }}>
-        {PROTOCOLS.map((p) => <button key={p.id} className={`chip sm ${j?.protocol === p.id ? 'on' : ''}`} aria-pressed={j?.protocol === p.id} onClick={() => onChange({ ...(j ?? { open: '10:00' }), protocol: p.id, ...(p.id === '5:2' ? { lowDays: j?.lowDays?.length === 2 ? j.lowDays : [1, 4] } : { lowDays: undefined }) })}>{p.label}</button>)}
-      </div>
-      {j && j.protocol !== '5:2' ? (
-        <label className="hin" style={{ width: 150, marginTop: 8 }}><span>Janela abre às</span><input type="time" value={j.open} onChange={(e) => e.target.value && onChange({ ...j, open: e.target.value })} aria-label="Janela abre às" /></label>
-      ) : j ? (
-        <div className="chips" role="group" aria-label="Dias de poucas calorias" style={{ marginTop: 8 }}>
-          {WD.map((d, i) => { const on = (j.lowDays ?? []).includes(i); return <button key={d} className={`chip sm ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => onChange({ ...j, lowDays: on ? (j.lowDays ?? []).filter((x) => x !== i) : [...(j.lowDays ?? []), i].slice(-2) })}>{d}</button>; })}
-        </div>
-      ) : null}
-      <input className="field sm" style={{ width: '100%', marginTop: 8 }} maxLength={200} value={j?.notes ?? ''} onChange={(e) => j && onChange({ ...j, notes: e.target.value })} placeholder="Orientação para o paciente (opcional)" aria-label="Orientação" />
-      <p className="small mute" style={{ margin: '8px 0 0' }}>O paciente recebe a indicação na Nutrição e ativa-a com um toque; a app conta as horas e organiza as refeições dentro da janela.</p>
-      {canSendAlone && <button className="btn sm" style={{ marginTop: 10 }} disabled={busy || !j || (j.protocol === '5:2' && (j.lowDays ?? []).length !== 2)} onClick={onSend}>Enviar só a indicação de jejum</button>}
-    </section>
-  );
-}
-
 function PlanEditor({ student, others, onClose, onSaved, kind = 'personal' }: { student: ProStudent; others: ProStudent[]; onClose: () => void; onSaved: () => void; kind?: string }) {
   const { toast } = useStore();
   const [plan, setPlan] = useState<ParsedWorkoutPlan>(() => student.draft ?? student.plan ?? { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '' });
@@ -457,11 +432,15 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
         </section>
       </>
     );
+  const nutri = isNutriKind(pro?.kind);
+  const who = nutri ? 'paciente' : 'aluno';
+  if (edit && nutri) return <NutriEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
   if (edit) return <PlanEditor kind={pro?.kind} student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
   if (reportOf) return <ShareReport student={reportOf} onClose={() => setReportOf(null)} />;
   if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
-  if (profileOf) return <ProfileEditor student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
+  if (profileOf) return <ProfileEditor nutri={nutri} student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
+  if (logs && nutri) return <NutriLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
   if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
 
   return (
@@ -483,7 +462,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               <option value="outro">Outro</option>
             </select>
           </label>
-          <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional (CREF no Brasil, título profissional em Portugal)<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
+          <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional ({form.kind === 'nutricionista' ? 'CRN no Brasil, cédula da Ordem dos Nutricionistas em Portugal' : form.kind === 'medico' ? 'CRM no Brasil, cédula da Ordem dos Médicos em Portugal' : 'CREF no Brasil, título profissional em Portugal'})<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => proApi<{ pro: ProInfo }>('registar', form).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
         </section>
       )}
@@ -497,7 +476,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       {pro?.status === 'aprovado' && (
         <>
           <p className="small mute" style={{ marginTop: 0 }}>{pro.name} · {pro.reg}</p>
-          {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber quando os alunos concluem um treino.</p>}
+          {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber {nutri ? 'quando os pacientes lhe escrevem' : 'quando os alunos concluem um treino'}.</p>}
           {students.some((s) => s.alerts?.length) && (
             <section className="card pro-attn">
               <h2 style={{ marginTop: 0 }}>Precisa de atenção</h2>
@@ -510,46 +489,55 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             </section>
           )}
           <section className="card">
-            <h2 style={{ marginTop: 0 }}>Novo aluno</h2>
+            <h2 style={{ marginTop: 0 }}>Novo {who}</h2>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-              <input className="field sm" style={{ flex: 1 }} value={newName} maxLength={40} placeholder="Nome do aluno" onChange={(e) => setNewName(e.target.value)} aria-label="Nome do aluno" />
+              <input className="field sm" style={{ flex: 1 }} value={newName} maxLength={40} placeholder={`Nome do ${who}`} onChange={(e) => setNewName(e.target.value)} aria-label={`Nome do ${who}`} />
               <button className="btn sm" disabled={newName.trim().length < 2} onClick={() => proApi<{ code: string; name: string }>('aluno/novo', { name: newName }).then((r) => { setAskProfile({ code: r.code, name: r.name }); setAskPlan(null); setNewName(''); load(); }).catch((e) => setErr((e as Error).message))}>Criar código</button>
             </div>
             {askProfile && (
               <div className="pro-ask">
                 <p className="small" style={{ margin: 0 }}><b>✓ Código de {askProfile.name}: {askProfile.code}</b></p>
-                <p className="small" style={{ margin: '6px 0 8px' }}>Quer registar um perfil mais detalhado de {askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.</p>
+                <p className="small" style={{ margin: '6px 0 8px' }}>{nutri ? `Quer preencher a ficha de ${askProfile.name} (medidas, objetivo, anamnese: doenças, medicação, alergias, rotina)? As metas do plano são sugeridas a partir dela.` : `Quer registar um perfil mais detalhado de ${askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.`}</p>
                 <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
-                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code) ?? ({ code: askProfile.code, name: askProfile.name, profile: null } as ProStudent); setAskProfile(null); setProfileOf(st); }}>Registar perfil</button>
-                  <button className="btn ghost sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code); setAskProfile(null); if (st) setEdit(st); }}>Agora não, montar treino</button>
+                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code) ?? ({ code: askProfile.code, name: askProfile.name, profile: null } as ProStudent); setAskProfile(null); setProfileOf(st); }}>{nutri ? 'Preencher ficha' : 'Registar perfil'}</button>
+                  <button className="btn ghost sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code); setAskProfile(null); if (st) setEdit(st); }}>{nutri ? 'Agora não, montar plano' : 'Agora não, montar treino'}</button>
                 </div>
               </div>
             )}
             {askPlan && !askProfile && (
               <div className="pro-ask">
-                <p className="small" style={{ margin: '0 0 8px' }}>Perfil de {askPlan.name} guardado. Montar o treino agora?</p>
+                <p className="small" style={{ margin: '0 0 8px' }}>{nutri ? 'Ficha' : 'Perfil'} de {askPlan.name} guardad{nutri ? 'a' : 'o'}. Montar o {nutri ? 'plano alimentar' : 'treino'} agora?</p>
                 <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
-                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askPlan.code) ?? askPlan; setAskPlan(null); setEdit(st); }}>Montar treino</button>
+                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askPlan.code) ?? askPlan; setAskPlan(null); setEdit(st); }}>{nutri ? 'Montar plano' : 'Montar treino'}</button>
                   <button className="link small inline" onClick={() => setAskPlan(null)}>Depois</button>
                 </div>
               </div>
             )}
           </section>
-          {students.length === 0 && <p className="small mute">Ainda sem alunos. Crie um código para cada aluno e monte o treino dele.</p>}
+          {students.length === 0 && <p className="small mute">{nutri ? 'Ainda sem pacientes. Crie um código para cada paciente e monte o plano alimentar dele.' : 'Ainda sem alunos. Crie um código para cada aluno e monte o treino dele.'}</p>}
           {students.map((s) => (
             <section className="card pro-student" key={s.code}>
               <div className="row"><h2 style={{ margin: 0 }}>{s.name}</h2><span className="small mute">{s.code}</span></div>
+              {nutri ? (
+                <p className="small" style={{ margin: '4px 0' }}>
+                  {s.linked ? '✓ Ligado na app' : '⏳ À espera que o paciente use o código'}
+                  {s.plan?.nutri ? ' · plano enviado' : s.draft ? ' · plano por enviar' : ' · plano por montar'}
+                  {s.linked ? ` · ${s.nutriWeek ?? 0} ${s.nutriWeek === 1 ? 'dia registado' : 'dias registados'} nos últimos 7` : ''}
+                  {s.nutriLast ? ` · último: ${shortDate(s.nutriLast.day)}, adesão ${s.nutriLast.pct}%` : ''}
+                </p>
+              ) : (
               <p className="small" style={{ margin: '4px 0' }}>
                 {s.linked ? '✓ Ligado na app' : '⏳ À espera que o aluno use o código'}
                 {s.plan ? ` · ${s.plan.workouts.length} ${s.plan.workouts.length === 1 ? 'treino enviado' : 'treinos enviados'}` : s.draft ? ' · treino por enviar' : ' · treino por montar'}
                 {s.linked ? ` · ${s.week} ${s.week === 1 ? 'treino' : 'treinos'} nos últimos 7 dias` : ''}
               </p>
-              {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 Treino guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
+              )}
+              {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 {nutri ? 'Plano' : 'Treino'} guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
               {s.profile && profileText(s.profile) && <p className="small mute pro-prof-line" style={{ margin: '0 0 6px' }}>👤 {profileText(s.profile)}</p>}
               {s.last && <p className="small mute" style={{ margin: '0 0 6px' }}>Último: {s.last.workout}, {shortDate(s.last.day)} · {STATUS[s.last.status] ?? s.last.status}{s.last.note ? ` · "${s.last.note}"` : ''}</p>}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                <button className="btn sm" onClick={() => setEdit(s)}>{s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
-                <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{s.profile ? 'Perfil' : '+ Perfil'}</button>
+                <button className="btn sm" onClick={() => setEdit(s)}>{nutri ? (s.draft ? 'Continuar plano' : s.plan ? 'Editar plano' : 'Montar plano') : s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
+                <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{nutri ? (s.profile ? 'Ficha' : '+ Ficha') : s.profile ? 'Perfil' : '+ Perfil'}</button>
                 <button className="btn ghost sm" onClick={() => setChatOf({ s, ref: '' })}>💬 Conversa{s.unread ? <span className="badge">{s.unread}</span> : null}</button>
                 {s.shareAt && <button className="btn ghost sm" onClick={() => setReportOf(s)}>📊 Relatório</button>}
                 <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>

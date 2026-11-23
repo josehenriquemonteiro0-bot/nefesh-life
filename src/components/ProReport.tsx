@@ -48,6 +48,34 @@ export function ShareReport({ student, onClose }: { student: ProStudent; onClose
             <section className="card"><p className="small mute">🌿 Spirulina</p><b className="big">{x.spirulinaDays}<small>/14</small></b><p className="small" style={{ margin: '4px 0 0' }}>dias</p></section>
             {x.weight && <section className="card"><p className="small mute">⚖️ Peso</p><b className="big">{fmt(x.weight.last)}<small> kg</small></b><p className="small" style={{ margin: '4px 0 0' }}>{x.weight.last - x.weight.first >= 0 ? '+' : ''}{fmt(x.weight.last - x.weight.first)} kg desde {dm(x.weight.from)}</p></section>}
           </div>
+          {x.nutri && (
+            <section className="card" style={{ marginTop: 10 }}>
+              <p className="small mute" style={{ marginTop: 0 }}>🥗 Plano alimentar</p>
+              <b className="big">{x.nutri.adherence !== null ? `${x.nutri.adherence}%` : '—'}<small> de adesão</small></b>
+              <Days days={x.nutri.days.map((d) => ({ d: d.d, e: d.pct ?? undefined })) as ShareDay[]} pick={(d) => d.e} max={100} label="Adesão" />
+              <p className="small" style={{ margin: '6px 0 0' }}>{[x.nutri.hunger !== null ? `Fome média ${fmt(x.nutri.hunger)}/5` : '', x.nutri.fastAvg !== null ? `jejum médio ${fmt(x.nutri.fastAvg)} h (${x.nutri.fastDays} cumpridos)` : ''].filter(Boolean).join(' · ')}</p>
+              {x.nutri.changes.length > 0 && (
+                <details className="small" style={{ marginTop: 8 }}>
+                  <summary>Alterações ao plano ({x.nutri.changes.length})</summary>
+                  {x.nutri.changes.map((c, i) => <p key={i} style={{ margin: '4px 0 0' }}>{c}</p>)}
+                </details>
+              )}
+            </section>
+          )}
+          {x.labs && x.labs.length > 0 && (
+            <section className="card" style={{ marginTop: 10 }}>
+              <p className="small mute" style={{ marginTop: 0 }}>🧪 Análises</p>
+              <table className="cmp">
+                <thead><tr><th /><th>anterior</th><th>última</th></tr></thead>
+                <tbody>
+                  {x.labs.map((r) => {
+                    const out = (r.lo !== null && r.value < r.lo) || (r.hi !== null && r.value > r.hi);
+                    return <tr key={r.name}><td>{r.name}</td><td>{r.prev !== null ? `${fmt(r.prev, 2)} ${r.unit}` : '—'}</td><td className={out ? 'warn-t' : ''}><b>{fmt(r.value, 2)} {r.unit}</b><br /><span className="small mute">{dmy(r.date)}</span></td></tr>;
+                  })}
+                </tbody>
+              </table>
+            </section>
+          )}
           {x.body && x.body.length > 0 && (
             <section className="card" style={{ marginTop: 10 }}>
               <p className="small mute" style={{ marginTop: 0 }}>📏 Corpo: medidas e avaliações</p>

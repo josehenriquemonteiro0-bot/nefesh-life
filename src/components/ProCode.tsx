@@ -3,6 +3,7 @@ import { applyProPlan, checkProPlan, clearProPlan, codeLooksValid, flushWorkouts
 import { todayKey } from '../domain/dates';
 import { shortDate } from '../domain/dates';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
+import { isNutriKind } from '../domain/proNutriClient';
 import { useStore } from '../state/store';
 import { ChatThread } from './ProChat';
 
@@ -108,8 +109,9 @@ export function ProCodeCard() {
     if (!codeLooksValid(code)) return setErr('O código tem este formato: NP-XXXX-XXXX.');
     setBusy(true);
     try {
-      const r = await proApi<{ code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number }>('aluno/ligar', { code: normCode(code) });
+      const r = await proApi<{ code: string; pro: string; kind?: string; plan: ParsedWorkoutPlan | null; version: number }>('aluno/ligar', { code: normCode(code) });
       update((d) => applyProPlan(d, r));
+      if (isNutriKind(r.kind)) { toast(`Ligado a ${r.pro} (nutrição): o plano alimentar fica em Saúde → Nutrição.`); return; }
       toast(r.plan ? `Treino de ${r.pro} carregado: ${r.plan.workouts.length} ${r.plan.workouts.length === 1 ? 'treino' : 'treinos'}.` : `Ligado a ${r.pro}. O treino aparece assim que estiver pronto.`);
     } catch (e) {
       setErr((e as Error).message);

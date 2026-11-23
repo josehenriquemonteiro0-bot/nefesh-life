@@ -4,6 +4,9 @@
  * As medidas e avaliações do corpo só vão com uma segunda autorização (proShare.body).
  */
 import { bodyEvolution, bodySeries } from './bodyLog';
+import { labSeries } from './care';
+import { fastDays } from './fasting';
+import { dayAdherence, weekChanges } from './planAdherence';
 import { keyDaysAgo } from './dates';
 import { planFor } from './plan';
 import { tookOn } from './stats';
@@ -20,6 +23,24 @@ export interface ShareSummary {
   weight: { first: number; last: number; from: string; to: string } | null;
   /** medidas e avaliações do corpo (só com autorização própria) */
   body?: ShareBody[];
+  labs?: ShareLab[];
+  nutri?: ShareNutri;
+}
+/** Para o nutricionista: adesão ao plano por dia, alterações, fome e jejum. */
+export interface ShareNutri { adherence: number | null; days: { d: string; pct: number | null; hunger?: number }[]; changes: string[]; hunger: number | null; fastAvg: number | null; fastDays: number }
+export interface ShareLab { name: string; unit: string; value: number; date: string; prev: number | null; lo: number | null; hi: number | null }
+function nutriBlock(S: AppState, keys: string[]): ShareNutri {
+  const days = keys.map((d) => { const a = dayAdherence(S, d); const h = S.logs[d]?.hunger; return { d, pct: a.done ? a.pct : null, ...(h ? { hunger: h } : {}) }; });
+  const done = days.filter((x) => x.pct !== null);
+  const fd = fastDays(S, 14);
+  return {
+    adherence: done.length ? Math.round(done.reduce((t, x) => t + (x.pct ?? 0), 0) / done.length) : null,
+    days,
+    changes: weekChanges(S, 14).slice(-20),
+    hunger: avg(days.map((x) => x.hunger)),
+    fastAvg: fd.length ? Math.round((fd.reduce((t, x) => t + x.hours, 0) / fd.length) * 10) / 10 : null,
+    fastDays: fd.filter((x) => x.reached).length,
+  };
 }
 export interface ShareBody { label: string; unit: string; first: number; last: number; from: string; to: string; diff: number | null }
 
@@ -28,7 +49,7 @@ const avg = (a: (number | undefined)[]) => {
   return v.length ? Math.round((v.reduce((s, x) => s + x, 0) / v.length) * 10) / 10 : null;
 };
 
-export function shareSummary(S: AppState, now = new Date()): ShareSummary {
+export function shareSummary(S: AppState, now = new Date(), opts: { body?: boolean; labs?: boolean; nutri?: boolean } = { body: !!S.proShare?.body }): ShareSummary {
   const keys = Array.from({ length: 14 }, (_, i) => keyDaysAgo(13 - i, now));
   const goalWater = S.ans ? planFor(S).water : 8;
   const days: ShareDay[] = keys.map((k) => {
@@ -61,6 +82,8 @@ export function shareSummary(S: AppState, now = new Date()): ShareSummary {
     trainMin: days.reduce((s, x) => s + (x.train ?? 0), 0),
     train: tr ? { done: tr.done, planned: tr.planned } : null,
     weight: bl.length ? { first: bl[0].peso!, last: bl[bl.length - 1].peso!, from: bl[0].date, to: bl[bl.length - 1].date } : null,
-    ...(S.proShare?.body ? { body: bodyEvolution(bodySeries(S)).slice(0, 40).map((r) => ({ label: r.label, unit: r.unit, first: r.first, last: r.last, from: r.firstDate, to: r.lastDate, diff: r.diff })) } : {}),
+    ...(opts.body ? { body: bodyEvolution(bodySeries(S)).slice(0, 40).map((r) => ({ label: r.label, unit: r.unit, first: r.first, last: r.last, from: r.firstDate, to: r.lastDate, diff: r.diff })) } : {}),
+    ...(opts.labs ? { labs: labSeries(S).slice(0, 30).map((x) => ({ name: x.name, unit: x.unit, value: x.last.value, date: x.last.date, prev: x.change !== null ? Math.round((x.last.value - x.change) * 100) / 100 : null, lo: x.last.lo ?? null, hi: x.last.hi ?? null })) } : {}),
+    ...(opts.nutri ? { nutri: nutriBlock(S, keys) } : {}),
   };
 }

@@ -1,3 +1,5 @@
+import type { AppState } from './domain/types';
+import { refreshNutriDay, sendNutriDays } from './domain/pro';
 import { activeFast, endFast, fastState, fastingReminders, isDaily, startFast } from './domain/fasting';
 import { liveScores } from './domain/liveIndex';
 import { notePremiumUse } from './domain/analytics';
@@ -76,6 +78,9 @@ const HEALTH_TABS: [Tab, string, IconName][] = [
 ];
 /** separadores sem botão próprio na barra: Check-in pertence ao Início, Receitas à Nutrição */
 const NAV_OF: Partial<Record<Tab, Tab>> = { check: 'home', recipes: 'saude', quiz: 'saude', nutri: 'saude', treino: 'saude', sono: 'saude', mente: 'saude', corpo: 'saude', cuidados: 'saude', ciclo: 'saude', pros: 'home' };
+
+/** Quantos alimentos registados hoje (para saber quando o dia muda). */
+const mealsCount = (S: AppState) => Object.values(S.logs[todayKey()]?.meals ?? {}).flat().length;
 
 export function App() {
   const { S, update, replace, toast, toastMsg } = useStore();
@@ -174,6 +179,14 @@ export function App() {
   // lembretes combinados com o assistente (data, hora e texto)
   // e os avisos do ciclo (texto discreto, salvo se a pessoa pedir detalhes)
   const remKey = JSON.stringify([...(S.reminders ?? []).filter((r) => r.date >= todayKey()), ...cycleReminders(S), ...fastingReminders(S)]);
+  // nutricionista (NEFESH Pro): o plano do dia muda à meia-noite e os dias marcados vão para ele
+  const nutriDayKey = S.nutriLink ? `${todayKey()}|${JSON.stringify(S.logs[todayKey()]?.planLog ?? {})}|${S.logs[todayKey()]?.hunger ?? ''}|${S.logs[todayKey()]?.water ?? ''}|${mealsCount(S)}` : '';
+  useEffect(() => {
+    if (!S.nutriLink) return;
+    if (S.proNutriRx && S.nutriPlan?.at !== todayKey()) { update((d) => { refreshNutriDay(d); }); return; }
+    const t = window.setTimeout(() => sendNutriDays(S), 4000);
+    return () => window.clearTimeout(t);
+  }, [nutriDayKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // jejum: a primeira refeição registada termina o jejum em curso
   const mealN = Object.values(S.logs[todayKey()]?.meals ?? {}).flat().filter((e) => e && !e.auto).length;
   const prevMeals = useRef(mealN);

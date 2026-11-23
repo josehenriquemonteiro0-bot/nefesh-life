@@ -1,4 +1,5 @@
 import { FastingCard } from '../components/Fasting';
+import { NutriLinkCard } from '../components/NutriLink';
 import { isDaily, mealPlan } from '../domain/fasting';
 import { useEffect, useState } from 'react';
 import { Bar, Ring } from '../components/Charts';
@@ -242,6 +243,7 @@ function Diary() {
         </label>
       </section>
 
+      <NutriLinkCard />
       <PlanUpload kind="nutri" />
       <NutriPlanCard />
 

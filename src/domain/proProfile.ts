@@ -1,4 +1,5 @@
 /** Perfil do aluno registado pelo profissional (sem dependências: a app e o servidor usam-no). */
+import { cleanAnamnese } from './proNutri';
 export interface StudentProfile {
   sexo: '' | 'f' | 'm';
   idade: number | null;
@@ -15,6 +16,8 @@ export interface StudentProfile {
   magra?: number | null;
   fc?: number | null;
   dataAval?: string;
+  /** anamnese nutricional (nutricionistas e médicos) */
+  anamnese?: Partial<Record<import('./proNutri').AnamKey, string>>;
 }
 
 /** Perímetros (cm). */
@@ -56,11 +59,12 @@ export function cleanProfile(p: unknown): StudentProfile {
     magra: dec(o.magra, 15, 150),
     fc: num(o.fc, 30, 150),
     dataAval: /^\d{4}-\d{2}-\d{2}$/.test(String(o.dataAval ?? '')) ? String(o.dataAval) : '',
+    ...(o.anamnese && Object.keys(cleanAnamnese(o.anamnese)).length ? { anamnese: cleanAnamnese(o.anamnese) } : {}),
   };
 }
 
 export const profileEmpty = (p: StudentProfile | null | undefined) =>
-  !p || Object.entries(p).every(([k, v]) => (k === 'medidas' ? !v || !Object.values(v).some((x) => x !== null && x !== undefined) : v === '' || v === null || v === undefined));
+  !p || Object.entries(p).every(([k, v]) => (k === 'medidas' || k === 'anamnese' ? !v || !Object.values(v).some((x) => x !== null && x !== undefined && x !== '') : v === '' || v === null || v === undefined));
 
 /** Uma linha curta (cartão do aluno e pedidos à IA). */
 export function profileText(p: StudentProfile | null | undefined): string {

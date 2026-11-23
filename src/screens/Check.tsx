@@ -34,9 +34,9 @@ export function Check({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
         ))}
-        {S.fasting?.on && (
+        {(S.fasting?.on || S.nutriLink) && (
           <div className="metric" role="group" aria-label="Fome">
-            <div className="lbl"><span>Fome (jejum)</span><span className="mute small">pouca → muita</span></div>
+            <div className="lbl"><span>Fome{S.fasting?.on ? ' (jejum)' : ''}</span><span className="mute small">pouca → muita</span></div>
             <div className="chips">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} className={`chip ${l.hunger === n ? 'on' : ''}`} aria-pressed={l.hunger === n} onClick={() => updateToday((d) => { d.hunger = n; })}>{n}</button>

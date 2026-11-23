@@ -61,8 +61,8 @@ export function NutriPlanCard() {
   return (
     <section className="card">
       <div className="row">
-        <h2 style={{ margin: 0 }}>Hoje no seu plano</h2>
-        <PremiumTag f="lerPlano" />
+        <h2 style={{ margin: 0 }}>Hoje no seu plano{(plan as { day?: string }).day && S.proNutriRx && S.proNutriRx.days.length > 1 ? <span className="small mute" style={{ fontWeight: 400 }}> · {(plan as { day?: string }).day}</span> : null}</h2>
+        {meta.type !== 'nefesh-pro' && <PremiumTag f="lerPlano" />}
       </div>
       <p className="small mute" style={{ margin: '4px 0 10px' }}>
         {pro ? `Plano de ${pro}. ` : ''}Toque numa refeição para marcar o que fez.
@@ -102,10 +102,14 @@ export function NutriPlanCard() {
         })}
       </div>
       {plan.notes && <p className="small" style={{ margin: '12px 0 0' }}><b>Recomendações do plano:</b> {plan.notes}</p>}
-      <p className="small mute" style={{ margin: '10px 0 0' }}>
-        Transcrição feita por IA. Em caso de dúvida, vale sempre o documento original do seu nutricionista.{' '}
-        <button className="link small inline" disabled={busy} onClick={read}>{busy ? 'A ler…' : 'Ler de novo'}</button>
-      </p>
+      {meta.type === 'nefesh-pro' ? (
+        <p className="small mute" style={{ margin: '10px 0 0' }}>Plano montado por {pro || 'o seu nutricionista'} na NEFESH Life Pro. Quando o atualizar, chega aqui sozinho.</p>
+      ) : (
+        <p className="small mute" style={{ margin: '10px 0 0' }}>
+          Transcrição feita por IA. Em caso de dúvida, vale sempre o documento original do seu nutricionista.{' '}
+          <button className="link small inline" disabled={busy} onClick={read}>{busy ? 'A ler…' : 'Ler de novo'}</button>
+        </p>
+      )}
       {error && <p className="small warn-t" style={{ margin: '8px 0 0' }}>{error}</p>}
       {open !== null && plan.meals[open] && <PlanMealSheet idx={open} onClose={() => setOpen(null)} />}
     </section>

@@ -150,6 +150,10 @@ export interface AppState {
   /** ligação ao personal pelo NEFESH Life Pro (código, nome, versão do plano) */
   proLink?: { code: string; pro: string; version: number; at: string };
   /** o aluno partilha o resumo de bem-estar com o personal (autorização revogável); at = último envio */
+  /** NEFESH Pro: nutricionista (ou médico) a que a pessoa está ligada, o plano dele e a partilha do resumo */
+  nutriLink?: { code: string; pro: string; version: number; at: string };
+  proNutriRx?: import('./proNutri').NutriRx | null;
+  nutriShare?: { on: boolean; at?: string; body?: boolean; labs?: boolean };
   /** jejum intermitente: definições, jejuns feitos e prescrição de um profissional por ativar */
   fasting?: import('./fasting').FastingSettings | null;
   fastSessions?: import('./fasting').FastSession[];

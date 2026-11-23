@@ -10,6 +10,12 @@ import type { DB } from './social';
 import { isQuiet } from './notify';
 import { cleanProfile, profileEmpty, type StudentProfile } from '../../src/domain/proProfile';
 import { POSES, cleanAssessment, results } from '../../src/domain/proAssess';
+import { cleanDayLog, cleanNutri, nutriAttention, nutriFilled, type NutriDayLog } from '../../src/domain/proNutri';
+
+/** Nutricionistas e médicos: plano alimentar, jejum e anamnese. */
+export const isNutriPro = (kind?: string | null) => kind === 'nutricionista' || kind === 'medico';
+/** Registo diário de alimentação do paciente (na tabela pro_logs, com este nome de 'treino'). */
+export const NUTRI_LOG = '__nutri';
 
 type R = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown> = { ok: true }): R => ({ status: 200, body });
@@ -72,8 +78,10 @@ export function cleanPlan(p: unknown) {
   const lowDays = (Array.isArray(j?.lowDays) ? j!.lowDays : []).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).slice(0, 2);
   const jejum = j && ['12:12', '14:10', '16:8', '18:6', '20:4', '5:2'].includes(jp) && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(j.open)) && (jp !== '5:2' || lowDays.length === 2)
     ? { protocol: jp, open: String(j.open), ...(jp === '5:2' ? { lowDays } : {}), notes: str(j.notes, 200) } : null;
+  const nutri = cleanNutri(o.nutri);
   return {
     ...(jejum ? { jejum } : {}),
+    ...(nutri ? { nutri } : {}),
     is_workout: true, workouts, per_week: Math.max(1, Math.min(7, Math.round(Number(o.per_week) || workouts.length || 3))), professional: str(o.professional, 60), notes: str(o.notes, 600),
     ...(weeks ? { weeks } : {}), ...(start && weeks ? { start } : {}), ...(phases.length ? { phases } : {}),
   };
@@ -136,13 +144,14 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     pro.status = 'aprovado';
   }
   if (pro.status !== 'aprovado') return ok({ pro });
+  const nutriPro = isNutriPro(pro.kind);
   const { results } = await db.prepare('SELECT code, name, uid, plan, version, status, updated FROM pro_students WHERE pro = ? ORDER BY created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string }>();
   const students = [];
   for (const s of results) {
     const { results: recentLogs } = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY day DESC, created DESC LIMIT 12').bind(s.code).all<{ day: string; workout: string; data: string; created: string }>();
     const last = recentLogs[0] ?? null;
-    const parsed = recentLogs.map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
-    const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND json_extract(data, '$.status') != 'saltado'").bind(s.code, weekAgo(now)).first<{ n: number }>();
+    const parsed = recentLogs.filter((l) => l.workout !== NUTRI_LOG).map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
+    const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND workout != '__nutri' AND json_extract(data, '$.status') != 'saltado'").bind(s.code, weekAgo(now)).first<{ n: number }>();
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = s.plan ? (JSON.parse(s.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
     const pr = await db.prepare('SELECT data FROM pro_profiles WHERE code = ?').bind(s.code).first<{ data: string }>();
@@ -151,10 +160,21 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     const dr = await db.prepare('SELECT plan, updated FROM pro_drafts WHERE code = ?').bind(s.code).first<{ plan: string; updated: string }>();
     let draft: ReturnType<typeof cleanPlan> | null = null;
     try { draft = dr ? (JSON.parse(dr.plan) as ReturnType<typeof cleanPlan>) : null; } catch { draft = null; }
-    const alerts = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now), hasDraft: !!dr }, now);
+    let alerts: { kind: string; text: string }[] = attention(parsed, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, endsInDays: planEndsIn(plan, now), hasDraft: !!dr }, now);
+    let nutriLast: Record<string, unknown> | null = null;
+    let nutriWeek = 0;
+    if (nutriPro) {
+      const { results: nl } = await db.prepare('SELECT day, data FROM pro_logs WHERE code = ? AND workout = ? ORDER BY day DESC LIMIT 30').bind(s.code, NUTRI_LOG).all<{ day: string; data: string }>();
+      const days = nl.map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as NutriDayLog }; } catch { return null; } }).filter((x): x is { day: string; data: NutriDayLog } => !!x);
+      const extra = await nutriExtras(db, s.code, now);
+      alerts = nutriAttention(days, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, hasDraft: !!dr, ...extra }, now);
+      nutriLast = days[0] ? { day: days[0].day, ...days[0].data } : null;
+      nutriWeek = days.filter((d) => d.day >= weekAgo(now) && d.data.meals.some((m) => m.status)).length;
+    }
     const unread = await unreadFor(db, s.code, 'pro');
     const sh = await db.prepare('SELECT updated FROM pro_share WHERE code = ?').bind(s.code).first<{ updated: string }>();
-    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: last ? { day: last.day, workout: last.workout, ...(JSON.parse(last.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0 });
+    const lastW = recentLogs.find((l) => l.workout !== NUTRI_LOG) ?? null;
+    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}) });
   }
   return ok({ pro, students });
 }
@@ -193,8 +213,9 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   // periodização: o plano começa no dia em que é enviado (a não ser que o profissional diga outra data)
   const plan = cleanPlan({ ...raw, professional: pro?.name, start: raw.start || (Number(raw.weeks) || (Array.isArray(raw.phases) && raw.phases.length) ? now.toISOString().slice(0, 10) : '') });
   // o jejum só pode ser prescrito por nutricionistas e médicos
-  if (plan.jejum && !['nutricionista', 'medico'].includes(pro?.kind ?? '')) delete (plan as { jejum?: unknown }).jejum;
-  if (!plan.workouts.length && !plan.jejum) return bad('Acrescente pelo menos um treino com um exercício.');
+  if (!isNutriPro(pro?.kind)) { delete (plan as { jejum?: unknown }).jejum; delete (plan as { nutri?: unknown }).nutri; }
+  if (plan.nutri && !nutriFilled(plan.nutri)) delete (plan as { nutri?: unknown }).nutri;
+  if (!plan.workouts.length && !plan.jejum && !plan.nutri) return bad(isNutriPro(pro?.kind) ? 'Acrescente pelo menos um alimento ao plano.' : 'Acrescente pelo menos um treino com um exercício.');
   await db.batch([
     db.prepare('UPDATE pro_students SET plan = ?, version = version + 1, updated = ? WHERE code = ?').bind(JSON.stringify(plan), now.toISOString(), s.code),
     db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code),
@@ -332,7 +353,7 @@ export async function removeStudent(db: DB, uid: string, b: Record<string, unkno
 export const studentKey = (uid: string | null, device: unknown) => (uid ? uid : /^[a-z0-9-]{8,64}$/i.test(String(device ?? '')) ? `d:${device}` : null);
 
 async function linkedStudent(db: DB, key: string, code: unknown) {
-  return db.prepare('SELECT s.code, s.name, s.uid, s.plan, s.version, s.pro, p.name AS pro_name FROM pro_students s JOIN pros p ON p.uid = s.pro WHERE s.code = ?').bind(normCode(code)).first<{ code: string; name: string; uid: string | null; plan: string | null; version: number; pro: string; pro_name: string }>().then((s) => (s && s.uid === key ? s : null));
+  return db.prepare('SELECT s.code, s.name, s.uid, s.plan, s.version, s.pro, p.name AS pro_name, p.kind AS pro_kind FROM pro_students s JOIN pros p ON p.uid = s.pro WHERE s.code = ?').bind(normCode(code)).first<{ code: string; name: string; uid: string | null; plan: string | null; version: number; pro: string; pro_name: string; pro_kind: string }>().then((s) => (s && s.uid === key ? s : null));
 }
 
 /** O aluno liga-se com o código: fica associado e recebe o plano. */
@@ -350,7 +371,7 @@ export async function studentPlan(db: DB, key: string, b: Record<string, unknown
   if (!s) return bad('Código não ligado a este telemóvel.', 404);
   let plan: unknown = null;
   try { plan = s.plan ? JSON.parse(s.plan) : null; } catch { plan = null; }
-  return ok({ code: s.code, pro: s.pro_name, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno') });
+  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno') });
 }
 
 /** O aluno desliga-se do personal (o histórico do personal fica, sem novos registos). */
@@ -391,6 +412,24 @@ export async function logWorkout(db: DB, store: KeyStore, key: string, b: Record
   return ok({ sent });
 }
 
+/** Fase 2: check-in semanal com valores baixos e próxima consulta (para o painel de atenção). */
+async function nutriExtras(_db: DB, _code: string, _now: Date): Promise<{ checkinLow?: string | null; nextVisit?: string | null }> {
+  return {};
+}
+
+/** Dia de alimentação do paciente (refeições do plano, adesão, fome…): um registo por dia, corrigir substitui. */
+export async function logNutriDay(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day)) ? String(b.day) : now.toISOString().slice(0, 10);
+  const data = cleanDayLog(b.data);
+  await db.batch([
+    db.prepare('DELETE FROM pro_logs WHERE code = ? AND day = ? AND workout = ?').bind(s.code, day, NUTRI_LOG),
+    db.prepare('INSERT INTO pro_logs (code, day, workout, data, created) VALUES (?, ?, ?, ?, ?)').bind(s.code, day, NUTRI_LOG, JSON.stringify(data), now.toISOString()),
+  ]);
+  return ok();
+}
+
 /** Aviso no telemóvel (fora das 22h-8h): a conta (uid) ou, sem conta, o telemóvel ("d:<device>"). */
 async function notify(db: DB, store: KeyStore, who: string, msg: { title: string; body: string; tag: string }, now: Date, fetcher: typeof fetch) {
   const q = who.startsWith('d:') ? db.prepare('SELECT endpoint, tz FROM push_subs WHERE device = ?').bind(who.slice(2)) : db.prepare('SELECT endpoint, tz FROM push_subs WHERE uid = ?').bind(who);
@@ -429,6 +468,20 @@ export function cleanShare(x: unknown) {
       const v = (z: unknown) => (typeof z === 'number' && Number.isFinite(z) && Math.abs(z) <= 10000 ? Math.round(z * 1000) / 1000 : null);
       return { label: str(y.label, 40), unit: str(y.unit, 10), first: v(y.first), last: v(y.last), from: iso(y.from), to: iso(y.to), diff: v(y.diff) };
     }).filter((r) => r.label && r.first !== null && r.last !== null && r.first >= 0 && r.last >= 0) } : {}),
+    ...(Array.isArray(o.labs) ? { labs: o.labs.slice(0, 30).map((x) => {
+      const y = (x ?? {}) as Record<string, unknown>;
+      const v = (z: unknown) => (typeof z === 'number' && Number.isFinite(z) && Math.abs(z) <= 100000 ? Math.round(z * 100) / 100 : null);
+      return { name: str(y.name, 50), unit: str(y.unit, 15), value: v(y.value), date: iso(y.date), prev: v(y.prev), lo: v(y.lo), hi: v(y.hi) };
+    }).filter((r) => r.name && r.value !== null) } : {}),
+    ...(o.nutri && typeof o.nutri === 'object' ? { nutri: (() => {
+      const y = o.nutri as Record<string, unknown>;
+      return {
+        adherence: n1(y.adherence, 100) ?? null,
+        days: (Array.isArray(y.days) ? y.days : []).slice(0, 14).map((d) => { const z = (d ?? {}) as Record<string, unknown>; return { d: iso(z.d), pct: n1(z.pct, 100) ?? null, hunger: n1(z.hunger, 5) }; }).filter((d) => d.d),
+        changes: (Array.isArray(y.changes) ? y.changes : []).slice(0, 20).map((c) => str(c, 160)).filter(Boolean),
+        hunger: n1(y.hunger, 5) ?? null, fastAvg: n1(y.fastAvg, 48) ?? null, fastDays: n1(y.fastDays, 14) ?? 0,
+      };
+    })() } : {}),
   };
 }
 

@@ -1,3 +1,4 @@
+import { ANAMNESE } from '../domain/proNutri';
 import { useEffect, useRef, useState } from 'react';
 import { proApi, readAssessmentFile, type ProStudent } from '../domain/pro';
 import { MEASURES, OBJETIVOS, cleanProfile, type MeasureKey, type StudentProfile } from '../domain/proProfile';
@@ -16,7 +17,7 @@ export function NumField({ value, onNum, placeholder, decimal = true }: { value:
 const EMPTY: StudentProfile = { sexo: '', idade: null, altura: null, peso: null, objetivo: '', nivel: '', dias: null, lesoes: '', notas: '' };
 
 /** Perfil detalhado do aluno, registado pelo profissional. */
-export function ProfileEditor({ student, onClose, onSaved }: { student: Pick<ProStudent, 'code' | 'name' | 'profile'>; onClose: () => void; onSaved: (p: StudentProfile | null) => void }) {
+export function ProfileEditor({ student, onClose, onSaved, nutri = false }: { student: Pick<ProStudent, 'code' | 'name' | 'profile'>; onClose: () => void; onSaved: (p: StudentProfile | null) => void; nutri?: boolean }) {
   const { toast } = useStore();
   const [p, setP] = useState<StudentProfile>(student.profile ?? EMPTY);
   const [busy, setBusy] = useState(false);
@@ -69,9 +70,9 @@ export function ProfileEditor({ student, onClose, onSaved }: { student: Pick<Pro
   const chip = (on: boolean, label: string, f: () => void) => <button key={label} className={`chip sm ${on ? 'on' : ''}`} aria-pressed={on} onClick={f}>{label}</button>;
   return (
     <>
-      <button className="btn ghost sm" onClick={onClose}>← Alunos</button>
-      <h1 style={{ marginBottom: 4 }}>Perfil de {student.name}</h1>
-      <p className="small mute" style={{ marginTop: 0 }}>Tudo opcional. A IA usa estes dados para adaptar as sugestões do treino.</p>
+      <button className="btn ghost sm" onClick={onClose}>← {nutri ? 'Pacientes' : 'Alunos'}</button>
+      <h1 style={{ marginBottom: 4 }}>{nutri ? 'Ficha' : 'Perfil'} de {student.name}</h1>
+      <p className="small mute" style={{ marginTop: 0 }}>Tudo opcional. {nutri ? 'As metas sugeridas e a revisão do plano usam estes dados.' : 'A IA usa estes dados para adaptar as sugestões do treino.'}</p>
       <section className="card pro-upload">
         <p className="small" style={{ margin: '0 0 8px' }}><b>📄 Já tem uma avaliação física?</b> Carregue o PDF ou uma foto (bioimpedância, ficha da academia…) e as medidas são preenchidas sozinhas.</p>
         <input ref={fileRef} type="file" accept="application/pdf,image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) readDoc(f); }} />
@@ -106,6 +107,16 @@ export function ProfileEditor({ student, onClose, onSaved }: { student: Pick<Pro
         )}
         <p className="small lbl">Objetivo</p>
         <div className="chips">{OBJETIVOS.map((o) => chip(p.objetivo === o, o, () => set({ objetivo: p.objetivo === o ? '' : o })))}</div>
+        {nutri && (
+          <>
+            <p className="small lbl" style={{ marginTop: 14 }}>Anamnese</p>
+            {ANAMNESE.map(([k, l, ph]) => (
+              <label key={k} className="small" style={{ display: 'block', marginTop: 6 }}>{l}
+                <textarea className="field" rows={1} maxLength={300} value={p.anamnese?.[k] ?? ''} onChange={(e) => set({ anamnese: { ...(p.anamnese ?? {}), [k]: e.target.value } })} placeholder={ph} />
+              </label>
+            ))}
+          </>
+        )}
         <p className="small lbl">Experiência com treino</p>
         <div className="chips">
           {chip(p.nivel === 'iniciante', 'Iniciante', () => set({ nivel: p.nivel === 'iniciante' ? '' : 'iniciante' }))}
@@ -121,8 +132,8 @@ export function ProfileEditor({ student, onClose, onSaved }: { student: Pick<Pro
           <textarea className="field" rows={2} maxLength={300} value={p.notas} onChange={(e) => set({ notas: e.target.value })} placeholder="ex.: treina em casa com halteres; prefere manhãs" />
         </label>
       </section>
-      <p className="small mute">🔒 Registe só com a autorização do aluno. O perfil fica visível apenas para si.</p>
-      <button className="btn full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : 'Guardar perfil'}</button>
+      <p className="small mute">🔒 Registe só com a autorização do {nutri ? 'paciente' : 'aluno'}. {nutri ? 'São dados de saúde: a ficha fica visível apenas para si.' : 'O perfil fica visível apenas para si.'}</p>
+      <button className="btn full" disabled={busy} onClick={save}>{busy ? 'A guardar…' : nutri ? 'Guardar ficha' : 'Guardar perfil'}</button>
       {err && <p className="small warn-t">{err}</p>}
     </>
   );

@@ -4,7 +4,12 @@
  * registos). O plano usa o mesmo formato do plano lido de um PDF, para tudo o resto funcionar igual.
  */
 import { getAuth } from './account';
-import { todayKey } from './dates';
+import { keyDaysAgo, todayKey } from './dates';
+import { fastDays } from './fasting';
+import { planFor } from './plan';
+import { dayAdherence } from './planAdherence';
+import { toDailyPlan, type NutriDayLog } from './proNutri';
+import { isNutriKind } from './proNutriClient';
 import { PHOTO_API, compressImage, deviceId } from './photo';
 import type { ParsedWorkoutPlan, PlanWorkout } from './planRead';
 import type { AppState } from './types';
@@ -13,6 +18,9 @@ import type { StudentProfile } from './proProfile';
 import { shareSummary } from './proShare';
 
 export interface ProStudent {
+  /** nutricionistas: último dia registado pelo paciente e dias com registos na última semana */
+  nutriLast?: (import('./proNutri').NutriDayLog & { day: string }) | null;
+  nutriWeek?: number;
   code: string;
   name: string;
   linked: boolean;
@@ -55,20 +63,110 @@ export async function proApi<T = Record<string, unknown>>(path: string, body: Re
 export const normCode = (v: string) => v.trim().toUpperCase().replace(/\s+/g, '');
 export const codeLooksValid = (v: string) => /^NP-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(normCode(v));
 
-/** Põe o plano do personal na app (no mesmo sítio do plano lido de PDF). */
-export function applyProPlan(S: AppState, r: { code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number }) {
+/** Jejum prescrito: fica à espera de a pessoa o ativar (só se for novo). */
+function applyFastRx(S: AppState, j: ParsedWorkoutPlan['jejum'], pro: string) {
+  if (!j) return;
+  const same = (x?: { protocol: string; open: string; lowDays?: number[] } | null) => !!x && x.protocol === j.protocol && x.open === j.open && JSON.stringify(x.lowDays ?? []) === JSON.stringify(j.lowDays ?? []);
+  if (!(S.fasting?.on && S.fasting.by === pro && same(S.fasting)) && !same(S.fastingRx)) S.fastingRx = { ...j, by: pro, at: todayKey() };
+}
+
+/** Põe o plano do personal na app (no mesmo sítio do plano lido de PDF). Códigos de nutricionistas vão para a Nutrição. */
+export function applyProPlan(S: AppState, r: { code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number; kind?: string }) {
+  if (isNutriKind(r.kind)) return applyNutriPlan(S, r);
   const name = `NEFESH Pro · ${r.pro}`;
   S.proLink = { code: r.code, pro: r.pro, version: r.version, at: todayKey() };
   if (!r.plan) return;
-  // jejum prescrito: fica à espera de a pessoa o ativar (só se for novo)
-  const j = r.plan.jejum;
-  if (j) {
-    const same = (x?: { protocol: string; open: string; lowDays?: number[] } | null) => !!x && x.protocol === j.protocol && x.open === j.open && JSON.stringify(x.lowDays ?? []) === JSON.stringify(j.lowDays ?? []);
-    if (!(S.fasting?.on && S.fasting.by === r.pro && same(S.fasting)) && !same(S.fastingRx)) S.fastingRx = { ...j, by: r.pro, at: todayKey() };
-  }
+  applyFastRx(S, r.plan.jejum, r.pro);
   if (!r.plan.workouts.length) return;
   S.trainPlan = { ...r.plan, is_workout: true, at: todayKey(), name };
   S.plans = { ...(S.plans ?? {}), treino: { name, type: 'nefesh-pro', size: 0, at: todayKey(), by: r.pro } };
+}
+
+/** Plano do nutricionista: o plano do dia vai para o diário (refeições, opções, segui/alterei), com as metas e a dose. */
+export function applyNutriPlan(S: AppState, r: { code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number }, now = new Date()) {
+  S.nutriLink = { code: r.code, pro: r.pro, version: r.version, at: todayKey(now) };
+  if (!r.plan) return;
+  applyFastRx(S, r.plan.jejum, r.pro);
+  const rx = r.plan.nutri;
+  if (!rx) return;
+  const name = `NEFESH Pro · ${r.pro}`;
+  S.proNutriRx = rx;
+  S.nutriPlan = { ...toDailyPlan(rx, now, r.pro), at: todayKey(now), name };
+  S.plans = { ...(S.plans ?? {}), nutri: { name, type: 'nefesh-pro', size: 0, at: todayKey(now), by: r.pro } };
+  if (rx.targets.kcal || rx.targets.protein) S.nutriPro = { kcal: rx.targets.kcal || undefined, protein: rx.targets.protein || undefined, by: r.pro, at: todayKey(now) };
+  if (rx.spirulina) S.proDose = { g: rx.spirulina, by: r.pro, at: todayKey(now) };
+}
+
+/** Planos com vários tipos de dia: o plano do diário muda à meia-noite. Devolve true se mudou. */
+export function refreshNutriDay(S: AppState, now = new Date()): boolean {
+  const rx = S.proNutriRx;
+  if (!rx || !S.nutriLink || S.plans?.nutri?.type !== 'nefesh-pro' || S.nutriPlan?.at === todayKey(now)) return false;
+  S.nutriPlan = { ...toDailyPlan(rx, now, S.nutriLink.pro), at: todayKey(now), name: S.plans.nutri.name };
+  return true;
+}
+
+/** Desligar do nutricionista: o plano dele sai do diário (as metas e a dose voltam às da app). */
+export function clearNutriPlan(S: AppState) {
+  const pro = S.nutriLink?.pro;
+  if (S.plans?.nutri?.type === 'nefesh-pro') {
+    const p = { ...S.plans };
+    delete p.nutri;
+    S.plans = p;
+    S.nutriPlan = null;
+  }
+  if (pro && S.nutriPro?.by === pro) S.nutriPro = null;
+  if (pro && S.proDose?.by === pro) S.proDose = null;
+  S.proNutriRx = null;
+  delete S.nutriLink;
+  S.nutriShare = { on: false };
+}
+
+/** O dia de alimentação para o nutricionista: refeições do plano marcadas, adesão, fome, água, jejum, peso. */
+export function nutriDayLog(S: AppState, day: string): NutriDayLog | null {
+  const l = S.logs[day];
+  const plan = S.nutriPlan;
+  if (!l || !plan) return null;
+  const log = l.planLog ?? {};
+  const meals = plan.meals.map((m, i) => ({ label: m.label, status: (log[String(i)]?.status ?? '') as NutriDayLog['meals'][number]['status'], changes: log[String(i)]?.changes ?? [] }));
+  const adh = dayAdherence(S, day);
+  const entries = Object.values(l.meals ?? {}).flat().filter(Boolean) as { kcal?: number; p?: number }[];
+  const kcal = Math.round(entries.reduce((t, x) => t + (x.kcal ?? 0), 0));
+  const prot = Math.round(entries.reduce((t, x) => t + (x.p ?? 0), 0));
+  const fast = fastDays(S, 30).find((f) => f.date === day);
+  const weight = (S.bodyLog ?? []).find((b) => b.date === day)?.peso;
+  if (!meals.some((m) => m.status) && !kcal && !l.hunger && l.water === undefined) return null;
+  return {
+    meals, pct: adh.pct,
+    ...(kcal ? { kcal } : {}), ...(prot ? { prot } : {}),
+    ...(l.water !== undefined ? { water: (l.water ?? 0) >= planFor(S).water } : {}),
+    ...(l.hunger ? { hunger: l.hunger } : {}), ...(fast ? { fastH: fast.hours } : {}), ...(weight ? { weight } : {}),
+  };
+}
+
+const NUTRI_SENT = 'nefesh-life-nutri-dias';
+/** Envia ao nutricionista os dias de hoje e de ontem, se mudaram desde o último envio. */
+export async function sendNutriDays(S: AppState, now = new Date()) {
+  if (!S.nutriLink || !S.nutriPlan) return;
+  let sent: Record<string, string> = {};
+  try { sent = JSON.parse(localStorage.getItem(NUTRI_SENT) || '{}'); } catch { sent = {}; }
+  for (const day of [keyDaysAgo(1, now), todayKey(now)]) {
+    const data = nutriDayLog(S, day);
+    if (!data) continue;
+    const mark = JSON.stringify(data);
+    if (sent[`${S.nutriLink.code}|${day}`] === mark) continue;
+    try {
+      await proApi('aluno/dia', { code: S.nutriLink.code, day, data });
+      sent[`${S.nutriLink.code}|${day}`] = mark;
+    } catch { /* sem rede: tenta na próxima vez */ }
+  }
+  const keep = Object.fromEntries(Object.entries(sent).filter(([k]) => k.split('|')[1] >= keyDaysAgo(7, now)));
+  try { localStorage.setItem(NUTRI_SENT, JSON.stringify(keep)); } catch { /* sem armazenamento */ }
+}
+
+/** Liga/desliga a partilha do resumo com o nutricionista (com as medidas e as análises só se autorizado). */
+export async function syncNutriShare(S: AppState, on: boolean) {
+  if (!S.nutriLink) return;
+  await proApi('aluno/partilha', on ? { code: S.nutriLink.code, on: true, summary: shareSummary(S, new Date(), { body: !!S.nutriShare?.body, labs: !!S.nutriShare?.labs, nutri: true }) } : { code: S.nutriLink.code, on: false });
 }
 
 export function clearProPlan(S: AppState) {

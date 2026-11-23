@@ -13,6 +13,8 @@ export interface ParsedWorkoutPlan {
   weeks?: number; start?: string; phases?: PlanPhase[];
   /** jejum intermitente prescrito por um nutricionista ou médico (NEFESH Pro) */
   jejum?: { protocol: import('./fasting').FastProtocol; open: string; lowDays?: number[]; notes?: string };
+  /** plano alimentar prescrito por um nutricionista ou médico (NEFESH Pro) */
+  nutri?: import('./proNutri').NutriRx;
 }
 
 export interface ParsedPlan { is_plan: boolean; meals: PlanMeal[]; daily_kcal: number; daily_protein_g: number; professional: string; notes: string }

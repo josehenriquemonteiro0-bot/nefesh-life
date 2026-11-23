@@ -327,6 +327,7 @@ export default {
         'aluno/conversa': () => pro.studentMessages(db, key!, b),
         'aluno/escrever': () => pro.studentWrite(db, env.LIMITS as never, key!, b),
         'aluno/partilha': () => pro.studentShare(db, key!, b),
+        'aluno/dia': () => pro.logNutriDay(db, key!, b),
       };
       const key = pro.studentKey(uid, b.device);
       // relatório de acompanhamento do próprio utilizador (Corpo): a IA lê as medidas; o documento não é guardado

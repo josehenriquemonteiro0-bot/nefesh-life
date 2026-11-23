@@ -838,3 +838,15 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .fast-bars span.ok{background:var(--neon)}
 .fast-bars small{position:absolute;bottom:-18px;font-size:11px;color:var(--mute)}
 .fast-bars .goal{position:absolute;left:0;right:0;border-top:1px dashed var(--mute);opacity:.7}
+
+/* NEFESH Pro: nutricionistas */
+.pro-ac-list.static{position:static;box-shadow:none;margin-top:6px;max-height:260px}
+.nutri-pick{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.nutri-meal-name{flex:1;font-weight:600}
+.nutri-items{list-style:none;padding:0;margin:8px 0 0}
+.nutri-items li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.nutri-food{flex:1;min-width:0}
+.nutri-g{display:flex;align-items:center;gap:2px;font-size:13px;color:var(--mute)}
+.nutri-g input{width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:4px 6px;font:600 14px Sora,sans-serif;text-align:right}
+.nutri-totals .macrobars{display:grid;gap:4px}
+.nutri-time{width:124px;flex:none;padding:6px 8px;font-size:15px}
