@@ -108,14 +108,13 @@ export function FoodScan({ hide, onAdd, onClose }: { hide: boolean; onAdd: (e: F
       {state === 'missing' && (
         <>
           <p className="small">Este produto ({code}) ainda não está na base de dados. Fotografe a <b>tabela nutricional</b> da embalagem: a app lê-a e guarda o produto para a próxima vez.</p>
-          <button className="btn full" onClick={() => photo.current?.click()}>📷 Fotografar a tabela nutricional</button>
+          <button className="btn full" onClick={() => photo.current?.click()}>📷 Fotografar ou escolher a tabela nutricional</button>
         </>
       )}
       <input
         ref={photo}
         type="file"
         accept="image/*"
-        capture="environment"
         hidden
         onChange={async (e) => {
           const f = e.target.files?.[0];

@@ -227,7 +227,7 @@ header{padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
 .photo-cta>span{display:grid;gap:2px}
 .photo-prev{position:relative;margin-top:12px}
 .photo-prev img{width:100%;max-height:42vh;object-fit:cover;border-radius:16px;display:block}
-.photo-prev .btn{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.6)}
+.photo-prev > .row{position:absolute;right:10px;bottom:10px}.photo-prev .btn{background:rgba(0,0,0,.6)}
 .photo-items{display:grid;gap:8px}
 .photo-item{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .photo-item.off{opacity:.45}

@@ -14,6 +14,7 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
   const { S, updateToday, toast, todayLog } = useStore();
   const hide = !!S.hideCalories;
   const file = useRef<HTMLInputElement>(null);
+  const gallery = useRef<HTMLInputElement>(null);
   const [img, setImg] = useState<{ data: string; media_type: 'image/jpeg' } | null>(null);
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
@@ -81,16 +82,26 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <input ref={file} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+        {/* sem "capture": abre a galeria (fotos já tiradas) */}
+        <input ref={gallery} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
 
         {!img ? (
           <>
             <p className="small mute">Fotografe o prato de cima, com o prato inteiro à vista. A NEFESH Life estima os alimentos, as quantidades e as calorias, e pode corrigir tudo antes de guardar.</p>
-            <button className="btn full" onClick={() => file.current?.click()}><Icon name="recipes" /> Tirar ou escolher foto</button>
+            <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => file.current?.click()}><Icon name="recipes" /> Tirar foto</button>
+              <button className="btn ghost" style={{ flex: 1 }} onClick={() => gallery.current?.click()}>🖼️ Galeria</button>
+            </div>
           </>
         ) : (
           <div className="photo-prev">
             <img src={`data:${img.media_type};base64,${img.data}`} alt="Fotografia da refeição" />
-            {!busy && <button className="btn ghost sm" onClick={() => file.current?.click()}>Outra foto</button>}
+            {!busy && (
+              <span className="row" style={{ gap: 6 }}>
+                <button className="btn ghost sm" onClick={() => file.current?.click()}>📷 Outra</button>
+                <button className="btn ghost sm" onClick={() => gallery.current?.click()}>🖼️ Galeria</button>
+              </span>
+            )}
           </div>
         )}
 

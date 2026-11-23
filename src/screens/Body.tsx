@@ -76,12 +76,11 @@ function Photos() {
           {last && <figure><LocalPhoto id={last.id} alt={`${pose} em ${shortDate(last.date)}`} /><figcaption className="small">{shortDate(last.date)}</figcaption></figure>}
         </div>
       )}
-      <button className="btn sm" style={{ marginTop: 10 }} onClick={() => input.current?.click()}>📷 Tirar foto ({pose})</button>
+      <button className="btn sm" style={{ marginTop: 10 }} onClick={() => input.current?.click()}>📷 Tirar ou escolher foto ({pose})</button>
       <input
         ref={input}
         type="file"
         accept="image/*"
-        capture="environment"
         hidden
         onChange={async (e) => {
           const f = e.target.files?.[0];
