@@ -1,5 +1,6 @@
 import './testDate';
 import { PHOTO_API } from './domain/photo';
+import { isNative } from './domain/platform';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
@@ -14,7 +15,8 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// na app nativa não há service worker (as notificações e o funcionamento sem rede são nativos)
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
   window.addEventListener('load', () => {
     // o service worker sabe a que servidor pedir as mensagens das notificações (a cópia de teste tem o seu)
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js?api=${encodeURIComponent(PHOTO_API)}`).catch(() => {});

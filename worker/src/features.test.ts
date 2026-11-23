@@ -29,4 +29,10 @@ describe('origens permitidas (CORS)', async () => {
     expect(originAllowed('https://*nefesh-life-v2*.pages.dev', 'https://nefesh-life-v2.pages.dev.mau.com')).toBe(false);
     expect(originAllowed('', 'https://qualquer.coisa')).toBe(true);
   });
+  it('aceita a app nativa do iPhone (capacitor://localhost) quando está na lista', () => {
+    const list = 'https://josehenriquemonteiro0-bot.github.io,capacitor://localhost';
+    expect(originAllowed(list, 'capacitor://localhost')).toBe(true);
+    expect(originAllowed(list, 'capacitor://localhost.mau.com')).toBe(false);
+    expect(originAllowed('https://josehenriquemonteiro0-bot.github.io', 'capacitor://localhost')).toBe(false);
+  });
 });

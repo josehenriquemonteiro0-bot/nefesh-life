@@ -1,3 +1,4 @@
+import { appUrl } from '../domain/platform';
 import { useState } from 'react';
 import { daysSince, fmtNum } from '../domain/dates';
 import { indexTrend } from '../domain/liveIndex';
@@ -29,7 +30,7 @@ export function MonthCelebration() {
           ['dias com a meta de água', String(m.water)],
         ],
         nick: S.ans?.name ?? '',
-        link: `${location.origin}${import.meta.env.BASE_URL}`,
+        link: appUrl(),
       });
       await shareImage(blob, `Fiz 30 dias de ritual com a Spirulina NEFESH 🌿 ${m.spirulina} ${m.spirulina === 1 ? 'dia' : 'dias'} de Spirulina e uma sequência de ${m.best} ${m.best === 1 ? 'dia' : 'dias'}.`, 'nefesh-30-dias.png');
     } finally {

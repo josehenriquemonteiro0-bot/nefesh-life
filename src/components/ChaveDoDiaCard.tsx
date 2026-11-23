@@ -1,3 +1,4 @@
+import { appUrl } from '../domain/platform';
 import { useEffect, useRef, useState } from 'react';
 import { chaveDoDia, chavesPorTema, temasDasChaves } from '../domain/chavesDoDia';
 import { whatsappShare } from '../domain/content';
@@ -18,7 +19,7 @@ export function ChaveDoDiaCard() {
   const [tema, setTema] = useState<string | null>(null);
   const { toast } = useStore();
   const [busy, setBusy] = useState(false);
-  const link = `${location.origin}${import.meta.env.BASE_URL}`;
+  const link = appUrl();
   const legenda = `🔑 Chave do dia: “${c.texto}” (${c.referencia})\n\nUma chave nova todos os dias na NEFESH Life 🌿 ${link}`;
   // a imagem fica pronta antes do toque: o iPhone só abre a partilha logo a seguir ao toque
   const img = useRef<Promise<Blob> | null>(null);

@@ -9,7 +9,7 @@ TEST_MODE = "true"
 # endereço da app usado nos links das mensagens (códigos de frasco)
 APP_URL = "https://josehenriquemonteiro0-bot.github.io/nefesh-life/"
 # Só a app NEFESH Life pode chamar o serviço a partir do navegador
-ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io"
+ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io,capacitor://localhost"
 # NEFESH Life Pro: "true" aprova os profissionais sem a página da equipa (só no servidor de teste)
 PRO_AUTO_APPROVE = "false"
 MODEL = "claude-opus-5-5"

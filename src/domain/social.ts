@@ -1,6 +1,7 @@
 /**
  * Comunidade: chamadas ao servidor, mensagens prontas e o estado mais recente (em memória).
  */
+import { appUrl } from './platform';
 import { useEffect, useSyncExternalStore } from 'react';
 import { AccountError, getAuth } from './account';
 import { PHOTO_API } from './photo';
@@ -310,7 +311,7 @@ export const clearInvite = () => {
 };
 
 /** Link de convite (com o 21 Day Reset, se houver). */
-export const inviteUrl = (code: string, cid?: string) => `${location.origin}${import.meta.env.BASE_URL}?amigo=${code}${cid ? `&reset=${cid}` : ''}`;
+export const inviteUrl = (code: string, cid?: string) => `${appUrl()}?amigo=${code}${cid ? `&reset=${cid}` : ''}`;
 export const leaveChallenge = (id: string) => call('sair-desafio', { id });
 export const leaveCommunity = () => call('sair');
 export const evolutionRanking = () => call<{ ranking: { rank: number; nick: string; avatar: string | null; from: number; to: number; gain: number }[] }>('evolucao');

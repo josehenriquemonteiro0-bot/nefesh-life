@@ -1,3 +1,4 @@
+import { appUrl } from '../domain/platform';
 import { useEffect, useState } from 'react';
 import { getAuth } from '../domain/account';
 import { shortDate } from '../domain/dates';
@@ -430,7 +431,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [logs, setLogs] = useState<ProStudent | null>(null);
   const load = () => proApi<{ pro: ProInfo | null; students?: ProStudent[]; areas?: ProArea[] }>('estado').then((r) => { setPro(r.pro); setStudents(r.students ?? []); setAreas(r.areas ?? []); setErr(''); }).catch((e) => setErr((e as Error).message));
   useEffect(() => { if (auth) load(); }, [auth?.token]); // eslint-disable-line react-hooks/exhaustive-deps
-  const appUrl = `${location.origin}${import.meta.env.BASE_URL}`;
+  const appLink = appUrl();
 
   if (!auth)
     return (
@@ -576,7 +577,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
                 {nutri && <button className="btn ghost sm" onClick={() => setVisitsOf(s)}>🗓️ Consultas</button>}
                 <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
-                {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appUrl))} target="_blank" rel="noreferrer">Enviar código</a>}
+                {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appLink))} target="_blank" rel="noreferrer">Enviar código</a>}
                 <button className="link small inline" onClick={() => confirm(`Apagar ${s.name} e os registos?`) && proApi('aluno/apagar', { code: s.code }).then(load)}>Apagar</button>
               </div>
             </section>

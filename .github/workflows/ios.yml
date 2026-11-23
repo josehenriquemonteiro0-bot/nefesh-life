@@ -1,0 +1,66 @@
+name: App iPhone (simulador)
+
+# Compila a app nativa do iPhone (Capacitor) numa máquina Mac do GitHub, abre-a no simulador
+# e guarda capturas de ecrã. Não precisa da conta de programador da Apple (não assina a app).
+# Usa o servidor de teste (v2): nada mexe na versão da família.
+on:
+  push:
+    branches: [nefesh-life-v2]
+    paths: ['src/**', 'public/**', 'ios/**', 'capacitor.config.ts', 'package.json', 'package-lock.json', 'index.html', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Compilar a parte web para a app nativa
+        run: npm run build:native
+        env:
+          VITE_PHOTO_API: https://nefesh-foto-v2.josehenriquemonteiro0.workers.dev
+          VITE_PUBLIC_URL: https://nefesh-life-v2.pages.dev/
+      - name: Copiar para o projeto iOS
+        run: npx cap sync ios
+      - name: Versão do Xcode
+        run: xcodebuild -version
+      - name: Compilar a app (simulador, sem assinatura)
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -40
+      - name: Abrir no simulador e tirar capturas
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const d=JSON.parse(s).devices;const all=Object.entries(d).filter(([k])=>k.includes('iOS')).flatMap(([,v])=>v);const p=all.find(x=>/iPhone 1[5-9] Pro$|iPhone 1[5-9]$/.test(x.name))||all.find(x=>x.name.startsWith('iPhone'));console.log(p.udid)})")
+          echo "Simulador: $DEVICE"
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          APP=$(find build/Build/Products -name 'App.app' -maxdepth 2 | head -1)
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl launch "$DEVICE" com.nefesh.life
+          mkdir -p capturas
+          sleep 12
+          xcrun simctl io "$DEVICE" screenshot capturas/1-arranque.png
+          sleep 10
+          xcrun simctl io "$DEVICE" screenshot capturas/2-depois.png
+          # confirma que a app continua aberta (não fechou com erro)
+          xcrun simctl spawn "$DEVICE" launchctl list | grep -i nefesh || (echo "::error::A app fechou-se sozinha" && exit 1)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas-iphone
+          path: capturas/
+          if-no-files-found: ignore
