@@ -1,12 +1,10 @@
 /**
- * Som de fundo das meditações, gerado pela app (Web Audio, sem ficheiros):
- * chuva (ruído filtrado), mar (ruído que sobe e desce como ondas) e tom (acorde suave).
- * Tem de começar num toque (regra do iPhone).
+ * Som de fundo das meditações: chuva, mar (ondas que sobem e descem) e tom (acorde suave).
  *
- * No iPhone, o Web Audio fica mudo com o interruptor de silêncio (a voz continua a falar) e a voz
- * pode "interromper" o áudio. Por isso: pedimos sessão de reprodução (como música), tocamos um
- * <audio> silencioso em ciclo (faz o iOS tratar o som como multimédia) e retomamos o áudio se for
- * interrompido.
+ * A app gera uma faixa de áudio (WAV) e toca-a num <audio> em ciclo, como se fosse um ficheiro de
+ * música. Assim toca em todos os telemóveis, incluindo o iPhone com o interruptor de silêncio
+ * (o Web Audio fica mudo nesse caso) e ao mesmo tempo que a voz lê a meditação.
+ * Tem de começar num toque (regra dos telemóveis).
  */
 import type { Ambient } from './meditations';
 
@@ -15,174 +13,167 @@ export interface AmbientPlayer {
   setVolume(v: number): void;
 }
 
-function noiseBuffer(ctx: BaseAudioContext, brown: boolean) {
-  const len = ctx.sampleRate * 4;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < len; i++) {
-    const w = Math.random() * 2 - 1;
-    if (brown) {
-      last = (last + 0.02 * w) / 1.02;
-      d[i] = last * 3.5;
-    } else d[i] = w;
-  }
-  return buf;
+export const AMBIENT_RATE = 22050;
+/** Duração do ciclo (s): múltiplo do período das ondas (9 s) e das "respirações" do tom. */
+export const AMBIENT_SECONDS = 18;
+/** Nível médio (RMS) com o volume no máximo: alto o bastante para se ouvir no altifalante do telemóvel. */
+const TARGET_RMS: Record<Exclude<Ambient, 'nenhum'>, number> = { chuva: 0.2, mar: 0.22, tom: 0.16 };
+
+/** Gerador aleatório com semente (o mesmo som de cada vez). */
+function rng(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 2147483648 - 1;
+  };
 }
 
-/** 0,1 s de silêncio (WAV 8 kHz, 8 bits): tocado em ciclo para o iPhone tocar o som mesmo em silêncio. */
-function silentWav(): string {
-  const n = 800;
-  const b = new Uint8Array(44 + n);
-  const v = new DataView(b.buffer);
+/** Amostras (−1…1) do som escolhido, já com o volume v (0–1), num ciclo sem cliques. */
+export function ambientSamples(kind: Exclude<Ambient, 'nenhum'>, v: number, rate = AMBIENT_RATE, seconds = AMBIENT_SECONDS): Float32Array {
+  const fade = Math.round(rate * 0.5);
+  const len = Math.round(rate * seconds);
+  // o ruído gera-se com meio segundo a mais, que é cruzado com o início (ciclo sem estalidos)
+  const n = kind === 'tom' ? len : len + fade;
+  let out = new Float32Array(n);
+  const rnd = rng(kind === 'chuva' ? 7 : kind === 'mar' ? 11 : 13);
+  const TAU = Math.PI * 2;
+  if (kind === 'tom') {
+    // Lá 110 + Lá 220 + Mi 330 Hz, cada um a "respirar" devagar (ciclos inteiros no ciclo)
+    const parts: [number, number, number][] = [[110, 0.5, 2], [220, 0.35, 3], [330, 0.2, 4]];
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      let x = 0;
+      for (const [f, a, br] of parts) x += a * (0.7 + 0.3 * Math.sin((TAU * br * t) / seconds)) * Math.sin(TAU * f * t);
+      out[i] = x;
+    }
+  } else {
+    // ruído filtrado: chuva = mais aguda (passa-banda), mar = grave (ruído castanho) com ondas
+    let lp = 0;
+    let lp2 = 0;
+    let hp = 0;
+    let prev = 0;
+    let brown = 0;
+    for (let i = 0; i < n; i++) {
+      const w = rnd();
+      if (kind === 'chuva') {
+        lp += 0.45 * (w - lp); // corta o chiado muito agudo
+        hp = 0.97 * (hp + lp - prev); // tira o grave
+        prev = lp;
+        // gotas: pequenos estalidos aleatórios
+        const drop = rnd() > 0.9993 ? rnd() * 2.5 : 0;
+        out[i] = hp + drop * 0.3;
+      } else {
+        brown = (brown + 0.02 * w) / 1.02;
+        lp2 += 0.08 * (brown * 3.5 - lp2);
+        const t = i / rate;
+        const wave = 0.25 + 0.75 * Math.pow(Math.sin((Math.PI * t * 2) / 9), 2); // onda a cada 9 s
+        out[i] = (brown * 3.5 * 0.4 + lp2 * 0.6) * wave;
+      }
+    }
+    // emenda: o meio segundo a mais entra por cima do início, e o fim liga sem salto ao início
+    for (let i = 0; i < fade; i++) {
+      const a = i / fade;
+      out[i] = out[i] * a + out[len + i] * (1 - a);
+    }
+    out = out.slice(0, len);
+  }
+  // normaliza para o nível alvo e aplica o volume
+  let s = 0;
+  for (let i = 0; i < len; i++) s += out[i] * out[i];
+  const rms = Math.sqrt(s / len) || 1;
+  const g = (TARGET_RMS[kind] / rms) * Math.max(0, Math.min(1, v));
+  for (let i = 0; i < len; i++) out[i] = Math.max(-1, Math.min(1, out[i] * g));
+  return out;
+}
+
+/** WAV mono de 16 bits. */
+export function wavBytes(samples: Float32Array, rate = AMBIENT_RATE): Uint8Array {
+  const b = new Uint8Array(44 + samples.length * 2);
+  const d = new DataView(b.buffer);
   const str = (o: number, t: string) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
   str(0, 'RIFF');
-  v.setUint32(4, 36 + n, true);
+  d.setUint32(4, 36 + samples.length * 2, true);
   str(8, 'WAVE');
   str(12, 'fmt ');
-  v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true);
-  v.setUint32(24, 8000, true);
-  v.setUint32(28, 8000, true);
-  v.setUint16(32, 1, true);
-  v.setUint16(34, 8, true);
+  d.setUint32(16, 16, true);
+  d.setUint16(20, 1, true);
+  d.setUint16(22, 1, true);
+  d.setUint32(24, rate, true);
+  d.setUint32(28, rate * 2, true);
+  d.setUint16(32, 2, true);
+  d.setUint16(34, 16, true);
   str(36, 'data');
-  v.setUint32(40, n, true);
-  b.fill(128, 44);
-  let bin = '';
-  b.forEach((x) => (bin += String.fromCharCode(x)));
-  return `data:audio/wav;base64,${btoa(bin)}`;
+  d.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) d.setInt16(44 + i * 2, Math.round(samples[i] * 32767), true);
+  return b;
 }
 
-let keepAlive: HTMLAudioElement | null = null;
-/** Diz ao iPhone que isto é reprodução de som (toca com o interruptor de silêncio). Chamar no toque. */
-export function unlockMediaAudio() {
-  try {
-    const s = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
-    if (s) s.type = 'playback';
-  } catch {
-    /* não suportado */
-  }
-  try {
-    if (!keepAlive) {
-      keepAlive = new Audio(silentWav());
-      keepAlive.loop = true;
-      keepAlive.setAttribute('playsinline', '');
-      keepAlive.volume = 0.01;
-    }
-    keepAlive.play()?.catch(() => {});
-  } catch {
-    /* sem <audio> */
-  }
-}
-function releaseMediaAudio() {
-  try {
-    keepAlive?.pause();
-  } catch {
-    /* já parado */
-  }
-}
+/** Volume do controlo (0–1) → volume da faixa, com o controlo a meio já bem audível. */
+const curve = (v: number) => Math.sqrt(Math.max(0, Math.min(1, v)));
 
-/** Monta o som (chuva, mar ou tom) num contexto de áudio; devolve o volume geral e as fontes. */
-export function buildAmbient(ctx: BaseAudioContext, kind: Exclude<Ambient, 'nenhum'>, volume: number, fadeIn = 4) {
-  const master = ctx.createGain();
-  master.connect(ctx.destination);
-  const level = (v: number) => (kind === 'tom' ? 0.05 : kind === 'chuva' ? 0.09 : 0.16) * v;
-  // entra suavemente: o ponto de partida tem de ficar marcado (senão o Safari salta ou fica mudo)
-  const now = ctx.currentTime;
-  master.gain.cancelScheduledValues(now);
-  master.gain.setValueAtTime(0.0001, now);
-  master.gain.linearRampToValueAtTime(level(volume), now + fadeIn);
-  const nodes: AudioScheduledSourceNode[] = [];
-  if (kind === 'chuva' || kind === 'mar') {
-    const src = ctx.createBufferSource();
-    src.buffer = noiseBuffer(ctx, kind === 'mar');
-    src.loop = true;
-    const filter = ctx.createBiquadFilter();
-    filter.type = kind === 'chuva' ? 'bandpass' : 'lowpass';
-    filter.frequency.value = kind === 'chuva' ? 1800 : 500;
-    filter.Q.value = kind === 'chuva' ? 0.4 : 0.7;
-    const g = ctx.createGain();
-    g.gain.value = 1;
-    src.connect(filter).connect(g).connect(master);
-    if (kind === 'mar') {
-      // ondas: o volume sobe e desce a cada ~9 s
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 0.11;
-      const depth = ctx.createGain();
-      depth.gain.value = 0.6;
-      lfo.connect(depth).connect(g.gain);
-      lfo.start();
-      nodes.push(lfo);
-    }
-    src.start();
-    nodes.push(src);
-  } else {
-    // tom: acorde suave (Lá 220 Hz + Mi 330 Hz + Lá 110 Hz) com "respiração" lenta
-    for (const [f, v] of [
-      [110, 0.5],
-      [220, 0.35],
-      [330, 0.2],
-    ] as const) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = f;
-      const g = ctx.createGain();
-      g.gain.value = v;
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 0.07 + f / 10000;
-      const depth = ctx.createGain();
-      depth.gain.value = v * 0.4;
-      lfo.connect(depth).connect(g.gain);
-      o.connect(g).connect(master);
-      o.start();
-      lfo.start();
-      nodes.push(o, lfo);
-    }
-  }
-  return { master, nodes, level };
+function trackUrl(kind: Exclude<Ambient, 'nenhum'>, v: number) {
+  const bytes = wavBytes(ambientSamples(kind, curve(v)));
+  return URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: 'audio/wav' }));
 }
 
 export function playAmbient(kind: Ambient, volume = 0.5): AmbientPlayer | null {
-  if (kind === 'nenhum') return null;
-  unlockMediaAudio();
+  if (kind === 'nenhum' || typeof Audio === 'undefined') return null;
   try {
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return null;
-    const ctx = new AC();
-    ctx.resume().catch(() => {});
-    const { master, nodes, level } = buildAmbient(ctx, kind, volume);
+    // som como reprodução de multimédia (iPhone 16.4+: toca mesmo com o interruptor de silêncio)
+    try {
+      const s = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (s) s.type = 'playback';
+    } catch {
+      /* não suportado */
+    }
+    const el = new Audio();
+    el.loop = true;
+    el.preload = 'auto';
+    el.setAttribute('playsinline', '');
+    let url = trackUrl(kind, volume);
+    el.src = url;
     let stopped = false;
-    // o iPhone "interrompe" o áudio (voz, chamada, ecrã) e não o retoma sozinho
+    el.play()?.catch(() => {});
+    // se o telemóvel o parar (voz, chamada, ecrã), volta a tocar
     const revive = () => {
-      if (!stopped && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {});
+      if (!stopped && el.paused) el.play()?.catch(() => {});
     };
-    ctx.onstatechange = revive;
+    const tick = window.setInterval(revive, 2000);
     const onVis = () => document.visibilityState === 'visible' && revive();
     document.addEventListener('visibilitychange', onVis);
-    const tick = window.setInterval(revive, 2000);
+    let pending = 0;
     return {
-      setVolume: (v) => master.gain.setTargetAtTime(level(v), ctx.currentTime, 0.3),
+      // o iPhone não deixa mudar o volume de um <audio>: refaz a faixa com o volume novo
+      setVolume: (v) => {
+        window.clearTimeout(pending);
+        pending = window.setTimeout(() => {
+          if (stopped) return;
+          const at = el.currentTime;
+          const old = url;
+          url = trackUrl(kind, v);
+          el.src = url;
+          try {
+            el.currentTime = at;
+          } catch {
+            /* ainda a carregar */
+          }
+          el.play()?.catch(() => {});
+          URL.revokeObjectURL(old);
+        }, 250);
+      },
       stop: () => {
         stopped = true;
         window.clearInterval(tick);
+        window.clearTimeout(pending);
         document.removeEventListener('visibilitychange', onVis);
-        releaseMediaAudio();
-        // sai suavemente (1,5 s) e fecha
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-        master.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
-        window.setTimeout(() => {
-          nodes.forEach((n) => {
-            try {
-              n.stop();
-            } catch {
-              /* já parado */
-            }
-          });
-          ctx.close().catch(() => {});
-        }, 1600);
+        try {
+          el.pause();
+        } catch {
+          /* já parado */
+        }
+        el.removeAttribute('src');
+        el.load();
+        URL.revokeObjectURL(url);
       },
     };
   } catch {
