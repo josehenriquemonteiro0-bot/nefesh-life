@@ -96,7 +96,7 @@ export function SuggestOption({ meal, dayName, about, onMeal }: { meal: NMeal; d
   return (
     <div className="nutri-sug">
       <div className="row" style={{ gap: 8 }}>
-        <span className="small"><b>{meal.label}</b> · {meal.options.length} {meal.options.length === 1 ? 'opção' : 'opções'}</span>
+        <span className="small"><b>{meal.label}</b> · {meal.time} · {meal.options[0]?.items.reduce((t, i) => t + i.kcal, 0) ?? 0} kcal, P {Math.round(meal.options[0]?.items.reduce((t, i) => t + i.p, 0) ?? 0)} g · {meal.options.length} {meal.options.length === 1 ? 'opção' : 'opções'}</span>
         {!sug && meal.options.length < 4 && <button className="link small inline" disabled={busy} onClick={ask}>{busy ? 'A pensar…' : '💡 Sugerir outra opção'}</button>}
       </div>
       {sug && (

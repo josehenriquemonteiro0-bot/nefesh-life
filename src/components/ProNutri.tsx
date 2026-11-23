@@ -380,7 +380,7 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
           {day.meals.filter((m) => !mealFilled(m)).length > 0 && <p className="small warn-t" style={{ marginTop: 0 }}>Por montar: {day.meals.filter((m) => !mealFilled(m)).map((m) => m.label).join(', ')} (não aparecem ao paciente).</p>}
           <section className="card">
             <h3 style={{ margin: '0 0 4px' }}>Confirmar as refeições</h3>
-            <p className="small mute" style={{ margin: '0 0 6px' }}>Toque numa refeição para a corrigir. Se quiser, peça à IA uma alternativa equivalente: só entra no plano se a juntar.</p>
+            <p className="small mute" style={{ margin: '0 0 6px' }}>Confira cada refeição (em "corrigir" volta a ela). Se quiser, peça à IA uma alternativa equivalente: só entra no plano se a juntar.</p>
             {day.meals.filter(mealFilled).map((m) => (
               <div key={m.key} className="row" style={{ gap: 8, alignItems: 'flex-start', flexWrap: 'nowrap' }}>
                 <div style={{ flex: 1 }}><SuggestOption meal={m} dayName={day.name} about={about} onMeal={(nm) => setDay({ ...day, meals: day.meals.map((x) => (x === m ? nm : x)) })} /></div>

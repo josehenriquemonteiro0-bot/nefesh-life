@@ -23,7 +23,7 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
   const [edit, setEdit] = useState(false);
   const option = meal.options[opt] ?? meal.options[0];
   const [items, setItems] = useState(option.items.map(() => ({ eaten: true, factor: 1 })));
-  const [extras, setExtras] = useState<{ name: string; kcal?: number; p?: number; c?: number; f?: number }[]>([]);
+  const [extras, setExtras] = useState<{ name: string; kcal?: number; p?: number; c?: number; f?: number; swapOf?: number }[]>([]);
   const [swap, setSwap] = useState<number | null>(null);
   const [extraName, setExtraName] = useState('');
   const [extraKcal, setExtraKcal] = useState<number | undefined>();
@@ -56,7 +56,12 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
       const food = FOODS.find((f) => f.name.toLowerCase() === x.name.toLowerCase());
       entries.push(food ? entryOf(food, food.grams) : { id: `extra-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, name: x.name, grams: 0, kcal: Math.round(x.kcal ?? 0), p: x.p ?? 0, c: x.c ?? 0, f: x.f ?? 0 });
     }
-    const changes = describeChanges(option.items.map((it, i) => ({ name: it.name, ...items[i] })), extras.map((x) => x.name));
+    // trocas por equivalentes: "Troca: A → B 115 g" (em vez de "sem A" + "B")
+    const swaps = extras.filter((x) => x.swapOf !== undefined);
+    const changes = [
+      ...swaps.map((x) => `Troca: ${option.items[x.swapOf!].name.split(',').slice(0, 2).join(' ').trim()} → ${x.name}`),
+      ...describeChanges(option.items.map((it, i) => ({ name: it.name, ...items[i], eaten: items[i]?.eaten || swaps.some((x) => x.swapOf === i) })), extras.filter((x) => x.swapOf === undefined).map((x) => x.name)),
+    ];
     save(changes.length ? 'alterado' : 'seguido', entries, changes);
   };
 
@@ -132,7 +137,7 @@ export function PlanMealSheet({ idx, onClose }: { idx: number; onClose: () => vo
                       {equivalents(it.name, it.grams).map((q) => (
                         <button key={q.name} className="chip sm" onClick={() => {
                           setItems(items.map((x, j) => (j === i ? { ...x, eaten: false } : x)));
-                          setExtras([...extras, { name: `${q.name} (${q.grams} g, em vez de ${it.name.split(',')[0]})`, kcal: q.kcal, p: q.p, c: q.c, f: q.f }]);
+                          setExtras([...extras.filter((x) => x.swapOf !== i), { name: `${q.name.replace(/\/\d+ ?minutos/, '')} ${q.grams} g`, kcal: q.kcal, p: q.p, c: q.c, f: q.f, swapOf: i }]);
                           setSwap(null);
                         }}>{q.name.replace(/\/\d+ ?minutos/, '')} · {q.grams} g</button>
                       ))}

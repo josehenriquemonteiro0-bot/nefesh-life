@@ -15,6 +15,7 @@ function WeeklyCheckin({ code, pro, onDone }: { code: string; pro: string; onDon
   const [v, setV] = useState<Record<string, number>>({});
   const [nota, setNota] = useState('');
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const send = async () => {
     setBusy(true);
     try {
@@ -23,6 +24,13 @@ function WeeklyCheckin({ code, pro, onDone }: { code: string; pro: string; onDon
       onDone();
     } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
+  if (!open)
+    return (
+      <div className="pro-ask row" style={{ marginTop: 10, gap: 8, flexWrap: 'nowrap' }}>
+        <span className="small"><b>📝 Check-in semanal para {pro}</b> · 1 minuto</span>
+        <button className="btn sm" onClick={() => setOpen(true)}>Responder</button>
+      </div>
+    );
   return (
     <div className="pro-ask" style={{ marginTop: 10 }}>
       <p className="small" style={{ margin: '0 0 6px' }}><b>📝 Check-in semanal para {pro}</b> · 1 minuto</p>
