@@ -4,6 +4,21 @@ Base para quando avançarmos para a app nativa. Objetivo: passar a recolher dado
 **automaticamente** (sensores), mantendo o que já nos distingue: o **contexto** (voz,
 relatos, humor, ciclo), o **produto** (Spirulina verificada) e os **profissionais**.
 
+## Estado (novembro de 2026)
+
+- **Fase A — feita.** Capacitor 8.6.0, projeto `ios/` (Swift Package Manager), só iPhone e vertical,
+  ícone e ecrã de arranque, textos das permissões em pt-PT. `npm run build:native` + `npx cap sync ios`.
+  O workflow `App iPhone (simulador)` compila num Mac do GitHub (Intel), abre no simulador e põe as
+  capturas no registo. Usa o servidor de teste (v2).
+- **Fase B — feita (falta confirmar num iPhone real).** Apple Health (`src/native/health.ts`):
+  passos, sono e exercício ao abrir a app; lembretes no telemóvel (`src/domain/localReminders.ts`,
+  `src/native/notify.ts`); áudio `.playback` no `AppDelegate`; capacidade HealthKit em `App.entitlements`.
+  Apagar a conta dentro da app já existia.
+- **Falta (precisa da conta Apple Developer):** assinar a app, TestFlight, notificações do servidor
+  (APNs) para os avisos da comunidade, testar o Apple Health num iPhone, ficha da App Store.
+- Antes do envio: ícone original em 1024 px (hoje é o de 512 ampliado), política de privacidade
+  pública, decidir o preço do Premium dentro da app (pagamento da Apple).
+
 ## Princípio
 
 Não substituir a app atual: empacotá-la com o **Capacitor** (o mesmo código React),
