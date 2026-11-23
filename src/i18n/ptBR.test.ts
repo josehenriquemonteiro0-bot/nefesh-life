@@ -25,6 +25,8 @@ describe('português do Brasil', () => {
     expect(toBR('A dor de cabeça passou.')).toBe('A dor de cabeça passou.');
     expect(toBR('Começar a treinar')).toBe('Começar a treinar');
     expect(gerund('pôr')).toBe('pondo');
+    expect(toBR('Anca (cm) · Meça a anca na parte mais larga')).toBe('Quadril (cm) · Meça o quadril na parte mais larga');
+    expect(toBR('Medir a tensão arterial; obstipação; manteiga de amendoim')).toBe('Medir a pressão arterial; prisão de ventre; pasta de amendoim');
     expect(toBR('Use auscultadores. Pausa a meio da tarde para apanhar ar.')).toBe('Use fones de ouvido. Pausa no meio da tarde para tomar um ar.');
   });
   it('ortografia e palavras que não mudam', () => {
