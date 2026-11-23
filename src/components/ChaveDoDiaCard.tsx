@@ -24,7 +24,7 @@ export function ChaveDoDiaCard() {
   const img = useRef<Promise<Blob> | null>(null);
   useEffect(() => {
     const id = window.setTimeout(() => {
-      img.current = drawChaveCard({ texto: c.texto, referencia: c.referencia, link });
+      img.current = drawChaveCard({ texto: c.texto, referencia: c.referencia });
       img.current.catch(() => (img.current = null));
     }, 600);
     return () => window.clearTimeout(id);
@@ -34,7 +34,7 @@ export function ChaveDoDiaCard() {
     // o Instagram não leva o texto: a legenda fica copiada para colar
     navigator.clipboard?.writeText(legenda).catch(() => undefined);
     try {
-      const blob = await (img.current ?? drawChaveCard({ texto: c.texto, referencia: c.referencia, link }));
+      const blob = await (img.current ?? drawChaveCard({ texto: c.texto, referencia: c.referencia }));
       const r = await shareImage(blob, legenda, 'nefesh-chave-do-dia.png');
       if (r === 'partilhado') toast('Partilhado. Obrigado por espalhar a chave! 🌿');
       else if (r === 'descarregado') toast('Imagem guardada. Publique-a no Instagram (história ou publicação); a legenda está copiada.');

@@ -174,9 +174,9 @@ export async function shareImage(blob: Blob, text: string, filename = 'nefesh-li
 
 /**
  * Imagem da "Chave do dia" no formato das histórias do Instagram (1080×1920): a frase em destaque,
- * a referência e a marca NEFESH com o endereço da app (divulgação).
+ * a referência e a marca NEFESH (o link da app vai na legenda copiada, não na imagem).
  */
-export async function drawChaveCard(c: { texto: string; referencia: string; link: string }): Promise<Blob> {
+export async function drawChaveCard(c: { texto: string; referencia: string }): Promise<Blob> {
   try {
     await document.fonts?.ready;
   } catch {
@@ -249,20 +249,9 @@ export async function drawChaveCard(c: { texto: string; referencia: string; link
   // rodapé: convite à app (acima da zona da caixa de resposta do Instagram)
   ctx.fillStyle = 'rgba(238,243,240,.9)';
   ctx.font = font(600, 38);
-  ctx.fillText('Uma chave nova todos os dias na', SW / 2, SH - 330);
+  ctx.fillText('Uma chave nova todos os dias na', SW / 2, SH - 300);
   ctx.fillStyle = NEON;
   ctx.font = font(700, 44);
-  ctx.fillText('NEFESH Life', SW / 2, SH - 270);
-  const u = (() => {
-    try {
-      return new URL(c.link);
-    } catch {
-      return null;
-    }
-  })();
-  ctx.fillStyle = 'rgba(238,243,240,.6)';
-  ctx.font = font(400, 30);
-  ctx.fillText(u ? u.host + u.pathname.replace(/\/$/, '') : c.link, SW / 2, SH - 215);
-
+  ctx.fillText('NEFESH Life', SW / 2, SH - 240);
   return new Promise((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('sem imagem'))), 'image/png'));
 }
