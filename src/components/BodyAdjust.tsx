@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { bodyOf, targetsFor } from '../domain/body';
 import { bodySeries, saveEvals, type FullEval } from '../domain/bodyLog';
 import { fmtNum, shortDate, todayKey } from '../domain/dates';
 import { readHealthReport } from '../domain/pro';
 import { MEASURES as PERIMETERS, type MeasureKey } from '../domain/proProfile';
+import type { AppState } from '../domain/types';
 import { useStore } from '../state/store';
 import { DecimalInput } from './DecimalInput';
 
@@ -11,6 +13,42 @@ const BASIC: ['altura' | 'peso' | 'gordura' | 'magra' | 'fc', string, string][] 
   ['altura', 'Altura', 'cm'], ['peso', 'Peso', 'kg'], ['gordura', '% de gordura', '%'], ['magra', 'Massa magra', 'kg'], ['fc', 'FC em repouso', 'bpm'],
 ];
 const num = (v: number | null | undefined) => (typeof v === 'number' && v > 0 ? v : undefined);
+
+/** Os números que a app calcula a partir do corpo. */
+function snapshot(S: AppState) {
+  const b = S.ans ? bodyOf(S.ans) : null;
+  if (!b) return null;
+  const t = targetsFor(S);
+  return { bmi: b.bmi, bmiLabel: b.bmiLabel, fat: b.fat, fatLabel: b.fatLabel, fatMethod: b.fatMethod, bmr: b.bmr, kcal: t.kcal, protein: t.protein, pro: t.source === 'pro', muscleNote: b.muscleNote };
+}
+type Snap = NonNullable<ReturnType<typeof snapshot>>;
+const METHOD = { avaliacao: 'medida', medidas: 'pelas medidas', imc: 'estimada pelo IMC' } as const;
+
+/** Antes e depois do ajuste: IMC, gordura, metabolismo e meta diária. */
+function Recalc({ before, after, saved, onClose }: { before: Snap | null; after: Snap; saved: boolean; onClose?: () => void }) {
+  const rows: [string, string, string, boolean][] = [
+    ['IMC', before ? `${fmtNum(before.bmi)} (${before.bmiLabel})` : '—', `${fmtNum(after.bmi)} (${after.bmiLabel})`, !before || before.bmi !== after.bmi],
+    ['Gordura corporal', before ? `${fmtNum(before.fat)}% (${METHOD[before.fatMethod]})` : '—', `${fmtNum(after.fat)}% (${METHOD[after.fatMethod]})`, !before || before.fat !== after.fat],
+    ['Classificação da gordura', before?.fatLabel ?? '—', after.fatLabel, !before || before.fatLabel !== after.fatLabel],
+    ['Metabolismo basal', before ? `${before.bmr.toLocaleString('pt-PT')} kcal` : '—', `${after.bmr.toLocaleString('pt-PT')} kcal`, !before || before.bmr !== after.bmr],
+    ['Meta diária', before ? `${before.kcal.toLocaleString('pt-PT')} kcal` : '—', `${after.kcal.toLocaleString('pt-PT')} kcal${after.pro ? ' (do profissional)' : ''}`, !before || before.kcal !== after.kcal],
+    ['Proteína por dia', before ? `${before.protein} g` : '—', `${after.protein} g`, !before || before.protein !== after.protein],
+  ];
+  return (
+    <div className="recalc">
+      <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start', gap: 8 }}>
+        <b>{saved ? '✓ Os seus números foram recalculados' : 'Com estes dados, os seus números ficam assim'}</b>
+        {onClose && <button className="link small inline" onClick={onClose} aria-label="Fechar">✕</button>}
+      </div>
+      <table className="cmp">
+        <thead><tr><th /><th>antes</th><th>agora</th></tr></thead>
+        <tbody>{rows.map(([k, a, b, changed]) => <tr key={k}><td>{k}</td><td>{a}</td><td>{changed ? <b>{b}</b> : b}</td></tr>)}</tbody>
+      </table>
+      {after.muscleNote && <p className="small neon" style={{ margin: '8px 0 0' }}>💪 {after.muscleNote}</p>}
+      {!saved && <p className="small mute" style={{ margin: '8px 0 0' }}>Ainda não está guardado: toque em Guardar para passar a usar estes números.</p>}
+    </div>
+  );
+}
 
 /**
  * "Os seus dados estão certos?": ajuste manual com uma avaliação completa
@@ -69,16 +107,27 @@ export function BodyAdjust() {
     }
   };
 
-  const save = () => {
+  const apply = (d: AppState) => {
     const fromReport = older.length > 0 || goals !== null;
-    update((d) => {
-      saveEvals(d, [...older, f], fromReport ? 'relatorio' : 'manual', por);
-      if (goals && useGoals && (goals.kcal || goals.protein)) {
-        d.nutriPro = { kcal: goals.kcal ?? undefined, protein: goals.protein ?? undefined, by: goals.by.trim() || por.trim() || 'o seu profissional', at: todayKey() };
-      }
-    });
-    toast(older.length ? `Guardadas ${older.length + 1} avaliações no seu histórico.` : 'Dados ajustados. Os cálculos já usam estes números.');
+    saveEvals(d, [...older, f], fromReport ? 'relatorio' : 'manual', por);
+    if (goals && useGoals && (goals.kcal || goals.protein)) {
+      d.nutriPro = { kcal: goals.kcal ?? undefined, protein: goals.protein ?? undefined, by: goals.by.trim() || por.trim() || 'o seu profissional', at: todayKey() };
+    }
+  };
+  // "Recalcular": o que mudaria, sem guardar
+  const [calc, setCalc] = useState<{ before: Snap | null; after: Snap | null; saved: boolean } | null>(null);
+  const preview = () => {
+    const d = structuredClone(S);
+    apply(d);
+    return { before: snapshot(S), after: snapshot(d) };
+  };
+  useEffect(() => { if (open) setCalc(null); }, [f, older, goals, useGoals, open]);
+  const save = () => {
+    const r = preview();
+    update(apply);
+    toast(older.length ? `Guardadas ${older.length + 1} avaliações no seu histórico.` : 'Dados guardados. Os cálculos já usam estes números.');
     setOpen(false);
+    setCalc({ ...r, saved: true });
   };
 
   const setM = (k: MeasureKey, v: number | undefined) => setF({ ...f, medidas: { ...(f.medidas ?? {}), [k]: v } });
@@ -96,6 +145,7 @@ export function BodyAdjust() {
           O IMC não distingue músculo de gordura: quem tem muita massa muscular aparece com "excesso de peso". Se já fez uma avaliação física (bioimpedância, dobras) ou é acompanhado por um nutricionista ou médico, use os números medidos e os cálculos ficam muito mais certos.
         </p>
       )}
+      {!open && calc?.saved && calc.after && <Recalc before={calc.before} after={calc.after} saved onClose={() => setCalc(null)} />}
       {!open && (
         <>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
@@ -171,8 +221,10 @@ export function BodyAdjust() {
             </label>
           )}
           <p className="small mute" style={{ margin: '10px 0 0' }}>Deixe em branco o que não sabe. A % de gordura medida passa a valer em vez da estimada pelo IMC (durante 1 ano).</p>
-          <div className="row" style={{ marginTop: 10 }}>
+          {calc && !calc.saved && (calc.after ? <Recalc before={calc.before} after={calc.after} saved={false} /> : <p className="small warn-t" style={{ margin: '10px 0 0' }}>Para recalcular precisamos da altura e do peso.</p>)}
+          <div className="row" style={{ marginTop: 10, gap: 8 }}>
             <button className="btn ghost sm" onClick={() => setOpen(false)}>Cancelar</button>
+            <button className="btn ghost sm" disabled={!anything || !/^\d{4}-\d{2}-\d{2}$/.test(f.date)} onClick={() => setCalc({ ...preview(), saved: false })}>🔄 Recalcular</button>
             <button className="btn sm" disabled={!anything || !/^\d{4}-\d{2}-\d{2}$/.test(f.date)} onClick={save}>Guardar</button>
           </div>
         </div>

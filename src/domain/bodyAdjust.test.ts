@@ -91,3 +91,16 @@ describe('as medidas aparecem na evolução, nos relatórios e na IA', () => {
     expect(withBody.body!.find((r) => r.label === 'Dobra tricipital')).toMatchObject({ first: 15, last: 4.5 });
   });
 });
+
+describe('recalcular depois do ajuste', () => {
+  it('o metabolismo e a meta mudam com a gordura medida', () => {
+    const before = bodyOf({ sexo: 'm', idade: 35, altura: 178, peso: 92, ativ: '5+', corpo: 'perder-suave' } as never)!;
+    const S = { ans: { sexo: 'm', idade: 35, altura: 178, peso: 92, ativ: '5+', corpo: 'perder-suave' }, bodyLog: [] } as unknown as AppState;
+    saveEvals(S, [{ date: new Date().toISOString().slice(0, 10), gordura: 14, magra: 79 }], 'manual');
+    const after = bodyOf(S.ans!)!;
+    expect(before.fatMethod).toBe('imc');
+    expect(after.fatMethod).toBe('avaliacao');
+    expect(after.bmr).toBeGreaterThan(before.bmr);
+    expect(after.target).toBeGreaterThan(before.target);
+  });
+});
