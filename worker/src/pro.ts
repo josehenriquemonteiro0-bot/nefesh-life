@@ -66,7 +66,14 @@ export function cleanPlan(p: unknown) {
   const fromPhases = phases.reduce((a, x) => a + x.weeks, 0);
   const weeks = Math.max(0, Math.min(52, Math.round(Number(o.weeks) || fromPhases || 0)));
   const start = /^\d{4}-\d{2}-\d{2}$/.test(String(o.start ?? '')) ? String(o.start) : '';
+  // jejum intermitente prescrito (só nutricionistas e médicos: ver savePlan)
+  const j = (o.jejum ?? null) as Record<string, unknown> | null;
+  const jp = String(j?.protocol ?? '');
+  const lowDays = (Array.isArray(j?.lowDays) ? j!.lowDays : []).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).slice(0, 2);
+  const jejum = j && ['12:12', '14:10', '16:8', '18:6', '20:4', '5:2'].includes(jp) && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(j.open)) && (jp !== '5:2' || lowDays.length === 2)
+    ? { protocol: jp, open: String(j.open), ...(jp === '5:2' ? { lowDays } : {}), notes: str(j.notes, 200) } : null;
   return {
+    ...(jejum ? { jejum } : {}),
     is_workout: true, workouts, per_week: Math.max(1, Math.min(7, Math.round(Number(o.per_week) || workouts.length || 3))), professional: str(o.professional, 60), notes: str(o.notes, 600),
     ...(weeks ? { weeks } : {}), ...(start && weeks ? { start } : {}), ...(phases.length ? { phases } : {}),
   };
@@ -185,7 +192,9 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   const raw = (b.plan ?? {}) as Record<string, unknown>;
   // periodização: o plano começa no dia em que é enviado (a não ser que o profissional diga outra data)
   const plan = cleanPlan({ ...raw, professional: pro?.name, start: raw.start || (Number(raw.weeks) || (Array.isArray(raw.phases) && raw.phases.length) ? now.toISOString().slice(0, 10) : '') });
-  if (!plan.workouts.length) return bad('Acrescente pelo menos um treino com um exercício.');
+  // o jejum só pode ser prescrito por nutricionistas e médicos
+  if (plan.jejum && !['nutricionista', 'medico'].includes(pro?.kind ?? '')) delete (plan as { jejum?: unknown }).jejum;
+  if (!plan.workouts.length && !plan.jejum) return bad('Acrescente pelo menos um treino com um exercício.');
   await db.batch([
     db.prepare('UPDATE pro_students SET plan = ?, version = version + 1, updated = ? WHERE code = ?').bind(JSON.stringify(plan), now.toISOString(), s.code),
     db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code),

@@ -1,4 +1,5 @@
 import { bodyContext } from './bodyLog';
+import { fastSummary, windowOn } from './fasting';
 import { AREAS, CAPS_PER_BOTTLE, GLASS_ML, GOAL_LABEL } from './content';
 import { dayKey, daysAgo, daysSince, fmtNum, keyDaysAgo } from './dates';
 import { SLEEP_HABIT, STEPS_HABIT } from './health';
@@ -203,6 +204,14 @@ export function report(S: AppState, now = new Date()) {
       return `Corpo: IMC ${fmtNum(b.bmi)} (${b.bmiLabel}) · gordura ${fmtNum(b.fat)}% (${b.fatMethod === 'avaliacao' ? 'medida em avaliação' : b.fatMethod === 'medidas' ? 'medidas' : 'estimada pelo IMC'})\nObjetivo para o corpo: ${BODY_GOAL_LABEL[b.corpo]} · meta ${tg.kcal} kcal e ${tg.protein} g de proteína/dia (${tg.source === 'pro' ? `definida por ${tg.by}` : 'referência geral da app'})`;
     })(),
     bodyContext(S) || null,
+    (() => {
+      const f = S.fasting;
+      if (!f?.on) return null;
+      if (f.protocol === '5:2') return `Jejum intermitente 5:2${f.by ? ` (indicado por ${f.by})` : ''}`;
+      const sm = fastSummary(S, 7, now);
+      const w = windowOn(f, now);
+      return `Jejum intermitente ${f.protocol} (janela ${w.openText}–${w.closeText})${f.by ? `, indicado por ${f.by}` : ''}: ${sm.reached} de 7 dias cumpridos, média ${fmtNum(sm.avg)} h`;
+    })(),
     (() => {
       const days = Array.from({ length: 7 }, (_, i) => S.logs[keyDaysAgo(i, now)]?.meals).filter((m) => m && Object.values(m).some((x) => x?.length));
       if (!days.length) return null;

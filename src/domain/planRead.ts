@@ -11,6 +11,8 @@ export interface ParsedWorkoutPlan {
   is_workout: boolean; workouts: PlanWorkout[]; per_week: number; professional: string; notes: string;
   /** periodização (NEFESH Life Pro): duração, início (AAAA-MM-DD, marcado ao enviar) e fases */
   weeks?: number; start?: string; phases?: PlanPhase[];
+  /** jejum intermitente prescrito por um nutricionista ou médico (NEFESH Pro) */
+  jejum?: { protocol: import('./fasting').FastProtocol; open: string; lowDays?: number[]; notes?: string };
 }
 
 export interface ParsedPlan { is_plan: boolean; meals: PlanMeal[]; daily_kcal: number; daily_protein_g: number; professional: string; notes: string }

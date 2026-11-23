@@ -187,6 +187,8 @@ export function bodyOf(a: Answers): BodyResult | null {
 
 export interface NutritionTargets {
   kcal: number;
+  /** jejum 5:2: dia de poucas calorias */
+  fastDay?: boolean;
   /** calorias acrescentadas pelo treino do dia (metade do gasto estimado) */
   exercise?: number;
   protein: number;
@@ -197,7 +199,20 @@ export interface NutritionTargets {
 }
 
 /** Metas do diário: as do nutricionista, se existirem; senão as calculadas pela app. */
-export function targetsFor(S: AppState, exerciseKcal = 0): NutritionTargets {
+export function targetsFor(S: AppState, exerciseKcal = 0, now = new Date()): NutritionTargets {
+  const t = baseTargets(S, exerciseKcal);
+  // jejum 5:2: nos dois dias de poucas calorias, cerca de 500 kcal (mulheres) ou 600 kcal (homens)
+  const f = S.fasting;
+  if (f?.on && f.protocol === '5:2' && (f.lowDays ?? []).includes(now.getDay())) {
+    const kcal = S.ans?.sexo === 'm' ? 600 : 500;
+    const protein = Math.round((kcal * 0.4) / 4);
+    const fat = Math.round((kcal * 0.3) / 9);
+    return { kcal, protein, fat, carbs: Math.round((kcal - protein * 4 - fat * 9) / 4), source: t.source, by: t.by, fastDay: true };
+  }
+  return t;
+}
+
+function baseTargets(S: AppState, exerciseKcal: number): NutritionTargets {
   const b = S.ans ? bodyOf(S.ans) : null;
   // a meta já conta com a atividade habitual; num dia de treino somamos metade do gasto estimado (abordagem conservadora)
   const extra = Math.round((exerciseKcal * 0.5) / 10) * 10;

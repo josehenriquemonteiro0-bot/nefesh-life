@@ -1,3 +1,4 @@
+import { FastingMini } from '../components/Fasting';
 import { MonthCelebration, showMonth } from '../components/MonthCelebration';
 import { DayPanel, EnergyWeek, NextActionCard, Shortcuts, TodayCarousel } from '../components/HomePanel';
 import { testDays } from '../testDate';
@@ -240,6 +241,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           </div>
         </section>
       )}
+      <FastingMini onOpen={() => go('nutri')} />
       <TodayCarousel go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
       <EnergyWeek go={go} />
       <Shortcuts go={go} />

@@ -88,6 +88,7 @@ export function weeklySummary(S: AppState, now = new Date()) {
 
 /** Refeição do diário em que entra cada toma, pelo nome da toma. */
 export function mealForSlot(label: string): MealKey {
+  if (/pequeno-almoço/i.test(label)) return 'pa';
   if (/almoço/i.test(label)) return 'almoco';
   if (/jantar/i.test(label)) return 'jantar';
   if (/treino|lanche/i.test(label)) return 'lanche';

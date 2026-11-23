@@ -60,6 +60,13 @@ export function applyProPlan(S: AppState, r: { code: string; pro: string; plan: 
   const name = `NEFESH Pro · ${r.pro}`;
   S.proLink = { code: r.code, pro: r.pro, version: r.version, at: todayKey() };
   if (!r.plan) return;
+  // jejum prescrito: fica à espera de a pessoa o ativar (só se for novo)
+  const j = r.plan.jejum;
+  if (j) {
+    const same = (x?: { protocol: string; open: string; lowDays?: number[] } | null) => !!x && x.protocol === j.protocol && x.open === j.open && JSON.stringify(x.lowDays ?? []) === JSON.stringify(j.lowDays ?? []);
+    if (!(S.fasting?.on && S.fasting.by === r.pro && same(S.fasting)) && !same(S.fastingRx)) S.fastingRx = { ...j, by: r.pro, at: todayKey() };
+  }
+  if (!r.plan.workouts.length) return;
   S.trainPlan = { ...r.plan, is_workout: true, at: todayKey(), name };
   S.plans = { ...(S.plans ?? {}), treino: { name, type: 'nefesh-pro', size: 0, at: todayKey(), by: r.pro } };
 }

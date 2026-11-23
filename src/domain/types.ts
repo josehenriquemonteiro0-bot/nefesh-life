@@ -60,6 +60,8 @@ export interface DayLog {
   e?: number;
   s?: number;
   d?: number;
+  /** fome (1–5), no check-in de quem faz jejum */
+  hunger?: number;
   /** treino: 0 nenhum, 1 leve, 2 moderado, 3 intenso */
   t?: number;
   /** plano do nutricionista vs execução, por índice da refeição do plano */
@@ -148,6 +150,10 @@ export interface AppState {
   /** ligação ao personal pelo NEFESH Life Pro (código, nome, versão do plano) */
   proLink?: { code: string; pro: string; version: number; at: string };
   /** o aluno partilha o resumo de bem-estar com o personal (autorização revogável); at = último envio */
+  /** jejum intermitente: definições, jejuns feitos e prescrição de um profissional por ativar */
+  fasting?: import('./fasting').FastingSettings | null;
+  fastSessions?: import('./fasting').FastSession[];
+  fastingRx?: import('./fasting').FastingRx | null;
   proShare?: { on: boolean; at?: string; /** também as medidas e avaliações do corpo */ body?: boolean };
   /** a pessoa prefere seguir a recomendação geral do rótulo */
   followLabel?: boolean;

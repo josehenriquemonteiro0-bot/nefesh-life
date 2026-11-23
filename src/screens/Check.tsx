@@ -34,6 +34,16 @@ export function Check({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
         ))}
+        {S.fasting?.on && (
+          <div className="metric" role="group" aria-label="Fome">
+            <div className="lbl"><span>Fome (jejum)</span><span className="mute small">pouca → muita</span></div>
+            <div className="chips">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} className={`chip ${l.hunger === n ? 'on' : ''}`} aria-pressed={l.hunger === n} onClick={() => updateToday((d) => { d.hunger = n; })}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="metric" role="group" aria-label="Horas de sono">
           <div className="lbl"><span>Quantas horas dormiu?</span>{l.sleepH !== undefined ? <SourceTag l={l} f="sleepH" /> : <span className="mute small">opcional</span>}</div>
           <div className="chips">

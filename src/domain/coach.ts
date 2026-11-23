@@ -6,6 +6,7 @@
  * o modelo só escolhe os alimentos e as quantidades.
  */
 import { bodyContext } from './bodyLog';
+import { endFast, fastState, fastingContext, startFast } from './fasting';
 import { GOAL_LABEL, QUESTIONS, TRAINING } from './content';
 import { daysSince, fmtNum, keyDaysAgo, shortDate, todayKey } from './dates';
 import { foodById, entryOf, MEALS, totals, type FoodEntry, type MealKey } from './foods';
@@ -30,7 +31,7 @@ import type { AppState, DayLog } from './types';
 
 export type CoachActionType =
   | 'agua' | 'sono' | 'spirulina' | 'energia' | 'disposicao' | 'refeicao' | 'plano_refeicao' | 'plano_treino' | 'treino' | 'passos'
-  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso' | 'meditar' | 'ciclo';
+  | 'humor' | 'stress' | 'gratidao' | 'respiracao' | 'memoria' | 'nota' | 'lembrete' | 'consulta' | 'desafio' | 'abrir' | 'resumo' | 'peso' | 'meditar' | 'ciclo' | 'jejum';
 
 export interface CoachAction {
   type: CoachActionType;
@@ -121,6 +122,8 @@ export function buildContext(S: AppState, now = new Date(), extra: { friends?: s
     lines.push(`Ritual: ${streak(S, now)} dias seguidos; aderência ${adherence(S, 14, now)}% nos últimos 14 dias.`);
     const bc = bodyContext(S);
     if (bc) lines.push(bc);
+    const fc = fastingContext(S, now);
+    if (fc) lines.push(fc);
     const flags = (a.safe || []).filter((x) => x !== 'nenhuma');
     if (flags.length) {
       const q = QUESTIONS.find((x) => x.id === 'safe');
@@ -293,6 +296,22 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
           l.grat = [...(l.grat ?? []), g].slice(-5);
           done.push(`💚 Gratidão: ${g}`);
         }
+        break;
+      }
+      case 'jejum': {
+        const f = S.fasting;
+        if (!f?.on || f.protocol === '5:2') { done.push('🌙 O jejum com janela configura-se em Nutrição'); break; }
+        let at = new Date(now);
+        if (a.time) { const [h, m] = a.time.split(':').map(Number); at.setHours(h, m, 0, 0); if (at > now) at = new Date(at.getTime() - 864e5); }
+        const st = fastState(f, S.fastSessions ?? [], now);
+        if (a.value) {
+          startFast(S, at);
+          done.push(`🌙 Jejum começado às ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
+        } else if (st.kind === 'jejum') {
+          if (!(S.fastSessions ?? []).some((x) => !x.end)) startFast(S, st.since);
+          const r = endFast(S, at);
+          done.push(r ? `🌙 Jejum terminado: ${Math.floor(r.hours)} h ${String(Math.floor((r.hours % 1) * 60)).padStart(2, '0')} min${r.reached ? ' ✓' : ''}` : '🌙 Jejum terminado');
+        } else done.push('🌙 A sua janela já estava aberta');
         break;
       }
       case 'peso': {

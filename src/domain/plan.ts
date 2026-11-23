@@ -1,3 +1,4 @@
+import { mealPlan } from './fasting';
 import { AREAS, GOAL_LABEL } from './content';
 import { daysSince, fmtNum } from './dates';
 import { DOSE_BASIS } from './science';
@@ -159,5 +160,15 @@ export function slotsFor(S: AppState, now = new Date()): Slot[] {
   if (!S.ans) return [];
   const c = planFor(S);
   const n = inAdaptation(S, now) ? Math.ceil(c.caps / 2) : c.caps;
-  return splitDose(n, S.ans.goal, c.format);
+  const slots = splitDose(n, S.ans.goal, c.format);
+  // jejum: a Spirulina vai para dentro da janela (primeira e última refeição)
+  const f = S.fasting;
+  if (f?.on && f.protocol !== '5:2' && f.spirulinaInWindow !== false) {
+    const meals = mealPlan(f, now);
+    const name = { pa: 'pequeno-almoço', almoco: 'almoço', lanche: 'lanche', jantar: 'jantar' } as const;
+    const first = meals[0];
+    const last = meals[meals.length - 1];
+    return slots.map((x, i) => ({ ...x, l: i === 0 ? `Na 1.ª refeição (${name[first.key]}, ${first.time})` : `Na última refeição (${name[last.key]})` }));
+  }
+  return slots;
 }

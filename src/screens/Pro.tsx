@@ -1,3 +1,4 @@
+import { PROTOCOLS } from '../domain/fasting';
 import { useEffect, useState } from 'react';
 import { getAuth } from '../domain/account';
 import { shortDate } from '../domain/dates';
@@ -79,7 +80,33 @@ function ExerciseInput({ value, focus, onPick, onType, label }: { value: string;
 }
 
 /** Montar ou editar o treino de um aluno: divisão (A, AB, ABC…), um treino de cada vez, sugestões pelo foco. */
-function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent; others: ProStudent[]; onClose: () => void; onSaved: () => void }) {
+/** Nutricionistas e médicos: prescrever jejum intermitente ao aluno/paciente (ele ativa na app). */
+function FastRxEditor({ value, onChange, canSendAlone, busy, onSend }: { value?: ParsedWorkoutPlan['jejum']; onChange: (j: ParsedWorkoutPlan['jejum']) => void; canSendAlone: boolean; busy: boolean; onSend: () => void }) {
+  const [open, setOpen] = useState(!!value);
+  const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const j = value;
+  if (!open) return <button className="btn ghost sm" style={{ margin: '0 0 12px' }} onClick={() => { setOpen(true); onChange({ protocol: '14:10', open: '10:00', notes: '' }); }}>🌙 Indicar jejum intermitente</button>;
+  return (
+    <section className="card">
+      <div className="row"><h2 style={{ margin: 0 }}>🌙 Jejum intermitente</h2><button className="link small inline" onClick={() => { setOpen(false); onChange(undefined); }}>Retirar</button></div>
+      <div className="chips" role="group" aria-label="Protocolo" style={{ marginTop: 8 }}>
+        {PROTOCOLS.map((p) => <button key={p.id} className={`chip sm ${j?.protocol === p.id ? 'on' : ''}`} aria-pressed={j?.protocol === p.id} onClick={() => onChange({ ...(j ?? { open: '10:00' }), protocol: p.id, ...(p.id === '5:2' ? { lowDays: j?.lowDays?.length === 2 ? j.lowDays : [1, 4] } : { lowDays: undefined }) })}>{p.label}</button>)}
+      </div>
+      {j && j.protocol !== '5:2' ? (
+        <label className="hin" style={{ width: 150, marginTop: 8 }}><span>Janela abre às</span><input type="time" value={j.open} onChange={(e) => e.target.value && onChange({ ...j, open: e.target.value })} aria-label="Janela abre às" /></label>
+      ) : j ? (
+        <div className="chips" role="group" aria-label="Dias de poucas calorias" style={{ marginTop: 8 }}>
+          {WD.map((d, i) => { const on = (j.lowDays ?? []).includes(i); return <button key={d} className={`chip sm ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => onChange({ ...j, lowDays: on ? (j.lowDays ?? []).filter((x) => x !== i) : [...(j.lowDays ?? []), i].slice(-2) })}>{d}</button>; })}
+        </div>
+      ) : null}
+      <input className="field sm" style={{ width: '100%', marginTop: 8 }} maxLength={200} value={j?.notes ?? ''} onChange={(e) => j && onChange({ ...j, notes: e.target.value })} placeholder="Orientação para o paciente (opcional)" aria-label="Orientação" />
+      <p className="small mute" style={{ margin: '8px 0 0' }}>O paciente recebe a indicação na Nutrição e ativa-a com um toque; a app conta as horas e organiza as refeições dentro da janela.</p>
+      {canSendAlone && <button className="btn sm" style={{ marginTop: 10 }} disabled={busy || !j || (j.protocol === '5:2' && (j.lowDays ?? []).length !== 2)} onClick={onSend}>Enviar só a indicação de jejum</button>}
+    </section>
+  );
+}
+
+function PlanEditor({ student, others, onClose, onSaved, kind = 'personal' }: { student: ProStudent; others: ProStudent[]; onClose: () => void; onSaved: () => void; kind?: string }) {
   const { toast } = useStore();
   const [plan, setPlan] = useState<ParsedWorkoutPlan>(() => student.draft ?? student.plan ?? { is_workout: true, workouts: [], per_week: 3, professional: '', notes: '' });
   // rascunho: 'Guardar' não envia; 'Concluir e enviar' é que o aluno passa a ver
@@ -145,13 +172,14 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
     }
   };
   const save = async () => {
-    if (!plan.workouts.some(filled)) { setErr('Junte pelo menos um exercício.'); return; }
-    if (!confirm(`Enviar o treino a ${student.name}? ${student.linked ? 'Passa a vê-lo na app.' : 'Vê-o quando usar o código na app.'}`)) return;
+    const onlyFast = !plan.workouts.some(filled) && !!plan.jejum;
+    if (!plan.workouts.some(filled) && !plan.jejum) { setErr('Junte pelo menos um exercício.'); return; }
+    if (!confirm(`Enviar ${onlyFast ? 'a indicação de jejum' : 'o treino'} a ${student.name}? ${student.linked ? 'Passa a vê-lo na app.' : 'Vê-o quando usar o código na app.'}`)) return;
     setBusy(true);
     setErr('');
     try {
       await proApi('aluno/guardar', { code: student.code, plan });
-      toast(`Treino enviado a ${student.name}.${student.linked ? ' Recebe-o ao abrir a app.' : ''}`);
+      toast(`${onlyFast ? 'Indicação de jejum enviada' : 'Treino enviado'} a ${student.name}.${student.linked ? ' Recebe-o ao abrir a app.' : ''}`);
       onSaved();
     } catch (e) {
       setErr((e as Error).message);
@@ -198,6 +226,9 @@ function PlanEditor({ student, others, onClose, onSaved }: { student: ProStudent
             {templates.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
           </select>
         </label>
+      )}
+      {(kind === 'nutricionista' || kind === 'medico') && (
+        <FastRxEditor value={plan.jejum} onChange={(j) => setPlan({ ...plan, jejum: j })} canSendAlone={!plan.workouts.some(filled)} busy={busy} onSend={save} />
       )}
       <div className="pro-mode" role="tablist" aria-label="Como montar">
         <button role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}><b>✍️ Manual</b><span>escrever e escolher</span></button>
@@ -426,7 +457,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
         </section>
       </>
     );
-  if (edit) return <PlanEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
+  if (edit) return <PlanEditor kind={pro?.kind} student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
   if (reportOf) return <ShareReport student={reportOf} onClose={() => setReportOf(null)} />;
   if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;

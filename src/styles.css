@@ -827,3 +827,14 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .pro-sugg li button:disabled{opacity:.55;cursor:default}
 .pro-sugg li button span:first-child,.pro-ac-list button span:first-child{flex:1;min-width:0}
 textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
+
+/* jejum intermitente */
+.fast-setup .hin input[type=time]{font-size:18px}
+.fast-meals{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.fast-mini{display:flex;text-align:left;padding:12px 14px;justify-content:space-between;align-items:center;width:100%;margin-bottom:12px}
+.fast-bars{position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:110px;align-items:end;padding-bottom:18px}
+.fast-bars>div{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.fast-bars span{display:block;width:70%;min-height:2px;border-radius:6px 6px 2px 2px;background:#C9A85C}
+.fast-bars span.ok{background:var(--neon)}
+.fast-bars small{position:absolute;bottom:-18px;font-size:11px;color:var(--mute)}
+.fast-bars .goal{position:absolute;left:0;right:0;border-top:1px dashed var(--mute);opacity:.7}

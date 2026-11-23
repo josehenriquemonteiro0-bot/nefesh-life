@@ -26,9 +26,9 @@ export function ProCodeCard() {
         setUnread(r.unread ?? 0);
         // relatório partilhado: atualiza uma vez por dia
         if (S.proShare?.on && S.proShare.at !== todayKey()) syncShare(S, true).then(() => update((d) => { d.proShare = { ...d.proShare, on: true, at: todayKey() }; })).catch(() => undefined);
-        if (r.version > link.version || (r.plan && !S.trainPlan)) {
+        if (r.version > link.version || (r.plan?.workouts.length && !S.trainPlan)) {
           update((d) => applyProPlan(d, r));
-          toast(link.version === 0 || !S.trainPlan ? `O treino de ${r.pro} chegou. 💪` : `${r.pro} atualizou o seu treino. 💪`);
+          toast(!r.plan?.workouts.length ? `${r.pro} enviou-lhe uma indicação de jejum: veja em Nutrição. 🌙` : link.version === 0 || !S.trainPlan ? `O treino de ${r.pro} chegou. 💪` : `${r.pro} atualizou o seu treino. 💪`);
         } else if (manual) toast(r.plan ? 'O seu treino está em dia.' : `${r.pro} ainda não enviou o treino.`);
       })
       .catch(() => manual && toast('Sem ligação. Tente outra vez.'))

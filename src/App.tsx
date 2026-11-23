@@ -1,6 +1,7 @@
+import { endFast, fastState, fastingReminders, isDaily, startFast } from './domain/fasting';
 import { liveScores } from './domain/liveIndex';
 import { notePremiumUse } from './domain/analytics';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { Intro } from './components/Intro';
 import { ReportSheet } from './components/ReportSheet';
@@ -172,7 +173,20 @@ export function App() {
   }, [medTimes, S.notifications, authToken]);
   // lembretes combinados com o assistente (data, hora e texto)
   // e os avisos do ciclo (texto discreto, salvo se a pessoa pedir detalhes)
-  const remKey = JSON.stringify([...(S.reminders ?? []).filter((r) => r.date >= todayKey()), ...cycleReminders(S)]);
+  const remKey = JSON.stringify([...(S.reminders ?? []).filter((r) => r.date >= todayKey()), ...cycleReminders(S), ...fastingReminders(S)]);
+  // jejum: a primeira refeição registada termina o jejum em curso
+  const mealN = Object.values(S.logs[todayKey()]?.meals ?? {}).flat().filter((e) => e && !e.auto).length;
+  const prevMeals = useRef(mealN);
+  useEffect(() => {
+    const prev = prevMeals.current;
+    prevMeals.current = mealN;
+    if (!isDaily(S.fasting) || mealN <= prev) return;
+    const st = fastState(S.fasting!, S.fastSessions ?? [], new Date());
+    if (st.kind !== 'jejum') return;
+    update((d) => { if (!(d.fastSessions ?? []).some((x) => !x.end)) startFast(d, st.since); endFast(d); });
+    const h = `${Math.floor(st.hours)} h ${String(Math.floor((st.hours % 1) * 60)).padStart(2, '0')} min`;
+    toast(st.reached ? `Jejum terminado: ${h} ✓ Bom apetite!` : `Jejum terminado mais cedo (${h}). Está tudo bem: o que conta é a semana.`);
+  }, [mealN]);
   useEffect(() => {
     if (S.notifications && !S.sample && pushSupported()) pushReminders(JSON.parse(remKey));
   }, [remKey, S.notifications, authToken]);

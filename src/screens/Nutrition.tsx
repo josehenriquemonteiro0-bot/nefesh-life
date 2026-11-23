@@ -1,3 +1,5 @@
+import { FastingCard } from '../components/Fasting';
+import { isDaily, mealPlan } from '../domain/fasting';
 import { useEffect, useState } from 'react';
 import { Bar, Ring } from '../components/Charts';
 import { DecimalInput } from '../components/DecimalInput';
@@ -197,6 +199,7 @@ function Diary() {
   const hide = !!S.hideCalories;
   const left = tg.kcal - t.kcal;
   const count = all.length;
+  const fastMeals = isDaily(S.fasting) ? mealPlan(S.fasting!) : null;
 
   return (
     <>
@@ -231,6 +234,7 @@ function Diary() {
             </div>
           </>
         )}
+        {tg.fastDay && <p className="small" style={{ margin: '8px 0 0' }}>🌙 Dia de poucas calorias (jejum 5:2): a meta de hoje é {tg.kcal} kcal.</p>}
         {tg.source === 'padrao' && <p className="small" style={{ margin: '8px 0 0', opacity: 0.85 }}>Complete a avaliação com altura e peso para ter a sua referência personalizada.</p>}
         <label className="check" style={{ marginTop: 12 }}>
           <input type="checkbox" checked={hide} onChange={(e) => update((d) => { d.hideCalories = e.target.checked; })} />
@@ -246,10 +250,13 @@ function Diary() {
       {MEALS.map(([k, name]) => {
         const items = meals[k] || [];
         const mt = totals(items);
+        // jejum: as refeições da janela, com a hora sugerida; as que ficam fora só aparecem se tiverem registos
+        const fm = fastMeals?.find((m) => m.key === k);
+        if (fastMeals && !fm && !items.length) return null;
         return (
           <section className="card" key={k}>
             <div className="row">
-              <h2 style={{ margin: 0 }}>{name}</h2>
+              <h2 style={{ margin: 0 }}>{name}{fm && <span className="small mute" style={{ fontWeight: 400 }}> · {fm.first ? '1.ª refeição, ' : fm.last ? 'última, ' : ''}{fm.time}</span>}</h2>
               {!hide && <span className="small mute">{mt.kcal} kcal</span>}
             </div>
             {items.length > 0 && (
@@ -320,6 +327,7 @@ export function Nutrition({ initial = 'diario' }: { initial?: 'diario' | 'receit
       </div>
       {sub === 'diario' && <PhaseHint kind="food" />}
       {sub === 'diario' && <WaterCard />}
+      {sub === 'diario' && <FastingCard />}
       {sub === 'diario' ? <Diary /> : <Recipes />}
     </>
   );

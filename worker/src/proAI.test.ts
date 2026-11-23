@@ -144,3 +144,14 @@ describe('relatório partilhado com o personal: medidas do corpo', () => {
     expect(cleanShare({})).not.toHaveProperty('body');
   });
 });
+
+describe('jejum prescrito no NEFESH Pro', () => {
+  it('cleanPlan guarda só jejuns válidos', async () => {
+    const { cleanPlan } = await import('./pro');
+    expect(cleanPlan({ workouts: [], jejum: { protocol: '16:8', open: '12:00', notes: 'Água à vontade' } }).jejum).toEqual({ protocol: '16:8', open: '12:00', notes: 'Água à vontade' });
+    expect(cleanPlan({ workouts: [], jejum: { protocol: '5:2', open: '12:00', lowDays: [1, 4, 6] } }).jejum).toEqual({ protocol: '5:2', open: '12:00', lowDays: [1, 4], notes: '' });
+    expect(cleanPlan({ workouts: [], jejum: { protocol: '5:2', open: '12:00', lowDays: [1] } }).jejum).toBeUndefined();
+    expect(cleanPlan({ workouts: [], jejum: { protocol: '36:0', open: '12:00' } }).jejum).toBeUndefined();
+    expect(cleanPlan({ workouts: [], jejum: { protocol: '16:8', open: '25:00' } }).jejum).toBeUndefined();
+  });
+});
