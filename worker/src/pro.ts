@@ -145,9 +145,13 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
   }
   if (pro.status !== 'aprovado') return ok({ pro });
   const nutriPro = isNutriPro(pro.kind);
-  const { results } = await db.prepare('SELECT code, name, uid, plan, version, status, updated FROM pro_students WHERE pro = ? ORDER BY created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string }>();
+  const { results } = await db.prepare('SELECT s.code, s.name, s.uid, s.plan, s.version, s.status, s.updated, k.kind AS module FROM pro_students s LEFT JOIN pro_student_kind k ON k.code = s.code WHERE s.pro = ? ORDER BY s.created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string; module: string | null }>();
   const students = [];
+  const mine = nutriPro ? 'nutri' : 'personal';
   for (const s of results) {
+    // cada área (personal / nutrição) mostra só os seus; os antigos sem área contam pelo plano
+    const module = s.module ?? (s.plan && /"nutri"|"jejum"/.test(s.plan) && !/"exercises":\[\{/.test(s.plan) ? 'nutri' : 'personal');
+    if (module !== mine) continue;
     const { results: recentLogs } = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY day DESC, created DESC LIMIT 12').bind(s.code).all<{ day: string; workout: string; data: string; created: string }>();
     const last = recentLogs[0] ?? null;
     const parsed = recentLogs.filter((l) => l.workout !== NUTRI_LOG).map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
@@ -199,6 +203,7 @@ export async function newStudent(db: DB, uid: string, b: Record<string, unknown>
     const code = studentCode();
     if (await db.prepare('SELECT 1 FROM pro_students WHERE code = ?').bind(code).first()) continue;
     await db.prepare("INSERT INTO pro_students (code, pro, name, version, status, created, updated) VALUES (?, ?, ?, 0, 'convite', ?, ?)").bind(code, uid, name, at, at).run();
+    await db.prepare('INSERT OR REPLACE INTO pro_student_kind (code, kind) VALUES (?, ?)').bind(code, isNutriPro(pro.kind) ? 'nutri' : 'personal').run();
     if (b.profile && !profileEmpty(cleanProfile(b.profile))) await putProfile(db, code, b.profile, now);
     return ok({ code, name });
   }
@@ -344,7 +349,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_checkins WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_notes WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_checkins WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_notes WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_student_kind WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 
@@ -765,4 +770,15 @@ export async function saveDirectory(db: DB, uid: string, b: Record<string, unkno
 export async function directory(db: DB): Promise<R> {
   const { results } = await db.prepare("SELECT p.name, p.kind, p.reg, d.data FROM pro_directory d JOIN pros p ON p.uid = d.uid WHERE p.status = 'aprovado' ORDER BY p.kind, p.name LIMIT 300").all<{ name: string; kind: string; reg: string; data: string }>();
   return ok({ list: results.map((r) => ({ name: r.name, kind: KINDS.includes(r.kind) ? r.kind : 'outro', reg: r.reg, ...(JSON.parse(r.data) as object) })) });
+}
+
+/** Só no servidor de teste: trocar a área do profissional (personal / nutricionista / médico) para experimentar os dois módulos. */
+export async function switchArea(db: DB, uid: string, b: Record<string, unknown>, auto: boolean): Promise<R> {
+  if (!auto) return bad('A área profissional só muda com a confirmação da equipa NEFESH.', 403);
+  const kind = ['personal', 'nutricionista', 'medico'].includes(String(b.kind)) ? String(b.kind) : null;
+  if (!kind) return bad('Área inválida.');
+  const cur = await proOf(db, uid);
+  if (!cur) return bad('Ainda não tem acesso profissional.', 404);
+  await db.prepare('UPDATE pros SET kind = ? WHERE uid = ?').bind(kind, uid).run();
+  return ok({ pro: await proOf(db, uid) });
 }

@@ -852,3 +852,11 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .nutri-time{width:124px;flex:none;padding:6px 8px;font-size:15px}
 .swap-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .note-row{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);margin-top:8px}
+.pro-area-pick{display:grid;gap:8px}
+.pro-area-pick button{display:grid;grid-template-columns:40px 1fr;grid-template-rows:auto auto;column-gap:10px;text-align:left;align-items:center;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;font:inherit}
+.pro-area-pick button .pro-area-icon{grid-row:span 2;font-size:26px;text-align:center}
+.pro-area-pick button.on{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon) inset}
+.pro-area-switch{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+.pro-area-switch button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;font:inherit;font-size:14px}
+.pro-area-switch button.on{background:var(--neon);color:#04100c;border-color:var(--neon);font-weight:600}
+.pro-area-switch span{width:100%}

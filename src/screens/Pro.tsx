@@ -23,6 +23,12 @@ import type { Nav } from '../App';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const EFFORT: Record<string, string> = { facil: 'fácil', ok: 'na medida', dificil: 'difícil' };
+/** Áreas do NEFESH Life Pro: [kind, ícone, nome, o que faz]. */
+const AREAS: [string, string, string, string][] = [
+  ['personal', '🏋️', 'Personal trainer', 'Treinos, periodização, avaliações físicas'],
+  ['nutricionista', '🥗', 'Nutricionista', 'Planos alimentares, jejum, adesão, consultas'],
+  ['medico', '🩺', 'Médico(a)', 'Ficha clínica, plano alimentar, análises, consultas'],
+];
 const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅', adesao: '📉', fome: '🍽️', peso: '⚖️', checkin: '📝', retorno: '📅' };
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
@@ -429,8 +435,8 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       <>
         <h1>NEFESH Life Pro</h1>
         <section className="card hero">
-          <h2 style={{ marginTop: 0 }}>Para personais e outros profissionais</h2>
-          <p className="small">Monte o treino dos seus alunos, envie-lhes um código e veja quando concluem cada treino, com as cargas e os comentários.</p>
+          <h2 style={{ marginTop: 0 }}>Para personais, nutricionistas e médicos</h2>
+          <p className="small">Personal: monte o treino dos alunos e veja cada treino concluído. Nutricionista ou médico: monte o plano alimentar dos pacientes e acompanhe a adesão. Cada um recebe um código e tudo entra na app dele.</p>
           <button className="btn" onClick={openAccount}>Entrar ou criar conta</button>
         </section>
       </>
@@ -457,15 +463,15 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
         <section className="card">
           <h2 style={{ marginTop: 0 }}>{isTestCopy() ? 'Ativar o modo profissional' : 'Pedir acesso como profissional'}</h2>
           <p className="small mute" style={{ marginTop: 0 }}>{isTestCopy() ? 'Cópia de teste: o acesso fica ativo logo, sem aprovação. O registo profissional é opcional aqui.' : 'A equipa NEFESH confirma o seu registo profissional e aprova o acesso.'}</p>
-          <label className="small" style={{ display: 'block' }}>Nome profissional<input className="field" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-          <label className="small" style={{ display: 'block', marginTop: 8 }}>Área
-            <select className="field sm" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
-              <option value="personal">Personal trainer / educação física</option>
-              <option value="nutricionista">Nutricionista</option>
-              <option value="medico">Médico(a)</option>
-              <option value="outro">Outro</option>
-            </select>
-          </label>
+          <p className="small lbl" style={{ marginTop: 0 }}>A sua área</p>
+          <div className="pro-area-pick" role="group" aria-label="Área">
+            {AREAS.map(([k, icon, t, d]) => (
+              <button key={k} className={form.kind === k ? 'on' : ''} aria-pressed={form.kind === k} onClick={() => setForm({ ...form, kind: k })}>
+                <span className="pro-area-icon">{icon}</span><b>{t}</b><span className="small mute">{d}</span>
+              </button>
+            ))}
+          </div>
+          <label className="small" style={{ display: 'block', marginTop: 10 }}>Nome profissional<input className="field" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
           {isNutriKind(form.kind) && <p className="small mute" style={{ margin: '6px 0 0' }}>{form.kind === 'medico' ? 'Para médicos: ficha clínica e anamnese, plano alimentar e jejum, análises e medidas partilhadas pelo paciente, check-ins semanais, consultas de retorno e notas privadas.' : 'Para nutricionistas: ficha e anamnese, construtor de planos alimentares com a tabela TACO, jejum, adesão diária, check-ins semanais, consultas e notas privadas.'}</p>}
           <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional ({form.kind === 'nutricionista' ? 'CRN no Brasil, cédula da Ordem dos Nutricionistas em Portugal' : form.kind === 'medico' ? 'CRM no Brasil, cédula da Ordem dos Médicos em Portugal' : 'CREF no Brasil, título profissional em Portugal'})<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => proApi<{ pro: ProInfo }>('registar', form).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
@@ -481,6 +487,14 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       {pro?.status === 'aprovado' && (
         <>
           <p className="small mute" style={{ marginTop: 0 }}>{pro.name} · {pro.reg}</p>
+          {isTestCopy() && (
+            <div className="pro-area-switch" role="group" aria-label="Área (cópia de teste)">
+              {AREAS.map(([k, icon, t]) => (
+                <button key={k} className={pro.kind === k ? 'on' : ''} aria-pressed={pro.kind === k} onClick={() => pro.kind !== k && proApi<{ pro: ProInfo }>('area', { kind: k }).then((r) => { setPro(r.pro); setEdit(null); load(); }).catch((e) => setErr((e as Error).message))}>{icon} {t.split(' ')[0]}</button>
+              ))}
+              <span className="small mute">Cópia de teste: troque de área para experimentar. Cada área tem os seus {nutri ? 'pacientes' : 'alunos'}.</span>
+            </div>
+          )}
           {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber {nutri ? 'quando os pacientes lhe escrevem' : 'quando os alunos concluem um treino'}.</p>}
           {students.some((s) => s.alerts?.length) && (
             <section className="card pro-attn">

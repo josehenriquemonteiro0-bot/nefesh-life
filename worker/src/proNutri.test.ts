@@ -135,3 +135,18 @@ describe('fase 3: equipa e diretório', () => {
     expect((await pro.directory(db)).body.list).toEqual([]);
   });
 });
+
+describe('áreas do NEFESH Pro (personal / nutrição)', () => {
+  it('cada área mostra só os seus; no servidor de teste pode-se trocar de área', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'jo', { name: 'José', reg: 'teste', kind: 'personal' }, NOW, true);
+    await pro.newStudent(db, 'jo', { name: 'Aluno A' }, NOW);
+    expect((await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, false)).status).toBe(403);
+    expect((await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, true)).body.pro).toMatchObject({ kind: 'nutricionista' });
+    await pro.newStudent(db, 'jo', { name: 'Paciente B' }, NOW);
+    const names = async () => ((await pro.proState(db, 'jo', NOW)).body.students as { name: string }[]).map((x) => x.name);
+    expect(await names()).toEqual(['Paciente B']);
+    await pro.switchArea(db, 'jo', { kind: 'personal' }, true);
+    expect(await names()).toEqual(['Aluno A']);
+  });
+});

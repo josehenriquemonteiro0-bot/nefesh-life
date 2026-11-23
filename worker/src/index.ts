@@ -384,6 +384,7 @@ export default {
         'aluno/notas': () => pro.listNotes(db, uid, b),
         'aluno/nota': () => pro.addNote(db, uid, b),
         'aluno/nota/apagar': () => pro.deleteNote(db, uid, b),
+        area: () => pro.switchArea(db, uid, b, env.PRO_AUTO_APPROVE === 'true'),
         diretorio: () => pro.myDirectory(db, uid),
         'diretorio/guardar': () => pro.saveDirectory(db, uid, b),
       };

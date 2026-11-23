@@ -119,7 +119,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         {openPro && (
           <section className="card">
             <h2 style={{ marginTop: 0 }}>NEFESH Life Pro</h2>
-            <p className="small mute">Para personais: monte o treino dos seus alunos e acompanhe-os na app.</p>
+            <p className="small mute">Para personais e nutricionistas: monte o treino ou o plano alimentar e acompanhe cada aluno ou paciente na app.</p>
             <button className="btn ghost sm" onClick={openPro}>Abrir</button>
           </section>
         )}
@@ -283,7 +283,7 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
           <div className="row">
             <div>
               <h2 style={{ margin: 0 }}>NEFESH Life Pro</h2>
-              <p className="small mute" style={{ margin: '4px 0 0' }}>Para personais: monte o treino dos seus alunos e acompanhe-os na app.</p>
+              <p className="small mute" style={{ margin: '4px 0 0' }}>Para personais e nutricionistas: monte o treino ou o plano alimentar e acompanhe cada aluno ou paciente na app.</p>
             </div>
             <button className="btn ghost sm" onClick={openPro}>Abrir</button>
           </div>
