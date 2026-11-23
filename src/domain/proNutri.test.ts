@@ -143,3 +143,27 @@ describe('diretório', () => {
     expect(contactHref('https://ana.pt')).toBe('https://ana.pt');
   });
 });
+
+describe('construtor por etapas: estrutura', () => {
+  it('refeições ligadas/desligadas e horas em todos os tipos de dia; organização dos dias reversível', async () => {
+    const { setMeals, applyDayMode, dayModeOf } = await import('./proNutri');
+    let r = rx(); // dias: Todos os dias + Dias de treino
+    r = applyDayMode(r, 'iguais');
+    expect(r.days.map((d) => d.name)).toEqual(['Todos os dias']);
+    expect(dayModeOf(r)).toBe('iguais');
+    r = applyDayMode(r, 'fimdesemana');
+    expect(r.days.map((d) => [d.name, d.weekdays])).toEqual([['Dias de semana', []], ['Fim de semana', [0, 6]]]);
+    expect(dayModeOf(r)).toBe('fimdesemana');
+    expect(r.days[1].meals[1].options[0].items.length).toBe(2); // copiou o almoço já montado
+    r = applyDayMode(r, 'treino', [2, 4]);
+    expect(r.days[1]).toMatchObject({ name: 'Dias de treino', weekdays: [2, 4] });
+    r = setMeals(r, [{ key: 'pa', time: '08:00' }, { key: 'almoco', time: '12:30' }, { key: 'ceia', time: '22:00' }]);
+    for (const d of r.days) expect(d.meals.map((m) => `${m.key} ${m.time}`)).toEqual(['pa 08:00', 'almoco 12:30', 'ceia 22:00']);
+    expect(r.days[0].meals[1].options[0].items.length).toBe(2); // o almoço manteve os alimentos
+  });
+  it('plano com duração: alerta quando faltam 3 dias', () => {
+    const now = new Date('2026-11-23T12:00:00');
+    expect(nutriAttention([], { linked: true, hasPlan: true, endsInDays: 2 }, now).map((a) => a.kind)).toContain('fim');
+    expect(nutriAttention([], { linked: true, hasPlan: true, endsInDays: 10 }, now).map((a) => a.kind)).not.toContain('fim');
+  });
+});

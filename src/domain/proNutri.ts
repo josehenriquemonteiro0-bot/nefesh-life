@@ -30,6 +30,9 @@ export interface NutriRx {
   notes: string;
   /** Spirulina indicada pelo nutricionista (g por dia), se ajustar a dose */
   spirulina?: number;
+  /** duração do plano em semanas (0/ausente = sem prazo) e início (marcado ao enviar) */
+  weeks?: number;
+  start?: string;
 }
 
 export interface Macros { kcal: number; p: number; c: number; f: number; fib: number }
@@ -128,6 +131,8 @@ export function cleanNutri(x: unknown): NutriRx | null {
     targets: { kcal: n(t.kcal, 6000, 0), protein: n(t.protein, 400, 0), carbs: n(t.carbs, 900, 0), fat: n(t.fat, 400, 0), fiber: n(t.fiber, 100, 0), water: n(t.water, 8) },
     notes: str(o.notes, 600),
     ...(sp ? { spirulina: sp } : {}),
+    ...(n(o.weeks, 52, 0) ? { weeks: n(o.weeks, 52, 0) } : {}),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(String(o.start ?? '')) ? { start: String(o.start) } : {}),
   };
 }
 /** Há pelo menos um alimento no plano? */
@@ -181,10 +186,10 @@ export function cleanDayLog(x: unknown): NutriDayLog {
   return { meals, pct: n(o.pct, 100, 0), ...opt('kcal', 10000, 0), ...opt('prot', 500, 0), ...(typeof o.water === 'boolean' ? { water: o.water } : {}), ...opt('hunger', 5, 0), ...opt('fastH', 48), ...opt('weight', 300) };
 }
 
-export interface NutriAlert { kind: 'enviar' | 'adesao' | 'parado' | 'fome' | 'peso' | 'checkin' | 'retorno'; text: string }
+export interface NutriAlert { kind: 'enviar' | 'adesao' | 'parado' | 'fome' | 'peso' | 'checkin' | 'retorno' | 'fim'; text: string }
 
 /** "Precisa de atenção" para nutrição, a partir dos registos diários (mais recentes primeiro). */
-export function nutriAttention(logs: { day: string; data: NutriDayLog }[], o: { linked: boolean; hasPlan: boolean; planSince?: string; hasDraft?: boolean; checkinLow?: string | null; nextVisit?: string | null }, now = new Date()): NutriAlert[] {
+export function nutriAttention(logs: { day: string; data: NutriDayLog }[], o: { linked: boolean; hasPlan: boolean; planSince?: string; hasDraft?: boolean; checkinLow?: string | null; nextVisit?: string | null; endsInDays?: number | null }, now = new Date()): NutriAlert[] {
   const out: NutriAlert[] = [];
   const dd = (k: string) => Math.floor((now.getTime() - new Date(`${k}T12:00:00`).getTime()) / 864e5);
   const dm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
@@ -209,6 +214,7 @@ export function nutriAttention(logs: { day: string; data: NutriDayLog }[], o: { 
       else if (old && Math.abs(newest.w - old.w) < 0.3) out.push({ kind: 'peso', text: `Peso estável há 3 semanas (${String(newest.w).replace('.', ',')} kg)` });
     }
   }
+  if (o.hasPlan && o.endsInDays !== null && o.endsInDays !== undefined && o.endsInDays <= 3) out.push({ kind: 'fim', text: o.endsInDays < 0 ? 'O plano alimentar já terminou: é altura de o renovar' : `O plano alimentar termina ${o.endsInDays === 0 ? 'hoje' : `em ${o.endsInDays} ${o.endsInDays === 1 ? 'dia' : 'dias'}`}` });
   if (o.checkinLow) out.push({ kind: 'checkin', text: o.checkinLow });
   if (o.nextVisit) {
     const d = -dd(o.nextVisit);
@@ -266,3 +272,38 @@ export function checkinConcern(c: Checkin): string | null {
   if (c.energia && c.energia <= 2) out.push('energia baixa');
   return out.length ? `Check-in semanal: ${out.join(', ')}` : null;
 }
+
+/* ───────── estrutura do plano (passo 2 do construtor) ───────── */
+
+export type DayMode = 'iguais' | 'treino' | 'fimdesemana';
+export const DAY_MODES: [DayMode, string, string][] = [
+  ['iguais', 'Todos os dias iguais', 'Um só plano para a semana inteira'],
+  ['treino', 'Dias de treino diferentes', 'Ex.: mais hidratos e um pós-treino nos dias de treino'],
+  ['fimdesemana', 'Fim de semana diferente', 'Ex.: horários e refeições do sábado e domingo'],
+];
+export function dayModeOf(rx: NutriRx): DayMode {
+  if (rx.days.length < 2) return 'iguais';
+  const w = rx.days[1].weekdays;
+  return w.length === 2 && w.includes(0) && w.includes(6) ? 'fimdesemana' : 'treino';
+}
+const cloneDay = (d: NDay): NDay => JSON.parse(JSON.stringify(d)) as NDay;
+/** Muda a organização dos dias sem perder o que já foi montado no 1.º tipo de dia. */
+export function applyDayMode(rx: NutriRx, mode: DayMode, trainDays: number[] = [1, 3, 5]): NutriRx {
+  const base = { ...rx.days[0], weekdays: [] as number[] };
+  const second = rx.days[1] ? cloneDay(rx.days[1]) : cloneDay(base);
+  if (mode === 'iguais') return { ...rx, days: [{ ...base, name: 'Todos os dias' }] };
+  if (mode === 'treino') return { ...rx, days: [{ ...base, name: 'Dias sem treino' }, { ...second, name: 'Dias de treino', weekdays: trainDays.length ? [...trainDays].sort() : [1, 3, 5] }] };
+  return { ...rx, days: [{ ...base, name: 'Dias de semana' }, { ...second, name: 'Fim de semana', weekdays: [0, 6] }] };
+}
+/** Refeições do dia (as mesmas em todos os tipos de dia): junta as novas, tira as desligadas, acerta as horas. */
+export function setMeals(rx: NutriRx, meals: { key: NMealKey; time: string }[]): NutriRx {
+  return {
+    ...rx,
+    days: rx.days.map((d) => ({
+      ...d,
+      meals: meals.map(({ key, time: t }) => { const cur = d.meals.find((m) => m.key === key); return cur ? { ...cur, time: t } : { ...emptyMeal(key), time: t }; }).sort((a, b) => a.time.localeCompare(b.time)),
+    })),
+  };
+}
+/** Refeição com alimentos? */
+export const mealFilled = (m: NMeal) => m.options.some((o) => o.items.length > 0);

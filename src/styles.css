@@ -860,3 +860,10 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .pro-area-switch button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;font:inherit;font-size:14px}
 .pro-area-switch button.on{background:var(--neon);color:#04100c;border-color:var(--neon);font-weight:600}
 .pro-area-switch span{width:100%}
+.nutri-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:10px 0 14px}
+.nutri-steps button{display:grid;justify-items:center;gap:2px;padding:8px 2px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--mute);cursor:pointer;font:inherit;font-size:12px;line-height:1.2}
+.nutri-steps button b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink);font-size:12px}
+.nutri-steps button.done b{background:#0f8f57;color:#fff}
+.nutri-steps button.on{border-color:var(--neon);color:var(--ink)}
+.nutri-steps button.on b{background:var(--neon);color:#04100c}
+.nutri-mealrow{gap:8px;flex-wrap:nowrap;padding:6px 0;border-bottom:1px solid var(--line)}

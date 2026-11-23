@@ -436,7 +436,8 @@ export async function dictateNutri(client: Anthropic, model: string, store: Coun
   if (text.length < 3) return { status: 400, body: { error: 'Diga ou escreva o que quer no plano.' } };
   const allowed = await check(store, DICTATE_LIMITS, uid, ip, new Date(), 'nd');
   if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de ditados de hoje. Tente amanhã.' } };
-  const user = `${b.about ? `Paciente: ${String(b.about).slice(0, 600)}\n` : ''}Dia: ${String(b.day ?? 'Todos os dias').slice(0, 40)}\nRefeições atuais:\n${mealsText(b.meals) || '(nenhuma)'}\n\nDitado do(a) nutricionista:\n${text}`;
+  const focus = String(b.focus ?? '').slice(0, 40);
+  const user = `${b.about ? `Paciente: ${String(b.about).slice(0, 600)}\n` : ''}Dia: ${String(b.day ?? 'Todos os dias').slice(0, 40)}\n${focus ? `Refeição a montar agora: ${focus} (devolve só esta refeição, com o mesmo key e hora)\n` : ''}Refeições atuais:\n${mealsText(b.meals) || '(nenhuma)'}\n\nDitado do(a) nutricionista:\n${text}`;
   const r = await ask<{ meals: unknown[]; removed?: string[]; summary: string; doubts: string }>(client, model, NUTRI_DICTATE_SYSTEM, user, NUTRI_DICTATE_SCHEMA, 'low');
   if (!r) return { status: 502, body: { error: 'A IA não conseguiu perceber agora. Tente outra vez.' } };
   await count(store, DICTATE_LIMITS, uid, ip, new Date(), 'nd');

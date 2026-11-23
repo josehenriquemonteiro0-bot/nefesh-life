@@ -7,13 +7,13 @@ import { saveMyFood, searchNFoods, type NFood } from '../domain/foodSearch';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
 import { proApi, type ProLog, type ProStudent } from '../domain/pro';
 import {
-  NMEALS, dayTotals, emptyMeal, emptyRx, itemFrom, mealTotals, nutriFilled, scaleItem, suggestTargets, vsTargets,
+  DAY_MODES, NMEALS, applyDayMode, dayModeOf, dayTotals, emptyRx, itemFrom, mealFilled, mealTotals, nutriFilled, scaleItem, setMeals, suggestTargets, vsTargets,
   type Macros, type NDay, type NItem, type NMeal, type NMealKey, type NTargets, type NutriDayLog, type NutriRx,
 } from '../domain/proNutri';
 import { profileText } from '../domain/proProfile';
 import { ANAMNESE } from '../domain/proNutri';
 import { useStore } from '../state/store';
-import { NutriAICard } from './ProNutriAI';
+import { MealDictation, NutriReview } from './ProNutriAI';
 
 const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const fmt = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
@@ -112,7 +112,7 @@ function FoodPicker({ onPick, onClose }: { onPick: (it: NItem) => void; onClose:
 const MacroLine = ({ t }: { t: Macros }) => <span className="small mute">{t.kcal} kcal · P {fmt(t.p)} · H {fmt(t.c)} · G {fmt(t.f)}{t.fib ? ` · fibra ${fmt(t.fib)}` : ''}</span>;
 
 /** Uma refeição do plano: hora, opções (A, B…), alimentos com quantidades e totais. */
-function MealCard({ m, onChange, onRemove }: { m: NMeal; onChange: (m: NMeal) => void; onRemove: () => void }) {
+function MealCard({ m, onChange, onRemove }: { m: NMeal; onChange: (m: NMeal) => void; onRemove?: () => void }) {
   const [opt, setOpt] = useState(0);
   const [adding, setAdding] = useState(false);
   const o = m.options[Math.min(opt, m.options.length - 1)];
@@ -121,9 +121,8 @@ function MealCard({ m, onChange, onRemove }: { m: NMeal; onChange: (m: NMeal) =>
   return (
     <section className="card nutri-meal">
       <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-        <input className="field sm nutri-meal-name" value={m.label} maxLength={40} onChange={(e) => onChange({ ...m, label: e.target.value })} aria-label="Nome da refeição" />
-        <input className="field sm nutri-time" type="time" value={m.time} onChange={(e) => e.target.value && onChange({ ...m, time: e.target.value })} aria-label={`Hora de ${m.label}`} />
-        <button className="x" aria-label={`Retirar ${m.label}`} onClick={() => confirm(`Retirar ${m.label} do plano?`) && onRemove()}>×</button>
+        <h2 style={{ margin: 0 }}>{m.label} <span className="small mute" style={{ fontWeight: 400 }}>· {m.time}</span></h2>
+        {onRemove && <button className="x" aria-label={`Retirar ${m.label}`} onClick={() => confirm(`Retirar ${m.label} do plano?`) && onRemove()}>×</button>}
       </div>
       <div className="chips" style={{ marginTop: 8 }} role="tablist" aria-label="Opções">
         {m.options.map((x, i) => <button key={i} role="tab" aria-selected={i === oi} className={`chip sm ${i === oi ? 'on' : ''}`} onClick={() => setOpt(i)}>{x.name}{x.items.length ? ` (${sumKcal(x.items)} kcal)` : ''}</button>)}
@@ -173,7 +172,11 @@ function DayVsTargets({ day, targets }: { day: NDay; targets: NTargets }) {
   );
 }
 
-/** Montar ou editar o plano alimentar de um paciente. */
+/** Montar ou editar o plano alimentar de um paciente, por etapas: metas → estrutura → refeições → rever e enviar. */
+type Step = 'metas' | 'estrutura' | 'refeicoes' | 'enviar';
+const STEPS: [Step, string][] = [['metas', 'Metas'], ['estrutura', 'Estrutura'], ['refeicoes', 'Refeições'], ['enviar', 'Rever e enviar']];
+const MODE_KEY = 'nefesh-life-nutri-modo';
+
 export function NutriEditor({ student, others, onClose, onSaved }: { student: ProStudent; others: ProStudent[]; onClose: () => void; onSaved: () => void }) {
   const { toast } = useStore();
   const base = student.draft ?? student.plan;
@@ -183,7 +186,11 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
     return r;
   });
   const [jejum, setJejum] = useState<ParsedWorkoutPlan['jejum']>(base?.jejum);
+  const [step, setStep] = useState<Step>(() => (nutriFilled(base?.nutri) ? 'refeicoes' : 'metas'));
   const [di, setDi] = useState(0);
+  const [mi, setMi] = useState(0);
+  const [mode, setModeState] = useState<'manual' | 'voz'>(() => { try { return localStorage.getItem(MODE_KEY) === 'voz' ? 'voz' : 'manual'; } catch { return 'manual'; } });
+  const setMode = (m: 'manual' | 'voz') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* */ } };
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [savedAt, setSavedAt] = useState<string | null>(student.draftAt ?? null);
@@ -191,12 +198,20 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
   const plan = (): ParsedWorkoutPlan => ({ is_workout: true, workouts: [], per_week: 3, professional: '', notes: '', nutri: rx, ...(jejum ? { jejum } : {}) });
   const dirty = JSON.stringify({ rx, jejum: jejum ?? null }) !== saved;
   const day = rx.days[Math.min(di, rx.days.length - 1)];
+  const meals = day.meals;
+  const meal = meals[Math.min(mi, Math.max(0, meals.length - 1))];
   const setDay = (d: NDay) => setRx({ ...rx, days: rx.days.map((x, i) => (i === di ? d : x)) });
+  const setMeal = (m: NMeal) => setDay({ ...day, meals: day.meals.map((x) => (x === meal ? m : x)) });
   const setT = (k: keyof NTargets, v: string) => setRx({ ...rx, targets: { ...rx.targets, [k]: Number(v.replace(',', '.')) || 0 } });
   const prof = student.profile;
+  const about = [profileText(prof), ...Object.entries(prof?.anamnese ?? {}).map(([k, v]) => `${k}: ${v}`)].filter(Boolean).join('; ');
   const warn = [prof?.anamnese?.alergias && `Alergias/intolerâncias: ${prof.anamnese.alergias}`, prof?.anamnese?.patologias && `Condições: ${prof.anamnese.patologias}`, prof?.anamnese?.aversoes && `Não come: ${prof.anamnese.aversoes}`].filter(Boolean) as string[];
   const templates = others.filter((o) => o.code !== student.code && o.plan?.nutri);
+  const dMode = dayModeOf(rx);
   useEffect(() => { if (di >= rx.days.length) setDi(0); }, [rx.days.length, di]);
+  useEffect(() => { if (mi >= meals.length) setMi(0); }, [meals.length, mi]);
+  const top = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const go = (s2: Step) => { setStep(s2); top(); };
 
   const saveDraft = async (quiet = false) => {
     setBusy(true); setErr('');
@@ -221,8 +236,7 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
     if (dirty && nutriFilled(rx) && confirm('Tem alterações por guardar. Guardar antes de sair? (o paciente não recebe nada)')) { if (await saveDraft(true)) return onSaved(); return; }
     onClose();
   };
-  const missing = NMEALS.filter(([k]) => !day.meals.some((m) => m.key === k));
-  const order = (meals: NMeal[]) => [...meals].sort((a, b) => a.time.localeCompare(b.time));
+  const filledCount = meals.filter(mealFilled).length;
 
   return (
     <>
@@ -231,83 +245,165 @@ export function NutriEditor({ student, others, onClose, onSaved }: { student: Pr
       {student.draft && student.plan && <p className="small gold" style={{ marginTop: 0 }}>📝 A editar o rascunho. O paciente continua a ver o plano enviado antes.</p>}
       {prof && profileText(prof) && <p className="small mute pro-prof-line" style={{ marginTop: 0 }}>👤 {profileText(prof)}</p>}
       {warn.map((w) => <p key={w} className="small warn-t" style={{ margin: '0 0 4px' }}>⚠️ {w}</p>)}
-      {templates.length > 0 && (
-        <label className="small" style={{ display: 'block', margin: '6px 0 12px' }}>
-          Partir do plano de outro paciente:{' '}
-          <select className="field sm" defaultValue="" onChange={(e) => { const o = templates.find((t) => t.code === e.target.value); if (o?.plan?.nutri && confirm(`Copiar o plano de ${o.name}? O que está neste ecrã é substituído.`)) { setRx(structuredClone(o.plan.nutri)); setDi(0); } }}>
-            <option value="">escolher…</option>
-            {templates.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
-          </select>
-        </label>
-      )}
 
-      <TeamCard team={student.team} />
-      <NutriAICard rx={rx} dayIndex={di} profile={prof ?? null} onRx={(r) => setRx(r)} />
-
-      <section className="card">
-        <div className="row"><h2 style={{ margin: 0 }}>Metas diárias</h2>
-          <button className="link small inline" onClick={() => { const t = suggestTargets(prof ?? {}); if (t) setRx({ ...rx, targets: t }); else toast('Registe peso e altura na ficha do paciente para sugerir metas.'); }}>Sugerir pela ficha</button>
-        </div>
-        <div className="pro-ex-grid" style={{ gridTemplateColumns: 'repeat(3,minmax(0,1fr))', marginTop: 8 }}>
-          {([['kcal', 'Energia (kcal)'], ['protein', 'Proteína (g)'], ['carbs', 'Hidratos (g)'], ['fat', 'Gordura (g)'], ['fiber', 'Fibra (g)'], ['water', 'Água (L)']] as [keyof NTargets, string][]).map(([k, l]) => (
-            <label key={k} className="small">{l}<input className="field sm" inputMode="decimal" value={rx.targets[k] || ''} onChange={(e) => setT(k, e.target.value)} placeholder="—" /></label>
-          ))}
-        </div>
-        <p className="small mute" style={{ margin: '6px 0 0' }}>A sugestão usa Mifflin-St Jeor, os dias de treino e o objetivo da ficha. Ajuste ao seu critério.</p>
-      </section>
-
-      <div className="chips" role="tablist" aria-label="Tipos de dia" style={{ marginBottom: 8 }}>
-        {rx.days.map((d, i) => <button key={i} role="tab" aria-selected={i === di} className={`chip ${i === di ? 'on' : ''}`} onClick={() => setDi(i)}>{d.name}</button>)}
-        {rx.days.length < 3 && <button className="chip" onClick={() => { const copy: NDay = { ...structuredClone(day), name: rx.days.length === 1 ? 'Dias de treino' : 'Fim de semana', weekdays: rx.days.length === 1 ? [1, 3, 5] : [0, 6] }; setRx({ ...rx, days: [...rx.days, copy] }); setDi(rx.days.length); }}>+ Tipo de dia</button>}
+      <div className="nutri-steps" role="navigation" aria-label="Etapas do plano">
+        {STEPS.map(([k, t], i) => <button key={k} className={step === k ? 'on' : STEPS.findIndex((x) => x[0] === step) > i ? 'done' : ''} aria-current={step === k ? 'step' : undefined} onClick={() => go(k)}><b>{i + 1}</b>{t}</button>)}
       </div>
-      {rx.days.length > 1 && (
-        <section className="card">
-          <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-            <input className="field sm" style={{ flex: 1 }} value={day.name} maxLength={40} onChange={(e) => setDay({ ...day, name: e.target.value })} aria-label="Nome do tipo de dia" />
-            {di > 0 && <button className="link small inline" onClick={() => confirm(`Apagar "${day.name}"?`) && setRx({ ...rx, days: rx.days.filter((_, i) => i !== di) })}>Apagar</button>}
-          </div>
-          <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Dias da semana">
-            {WD.map((d, i) => { const on = day.weekdays.includes(i); return <button key={d} className={`chip sm ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => setDay({ ...day, weekdays: on ? day.weekdays.filter((x) => x !== i) : [...day.weekdays, i].sort() })}>{d}</button>; })}
-          </div>
-          <p className="small mute" style={{ margin: '6px 0 0' }}>{day.weekdays.length ? `Vale às ${day.weekdays.map((w) => WD[w].toLowerCase()).join(', ')}.` : 'Sem dias marcados: vale nos dias que não são de outro tipo.'}</p>
-        </section>
+
+      {step === 'metas' && (
+        <>
+          <TeamCard team={student.team} />
+          <section className="card">
+            <div className="row"><h2 style={{ margin: 0 }}>Metas diárias</h2>
+              <button className="link small inline" onClick={() => { const t = suggestTargets(prof ?? {}); if (t) setRx({ ...rx, targets: t }); else toast('Registe peso e altura na ficha do paciente para sugerir metas.'); }}>Sugerir pela ficha</button>
+            </div>
+            <div className="pro-ex-grid" style={{ gridTemplateColumns: 'repeat(3,minmax(0,1fr))', marginTop: 8 }}>
+              {([['kcal', 'Energia (kcal)'], ['protein', 'Proteína (g)'], ['carbs', 'Hidratos (g)'], ['fat', 'Gordura (g)'], ['fiber', 'Fibra (g)'], ['water', 'Água (L)']] as [keyof NTargets, string][]).map(([k, l]) => (
+                <label key={k} className="small">{l}<input className="field sm" inputMode="decimal" value={rx.targets[k] ? String(rx.targets[k]).replace('.', ',') : ''} onChange={(e) => setT(k, e.target.value)} placeholder="—" /></label>
+              ))}
+            </div>
+            <p className="small mute" style={{ margin: '6px 0 0' }}>A sugestão usa Mifflin-St Jeor, os dias de treino e o objetivo da ficha. Ajuste ao seu critério.</p>
+          </section>
+          {templates.length > 0 && (
+            <label className="small" style={{ display: 'block', margin: '0 0 12px' }}>
+              Ou partir do plano de outro paciente:{' '}
+              <select className="field sm" defaultValue="" onChange={(e) => { const o = templates.find((t) => t.code === e.target.value); if (o?.plan?.nutri && confirm(`Copiar o plano de ${o.name}? O que está neste ecrã é substituído.`)) { setRx(structuredClone(o.plan.nutri)); setDi(0); setMi(0); go('refeicoes'); } }}>
+                <option value="">escolher…</option>
+                {templates.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
+              </select>
+            </label>
+          )}
+          <button className="btn full" onClick={() => go('estrutura')}>Seguinte: estrutura do plano →</button>
+        </>
       )}
 
-      {order(day.meals).map((m) => {
-        const idx = day.meals.indexOf(m);
-        return <MealCard key={`${di}-${idx}-${m.key}`} m={m} onChange={(nm) => setDay({ ...day, meals: day.meals.map((x, i) => (i === idx ? nm : x)) })} onRemove={() => setDay({ ...day, meals: day.meals.filter((_, i) => i !== idx) })} />;
-      })}
-      {missing.length > 0 && (
-        <div className="chips" style={{ margin: '0 0 12px' }}>
-          {missing.map(([k, l]) => <button key={k} className="chip sm" onClick={() => setDay({ ...day, meals: [...day.meals, emptyMeal(k as NMealKey)] })}>+ {l}</button>)}
-        </div>
+      {step === 'estrutura' && (
+        <>
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Duração</h2>
+            <div className="chips">
+              {[2, 3, 4, 8, 0].map((w) => <button key={w} className={`chip ${(rx.weeks ?? 0) === w ? 'on' : ''}`} aria-pressed={(rx.weeks ?? 0) === w} onClick={() => setRx({ ...rx, weeks: w || undefined })}>{w ? `${w} semanas` : 'Sem prazo'}</button>)}
+            </div>
+            <p className="small mute" style={{ margin: '6px 0 0' }}>{rx.weeks ? `Começa no dia em que enviar. Avisamos quando faltarem 3 dias para acabar, para marcar o retorno.` : 'O plano fica até o atualizar.'}</p>
+          </section>
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Refeições do dia</h2>
+            <p className="small mute" style={{ margin: '0 0 8px' }}>Toque para ligar ou desligar; acerte a hora.</p>
+            {NMEALS.map(([k, l, t0]) => {
+              const cur = rx.days[0].meals.find((m) => m.key === k);
+              const list = () => rx.days[0].meals.map((m) => ({ key: m.key, time: m.time }));
+              return (
+                <div key={k} className="row nutri-mealrow">
+                  <label className="check" style={{ margin: 0, flex: 1 }}>
+                    <input type="checkbox" checked={!!cur} onChange={(e) => {
+                      if (!e.target.checked && rx.days.some((d) => d.meals.some((m) => m.key === k && mealFilled(m))) && !confirm(`${l} já tem alimentos. Tirar do plano?`)) return;
+                      setRx(setMeals(rx, e.target.checked ? [...list(), { key: k as NMealKey, time: t0 }] : list().filter((x) => x.key !== k)));
+                    }} />
+                    <span>{l}</span>
+                  </label>
+                  {cur && <input className="field sm nutri-time" style={{ width: 124, flex: 'none' }} type="time" value={cur.time} onChange={(e) => e.target.value && setRx(setMeals(rx, list().map((x) => (x.key === k ? { ...x, time: e.target.value } : x))))} aria-label={`Hora de ${l}`} />}
+                </div>
+              );
+            })}
+          </section>
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Os dias da semana</h2>
+            <div className="pro-area-pick" role="radiogroup" aria-label="Organização dos dias">
+              {DAY_MODES.map(([k, t, d]) => (
+                <button key={k} role="radio" aria-checked={dMode === k} className={dMode === k ? 'on' : ''} onClick={() => {
+                  if (dMode === k) return;
+                  if (k === 'iguais' && rx.days[1]?.meals.some(mealFilled) && !confirm(`"${rx.days[1].name}" já tem alimentos e vai ser apagado. Continuar?`)) return;
+                  setRx(applyDayMode(rx, k)); setDi(0);
+                }}>
+                  <span className="pro-area-icon">{k === 'iguais' ? '📅' : k === 'treino' ? '🏋️' : '🌤️'}</span><b>{t}</b><span className="small mute">{d}</span>
+                </button>
+              ))}
+            </div>
+            {dMode === 'treino' && (
+              <>
+                <p className="small" style={{ margin: '10px 0 6px' }}>Dias de treino:</p>
+                <div className="chips" role="group" aria-label="Dias de treino">
+                  {WD.map((d, i) => { const on = rx.days[1].weekdays.includes(i); return <button key={d} className={`chip sm ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => setRx({ ...rx, days: rx.days.map((x, j) => (j === 1 ? { ...x, weekdays: on ? x.weekdays.filter((w) => w !== i) : [...x.weekdays, i].sort() } : x)) })}>{d}</button>; })}
+                </div>
+              </>
+            )}
+          </section>
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Como quer montar</h2>
+            <div className="pro-mode" role="tablist" aria-label="Como montar">
+              <button role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}><b>✍️ Manual</b><span>pesquisar alimentos</span></button>
+              <button role="tab" aria-selected={mode === 'voz'} className={mode === 'voz' ? 'on' : ''} onClick={() => setMode('voz')}><b>🎙️ Por voz</b><span>ditar, a IA monta</span></button>
+            </div>
+          </section>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn ghost" onClick={() => go('metas')}>← Metas</button>
+            <button className="btn" style={{ flex: 1 }} disabled={!rx.days[0].meals.length} onClick={() => { setMi(0); go('refeicoes'); }}>Seguinte: montar as refeições →</button>
+          </div>
+        </>
       )}
 
-      <DayVsTargets day={day} targets={rx.targets} />
+      {step === 'refeicoes' && (
+        <>
+          {rx.days.length > 1 && (
+            <div className="pro-area-switch" role="tablist" aria-label="Tipo de dia">
+              {rx.days.map((d, i) => <button key={i} role="tab" aria-selected={i === di} className={i === di ? 'on' : ''} onClick={() => { setDi(i); setMi(0); }}>{d.name}</button>)}
+            </div>
+          )}
+          {rx.days.length > 1 && di > 0 && !day.meals.some(mealFilled) && rx.days[0].meals.some(mealFilled) && (
+            <button className="btn ghost sm" style={{ marginBottom: 10 }} onClick={() => setDay({ ...cloneDayOf(rx.days[0]), name: day.name, weekdays: day.weekdays })}>Copiar de "{rx.days[0].name}" e ajustar</button>
+          )}
+          <div className="chips" role="tablist" aria-label="Refeições" style={{ marginBottom: 8 }}>
+            {meals.map((m, i) => <button key={m.key} role="tab" aria-selected={i === mi} className={`chip sm ${i === mi ? 'on' : ''}`} onClick={() => setMi(i)}>{mealFilled(m) ? '✓ ' : ''}{m.label}</button>)}
+          </div>
+          <p className="small mute" style={{ margin: '0 0 8px' }}>{filledCount} de {meals.length} refeições montadas{rx.days.length > 1 ? ` em "${day.name}"` : ''} · {dayTotals(day).kcal} de {rx.targets.kcal || '—'} kcal · P {fmt(dayTotals(day).p)} de {rx.targets.protein || '—'} g</p>
+          {meal && mode === 'voz' && <MealDictation key={`voz-${di}-${meal.key}`} meal={meal} dayName={day.name} about={about} onMeal={setMeal} />}
+          {meal && <MealCard key={`card-${di}-${meal.key}`} m={meal} onChange={setMeal} />}
+          <div className="row" style={{ gap: 8 }}>
+            {mi > 0 ? <button className="btn ghost" onClick={() => { setMi(mi - 1); top(); }}>← {meals[mi - 1].label}</button> : <button className="btn ghost" onClick={() => go('estrutura')}>← Estrutura</button>}
+            {mi < meals.length - 1
+              ? <button className="btn" style={{ flex: 1 }} onClick={() => { setMi(mi + 1); top(); void saveDraft(true); }}>Seguinte: {meals[mi + 1].label} →</button>
+              : di < rx.days.length - 1
+                ? <button className="btn" style={{ flex: 1 }} onClick={() => { setDi(di + 1); setMi(0); top(); void saveDraft(true); }}>Seguinte: {rx.days[di + 1].name} →</button>
+                : <button className="btn" style={{ flex: 1 }} onClick={() => { go('enviar'); void saveDraft(true); }}>Seguinte: rever e enviar →</button>}
+          </div>
+        </>
+      )}
 
-      <FastRxEditor value={jejum} onChange={setJejum} canSendAlone={false} busy={busy} onSend={send} />
-
-      <section className="card">
-        <h3 style={{ margin: '0 0 6px' }}>Recomendações gerais</h3>
-        <textarea className="field" rows={3} maxLength={600} value={rx.notes} onChange={(e) => setRx({ ...rx, notes: e.target.value })} placeholder="ex.: 2 L de água por dia; temperar com ervas; evitar refrigerantes" aria-label="Recomendações gerais" />
-        <label className="small" style={{ display: 'block', marginTop: 8 }}>Spirulina (g por dia, opcional)
-          <input className="field sm" inputMode="decimal" style={{ width: 90, marginLeft: 8 }} value={rx.spirulina ?? ''} onChange={(e) => { const v = Number(e.target.value.replace(',', '.')); setRx({ ...rx, spirulina: v > 0 ? Math.min(15, v) : undefined }); }} aria-label="Spirulina em gramas por dia" />
-        </label>
-        <p className="small mute" style={{ margin: '4px 0 0' }}>Se indicar a dose, substitui a recomendação geral da app e o paciente vê que foi indicada por si.</p>
-      </section>
+      {step === 'enviar' && (
+        <>
+          {rx.days.length > 1 && (
+            <div className="pro-area-switch" role="tablist" aria-label="Tipo de dia">
+              {rx.days.map((d, i) => <button key={i} role="tab" aria-selected={i === di} className={i === di ? 'on' : ''} onClick={() => setDi(i)}>{d.name}</button>)}
+            </div>
+          )}
+          <DayVsTargets day={day} targets={rx.targets} />
+          {day.meals.filter((m) => !mealFilled(m)).length > 0 && <p className="small warn-t" style={{ marginTop: 0 }}>Por montar: {day.meals.filter((m) => !mealFilled(m)).map((m) => m.label).join(', ')} (não aparecem ao paciente).</p>}
+          <NutriReview rx={rx} dayIndex={di} profile={prof ?? null} />
+          <FastRxEditor value={jejum} onChange={setJejum} canSendAlone={false} busy={busy} onSend={send} />
+          <section className="card">
+            <h3 style={{ margin: '0 0 6px' }}>Recomendações gerais</h3>
+            <textarea className="field" rows={3} maxLength={600} value={rx.notes} onChange={(e) => setRx({ ...rx, notes: e.target.value })} placeholder="ex.: 2 L de água por dia; temperar com ervas; evitar refrigerantes" aria-label="Recomendações gerais" />
+            <label className="small" style={{ display: 'block', marginTop: 8 }}>Spirulina (g por dia, opcional)
+              <input className="field sm" inputMode="decimal" style={{ width: 90, marginLeft: 8 }} value={rx.spirulina ?? ''} onChange={(e) => { const v = Number(e.target.value.replace(',', '.')); setRx({ ...rx, spirulina: v > 0 ? Math.min(15, v) : undefined }); }} aria-label="Spirulina em gramas por dia" />
+            </label>
+            <p className="small mute" style={{ margin: '4px 0 0' }}>Se indicar a dose, substitui a recomendação geral da app e o paciente vê que foi indicada por si.</p>
+          </section>
+          <section className="card pro-send">
+            <p className="small" style={{ margin: '0 0 8px' }}><b>Pronto?</b> Ao enviar, {student.name} passa a ver o plano no diário, refeição a refeição{rx.weeks ? ` (${rx.weeks} semanas a partir de hoje)` : ''}{student.plan ? '; substitui o anterior' : ''}.</p>
+            <button className="btn full" disabled={busy || (!nutriFilled(rx) && !jejum)} onClick={send}>{busy ? 'A enviar…' : 'Concluir e enviar ao paciente'}</button>
+          </section>
+        </>
+      )}
 
       <div className="pro-savebar">
         <button className="btn ghost sm" disabled={busy || !dirty} onClick={() => saveDraft()}>💾 Guardar</button>
-        <span className="small mute">{dirty ? 'Alterações por guardar' : savedAt ? `Guardado · o paciente ainda não vê` : student.plan ? 'Igual ao que o paciente tem' : ''}</span>
+        <span className="small mute">{dirty ? 'Alterações por guardar' : savedAt ? 'Guardado · o paciente ainda não vê' : student.plan ? 'Igual ao que o paciente tem' : ''}</span>
       </div>
-      <section className="card pro-send">
-        <p className="small" style={{ margin: '0 0 8px' }}><b>Pronto?</b> Ao enviar, {student.name} passa a ver o plano no diário, refeição a refeição{student.plan ? ' (substitui o anterior)' : ''}.</p>
-        <button className="btn full" disabled={busy || (!nutriFilled(rx) && !jejum)} onClick={send}>{busy ? 'A enviar…' : 'Concluir e enviar ao paciente'}</button>
-      </section>
       {err && <p className="small warn-t">{err}</p>}
     </>
   );
 }
+const cloneDayOf = (d: NDay): NDay => JSON.parse(JSON.stringify(d)) as NDay;
 
 /** Registos de alimentação do paciente (dia a dia). */
 export function NutriLogs({ student, onClose, onComment }: { student: ProStudent; onClose: () => void; onComment: (ref: string) => void }) {

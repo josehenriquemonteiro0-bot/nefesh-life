@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { shortDate, todayKey } from '../domain/dates';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
-import { applyNutriPlan, checkProPlan, clearNutriPlan, codeLooksValid, normCode, proApi, sendNutriDays, syncNutriShare } from '../domain/pro';
+import { planWeek, applyNutriPlan, checkProPlan, clearNutriPlan, codeLooksValid, normCode, proApi, sendNutriDays, syncNutriShare } from '../domain/pro';
 import { isNutriKind } from '../domain/proNutriClient';
 import { CHECKIN } from '../domain/proNutri';
 import { useStore } from '../state/store';
@@ -106,6 +106,7 @@ export function NutriLinkCard() {
         <p className="small mute" style={{ margin: 0 }}>
           {S.proNutriRx ? `${S.nutriPlan?.meals.length ?? 0} refeições hoje${S.proNutriRx.days.length > 1 && S.nutriPlan && 'day' in S.nutriPlan ? ` (${(S.nutriPlan as { day?: string }).day})` : ''} · atualizado a ${shortDate(link.at)}. Marque as refeições no plano: ${link.pro} vê a sua adesão.` : `${link.pro} ainda não enviou o plano. Aparece aqui sozinho.`}
         </p>
+        {(() => { const w = planWeek(S.proNutriRx); return w ? <p className="small" style={{ margin: '8px 0 0' }}>🗓️ Plano de {w.of} semanas · {w.ended ? 'terminou: fale com ' + link.pro + ' para o renovar' : `semana ${w.week} de ${w.of}`}</p> : null; })()}
         {visit && <p className="small" style={{ margin: '8px 0 0' }}>📅 Próxima consulta: <b>{shortDate(visit.day)}{visit.time ? ` às ${visit.time}` : ''}</b>{visit.text ? ` · ${visit.text}` : ''}</p>}
         <TeamToggle />
         {due && <WeeklyCheckin code={link.code} pro={link.pro} onDone={() => setDue(false)} />}

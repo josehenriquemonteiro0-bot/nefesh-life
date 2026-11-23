@@ -171,7 +171,7 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
       const { results: nl } = await db.prepare('SELECT day, data FROM pro_logs WHERE code = ? AND workout = ? ORDER BY day DESC LIMIT 30').bind(s.code, NUTRI_LOG).all<{ day: string; data: string }>();
       const days = nl.map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as NutriDayLog }; } catch { return null; } }).filter((x): x is { day: string; data: NutriDayLog } => !!x);
       const extra = await nutriExtras(db, s.code, now);
-      alerts = nutriAttention(days, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, hasDraft: !!dr, ...extra }, now);
+      alerts = nutriAttention(days, { linked: !!s.uid, hasPlan: !!plan, planSince: s.updated, hasDraft: !!dr, endsInDays: plan?.nutri ? planEndsIn(plan.nutri, now) : null, ...extra }, now);
       nutriLast = days[0] ? { day: days[0].day, ...days[0].data } : null;
       nutriWeek = days.filter((d) => d.day >= weekAgo(now) && d.data.meals.some((m) => m.status)).length;
     }
@@ -220,6 +220,9 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   const plan = cleanPlan({ ...raw, professional: pro?.name, start: raw.start || (Number(raw.weeks) || (Array.isArray(raw.phases) && raw.phases.length) ? now.toISOString().slice(0, 10) : '') });
   // o jejum só pode ser prescrito por nutricionistas e médicos
   if (!isNutriPro(pro?.kind)) { delete (plan as { jejum?: unknown }).jejum; delete (plan as { nutri?: unknown }).nutri; }
+  // plano alimentar com duração: começa no dia em que é enviado (se ainda não tinha começado)
+  if (plan.nutri?.weeks && !plan.nutri.start) plan.nutri.start = now.toISOString().slice(0, 10);
+  if (plan.nutri && !plan.nutri.weeks) delete plan.nutri.start;
   if (plan.nutri && !nutriFilled(plan.nutri)) delete (plan as { nutri?: unknown }).nutri;
   if (!plan.workouts.length && !plan.jejum && !plan.nutri) return bad(isNutriPro(pro?.kind) ? 'Acrescente pelo menos um alimento ao plano.' : 'Acrescente pelo menos um treino com um exercício.');
   await db.batch([
