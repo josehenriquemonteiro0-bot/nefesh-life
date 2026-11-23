@@ -80,7 +80,7 @@ export async function analyzePhoto(image: { data: string; media_type: string }, 
     throw new PhotoError('Sem ligação à internet. Tente outra vez.', 0);
   }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new PhotoError(body.error || 'Não foi possível analisar a foto.', res.status);
+  if (!res.ok) throw new PhotoError(`${body.error || 'Não foi possível analisar a foto.'}${body.detail ? ` (detalhe: ${body.detail})` : ''}`, res.status);
   return body as PhotoResult;
 }
 

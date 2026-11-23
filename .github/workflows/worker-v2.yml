@@ -109,3 +109,8 @@ jobs:
       - name: Guardar a chave das estatísticas no Worker
         if: steps.check.outputs.ready == 'true' && env.STATS_KEY != ''
         run: printf '%s' "$(printf '%s' "$STATS_KEY" | tr -d '\r\n')" | npx wrangler secret put STATS_KEY
+      # teste rápido: a IA aceita o pedido da foto do prato? (mostra só o resultado, nunca a chave)
+      - name: Testar a análise da foto (IA)
+        if: steps.check.outputs.ready == 'true'
+        continue-on-error: true
+        run: node --experimental-strip-types scripts/smoke-ia.ts
