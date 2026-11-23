@@ -104,7 +104,7 @@ export function Coach({ go }: { go: Nav }) {
       if (r.limit !== undefined && r.remaining !== undefined) setQuota({ remaining: r.remaining, limit: r.limit });
       const key = todayKey();
       const before: DayLog | null = S.logs[key] ? structuredClone(S.logs[key]) : null;
-      const extra = structuredClone({ memory: S.memory, gymLoadLog: S.gymLoadLog, gymLoads: S.gymLoads, exNames: S.exNames, bodyLog: S.bodyLog, ans: S.ans });
+      const extra = structuredClone({ memory: S.memory, gymLoadLog: S.gymLoadLog, gymLoads: S.gymLoads, exNames: S.exNames, bodyLog: S.bodyLog, ans: S.ans, fastSessions: S.fastSessions });
       let applied: string[] = [];
       const auto = r.actions.filter((a) => !NEEDS_CONFIRM.includes(a.type));
       if (auto.length) {
@@ -120,6 +120,7 @@ export function Coach({ go }: { go: Nav }) {
           d.exNames = draft.exNames;
           d.bodyLog = draft.bodyLog;
           d.ans = draft.ans;
+          d.fastSessions = draft.fastSessions;
         });
         const done = after ? ritualJustDone(S, before ?? undefined, after) : null;
         if (done) toast(done);

@@ -76,7 +76,7 @@ export interface CoachMsg {
   /** o que foi registado com esta resposta */
   applied?: string[];
   /** registo do dia antes destas ações (para desfazer) */
-  undo?: { day: string; log: DayLog | null; extra?: Pick<AppState, 'memory' | 'gymLoadLog' | 'gymLoads' | 'exNames' | 'bodyLog' | 'ans'> };
+  undo?: { day: string; log: DayLog | null; extra?: Pick<AppState, 'memory' | 'gymLoadLog' | 'gymLoads' | 'exNames' | 'bodyLog' | 'ans' | 'fastSessions'> };
   /** propostas que pedem confirmação (lembretes, consulta, desafio) e o seu estado */
   proposals?: CoachAction[];
   proposalStatus?: 'pendente' | 'feito' | 'cancelado';
@@ -304,7 +304,11 @@ export function applyCoachActions(S: AppState, actions: CoachAction[], now = new
         if (a.time) { const [h, m] = a.time.split(':').map(Number); at.setHours(h, m, 0, 0); if (at > now) at = new Date(at.getTime() - 864e5); }
         const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         if (a.value) {
-          const target = a.option && a.option > 0 ? a.option : isDaily(f) ? protocolOf(f!.protocol).fast : 16;
+          // "até às 16h": a hora de fim (note HH:MM) dá a meta exata; senão a duração dita, o protocolo ou 16 h
+          const endM = /^([01]\d|2[0-3]):([0-5]\d)$/.exec((a.note ?? '').trim());
+          let endAt = endM ? new Date(at) : null;
+          if (endAt && endM) { endAt.setHours(Number(endM[1]), Number(endM[2]), 0, 0); if (endAt <= at) endAt = new Date(endAt.getTime() + 864e5); }
+          const target = endAt ? Math.round(((endAt.getTime() - at.getTime()) / 3600e3) * 60) / 60 : a.option && a.option > 0 ? a.option : isDaily(f) ? protocolOf(f!.protocol).fast : 16;
           // as mesmas regras de segurança do jejum configurado
           const safe = fastingSafety(S, { protocol: target > 20 ? '20:4' : '16:8', diabetesMeds: f?.diabetesMeds, eatingDisorder: f?.eatingDisorder, supervised: f?.supervised });
           if (safe.block.length) { done.push(`⛔ Jejum não iniciado: ${safe.block[0]}`); break; }

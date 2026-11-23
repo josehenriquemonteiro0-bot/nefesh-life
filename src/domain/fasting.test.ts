@@ -117,6 +117,12 @@ describe('jejum pontual pelo assistente (sem configurar)', () => {
     const e = applyCoachActions(S, [act(0)], at('2026-11-23T16:10:00'));
     expect(e[0]).toContain('✓');
   });
+  it('"até às 16h" (hora de fim) dá a meta exata', async () => {
+    const { applyCoachActions } = await import('./coach');
+    const S = base({ fasting: null });
+    const d = applyCoachActions(S, [{ type: 'jejum', value: 1, option: 15, note: '16:00', time: '', meal: '', intensity: '', title: '' } as never], at('2026-11-23T00:54:00'));
+    expect(d[0]).toContain('meta 15 h 6 min (até às 16:00)');
+  });
   it('as regras de segurança também valem para o jejum pontual', async () => {
     const { applyCoachActions } = await import('./coach');
     const S = base({ fasting: null, ans: { safe: ['gravidez'], idade: 30, altura: 165, peso: 60 } } as never);
