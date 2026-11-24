@@ -50,10 +50,16 @@ function Paywall({ onClose }: { onClose: () => void }) {
     storeProducts().then(setProducts, () => setProducts([]));
   }, [native]);
 
+  // o preço é sempre o da conta Apple (país da loja), não o idioma da app: no iPhone vem da própria Apple;
+  // na web (sem loja) mostram-se os dois, real e euro
   const ref = REF_PRICES[currentLocale() === 'pt-BR' ? 'BR' : 'PT'];
+  const loading = native && products === null;
+  const storeDown = native && products !== null && !products.some((x) => x.id === PLANS.anual.id || x.id === PLANS.mensal.id);
   const priceOf = (p: Plan) => {
     const sp = products?.find((x) => x.id === PLANS[p].id);
-    return sp ? { text: sp.price, value: sp.value, currency: sp.currency, trial: sp.trialEligible === false ? 0 : sp.trialDays ?? 0 } : { text: money(ref[p].value, ref[p].currency), value: ref[p].value, currency: ref[p].currency, trial: PLANS[p].trialDays };
+    if (sp) return { text: sp.price, value: sp.value, currency: sp.currency, trial: sp.trialEligible === false ? 0 : sp.trialDays ?? 0 };
+    if (native) return { text: '…', value: ref[p].value, currency: ref[p].currency, trial: PLANS[p].trialDays };
+    return { text: `${money(REF_PRICES.BR[p].value, 'BRL')} ou ${money(REF_PRICES.PT[p].value, 'EUR')}`, value: ref[p].value, currency: ref[p].currency, trial: PLANS[p].trialDays };
   };
   const m = priceOf('mensal');
   const a = priceOf('anual');
@@ -129,7 +135,7 @@ function Paywall({ onClose }: { onClose: () => void }) {
                 <span className="plan-badge">{a.trial ? `${a.trial} dias grátis` : `poupa ${deal.saving}%`}</span>
                 <b>Anual</b>
                 <span>{a.text} por ano</span>
-                <small>equivale a {money(deal.perMonth, a.currency)} por mês · poupa {deal.saving}%</small>
+                <small>{native && !loading && !storeDown ? `equivale a ${money(deal.perMonth, a.currency)} por mês · ` : ''}poupa {deal.saving}%</small>
               </button>
               <button role="radio" aria-checked={plan === 'mensal'} className={`plan ${plan === 'mensal' ? 'on' : ''}`} onClick={() => setPlan('mensal')}>
                 <b>Mensal</b>
@@ -137,9 +143,11 @@ function Paywall({ onClose }: { onClose: () => void }) {
                 <small>sem compromisso</small>
               </button>
             </div>
+            {!native && <p className="small mute" style={{ margin: '8px 0 0' }}>Reais com conta Apple do Brasil, euros com conta Apple da Europa. O preço final é o que a Apple mostra no iPhone, conforme o país da sua conta Apple (não o idioma da app).</p>}
+            {storeDown && <p className="small" style={{ margin: '8px 0 0' }}>Não foi possível obter os preços da App Store. Verifique a ligação e tente de novo.</p>}
             {native ? (
-              <button className="btn" disabled={busy || products === null} onClick={buy} style={{ width: '100%', marginTop: 12 }}>
-                {busy ? 'Um momento…' : chosen.trial ? `Começar ${chosen.trial} dias grátis` : 'Assinar'}
+              <button className="btn" disabled={busy || loading || storeDown} onClick={buy} style={{ width: '100%', marginTop: 12 }}>
+                {busy ? 'Um momento…' : loading ? 'A carregar os preços…' : chosen.trial ? `Começar ${chosen.trial} dias grátis` : 'Assinar'}
               </button>
             ) : (
               <p className="small" style={{ marginTop: 12 }}>Pode assinar no iPhone, na NEFESH Life. Se já assinou, entre aqui com a mesma conta NEFESH e toque em "Restaurar compras".</p>

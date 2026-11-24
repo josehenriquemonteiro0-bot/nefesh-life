@@ -254,6 +254,13 @@ da família, ativar o Pro como nutricionista e validá-la na página de administ
 7. Na primeira versão da app (1.0), em **In-App Purchases and Subscriptions**, juntar as duas assinaturas
    para irem à revisão com a app.
 
+**Países e moeda (Pricing and Availability):** o preço que cada pessoa vê é o do **país da sua conta Apple**,
+não o idioma da app. Um brasileiro em Portugal com conta Apple de Portugal paga em euros; com conta do Brasil, em reais.
+- **Availability** da app: Brasil, Portugal e os restantes países da União Europeia (onde vivem muitos brasileiros).
+  Fora da UE (Reino Unido, Suíça, EUA…) fica para depois: cada região tem regras de dados próprias.
+- Nas assinaturas, em **Edit Prices**, pôr à mão **9,99 €** e **69,99 €** em todos os países do euro (a conversão
+  automática da Apple dá valores diferentes de país para país).
+
 **Testar no TestFlight:** as compras no TestFlight são de teste (não se paga nada) e renovam depressa
 (a anual a cada hora, a mensal a cada 5 minutos). A versão do TestFlight já exige o Premium; a versão web
 da família continua com tudo aberto.
