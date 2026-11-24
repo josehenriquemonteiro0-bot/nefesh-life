@@ -1,0 +1,39 @@
+# Avaliação lado a lado dos modelos de IA (assistente e foto do prato), só quando é pedida.
+# Usa a chave ANTHROPIC_API_KEY dos segredos; custa poucos cêntimos por execução.
+name: Avaliação da IA
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Modelos a comparar, separados por vírgula
+        default: claude-opus-5-5,claude-haiku-5-5
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
+      MODELS: ${{ inputs.models }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npx -y tsx eval/compare.ts
+      - run: cat eval/relatorio.md >> "$GITHUB_STEP_SUMMARY"
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: relatorio-ia
+          path: worker/eval/relatorio.md
