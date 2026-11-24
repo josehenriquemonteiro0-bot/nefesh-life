@@ -224,9 +224,8 @@ Physical products (Spirulina) are sold on our website, not inside the app.
 Contact: contato@nefeshglobal.com
 ```
 
-**Antes de enviar para revisão:** criar uma conta de demonstração (ex.: `revisao@nefeshglobal.com`) na versão
-da família, ativar o Pro como nutricionista e validá-la na página de administração. As credenciais vão
-**só** para o App Store Connect, nunca para o repositório.
+**Antes de enviar para revisão:** criar a conta de demonstração seguindo `docs/CONTA_REVISAO.md`
+(Pro aprovado e Premium de cortesia). As credenciais vão **só** para o App Store Connect, nunca para o repositório.
 
 ---
 
