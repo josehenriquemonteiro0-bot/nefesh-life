@@ -1,4 +1,4 @@
-import { appUrl } from '../domain/platform';
+import { appUrl, legalUrl } from '../domain/platform';
 import { useEffect, useState } from 'react';
 import { getAuth } from '../domain/account';
 import { shortDate } from '../domain/dates';
@@ -21,6 +21,9 @@ import { isNutriKind } from '../domain/proNutriClient';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
+
+/** Versão dos Termos do NEFESH Life Pro (igual a PRO_TERMS no servidor). */
+const PRO_TERMS = '2026-11-24';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const EFFORT: Record<string, string> = { facil: 'fácil', ok: 'na medida', dificil: 'difícil' };
@@ -420,6 +423,14 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   const [addArea, setAddArea] = useState<{ kind: string; reg: string } | null>(null);
   const [visitsOf, setVisitsOf] = useState<ProStudent | null>(null);
   const [form, setForm] = useState({ name: '', reg: '', kind: 'personal' });
+  // aceitação dos Termos do NEFESH Life Pro e do acordo de tratamento de dados (obrigatória)
+  const [termsOk, setTermsOk] = useState(false);
+  const termsLabel = (
+    <label className="check" style={{ marginTop: 10 }}>
+      <input type="checkbox" checked={termsOk} onChange={(e) => setTermsOk(e.target.checked)} />
+      <span className="small">Li e aceito os <a href={legalUrl('termos').replace('termos.html', 'termos-pro.html')} target="_blank" rel="noreferrer">Termos do NEFESH Life Pro e o acordo de tratamento de dados</a>: sou responsável pelas orientações que dou e pelos dados dos meus alunos ou pacientes.</span>
+    </label>
+  );
   const [newName, setNewName] = useState('');
   const [edit, setEdit] = useState<ProStudent | null>(null);
   const [profileOf, setProfileOf] = useState<ProStudent | null>(null);
@@ -477,7 +488,8 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
           <label className="small" style={{ display: 'block', marginTop: 10 }}>Nome profissional<input className="field" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
           {isNutriKind(form.kind) && <p className="small mute" style={{ margin: '6px 0 0' }}>{form.kind === 'medico' ? 'Para médicos: ficha clínica e anamnese, plano alimentar e jejum, análises e medidas partilhadas pelo paciente, check-ins semanais, consultas de retorno e notas privadas.' : 'Para nutricionistas: ficha e anamnese, construtor de planos alimentares com a tabela TACO, jejum, adesão diária, check-ins semanais, consultas e notas privadas.'}</p>}
           <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional ({form.kind === 'nutricionista' ? 'CRN no Brasil, cédula da Ordem dos Nutricionistas em Portugal' : form.kind === 'medico' ? 'CRM no Brasil, cédula da Ordem dos Médicos em Portugal' : 'CREF no Brasil, título profissional em Portugal'})<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
-          <button className="btn" style={{ marginTop: 12 }} onClick={() => proApi<{ pro: ProInfo }>('registar', form).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
+          {termsLabel}
+          <button className="btn" style={{ marginTop: 12 }} disabled={!termsOk} onClick={() => proApi<{ pro: ProInfo }>('registar', { ...form, terms: PRO_TERMS }).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
         </section>
       )}
       {pro && pro.status !== 'aprovado' && (
@@ -503,8 +515,9 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             <section className="card pro-ask">
               <p className="small" style={{ margin: '0 0 6px' }}><b>Também é {AREAS.find((x) => x[0] === addArea.kind)?.[2].toLowerCase()}?</b> {isTestCopy() ? 'Na cópia de teste fica ativo logo.' : 'A equipa NEFESH confirma o registo e ativa a área; os seus alunos e pacientes ficam separados por área.'}</p>
               <input className="field sm" style={{ width: '100%' }} maxLength={40} value={addArea.reg} onChange={(e) => setAddArea({ ...addArea, reg: e.target.value })} placeholder={addArea.kind === 'nutricionista' ? 'Registo: CRN (Brasil) ou cédula da Ordem dos Nutricionistas' : addArea.kind === 'medico' ? 'Registo: CRM (Brasil) ou cédula da Ordem dos Médicos' : 'Registo: CREF (Brasil) ou título profissional'} aria-label="Registo profissional da nova área" />
+              {termsLabel}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
-                <button className="btn sm" disabled={addArea.reg.trim().length < 3} onClick={() => proApi<{ areas: ProArea[] }>('area/pedir', addArea).then((r) => { setAreas(r.areas); setAddArea(null); toast(isTestCopy() ? 'Área ativada. Toque nela para trocar.' : 'Pedido enviado: avisamos quando a área for validada.'); }).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir validação'}</button>
+                <button className="btn sm" disabled={addArea.reg.trim().length < 3 || !termsOk} onClick={() => proApi<{ areas: ProArea[] }>('area/pedir', { ...addArea, terms: PRO_TERMS }).then((r) => { setAreas(r.areas); setAddArea(null); toast(isTestCopy() ? 'Área ativada. Toque nela para trocar.' : 'Pedido enviado: avisamos quando a área for validada.'); }).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir validação'}</button>
                 <button className="btn ghost sm" onClick={() => setAddArea(null)}>Cancelar</button>
               </div>
             </section>

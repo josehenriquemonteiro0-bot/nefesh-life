@@ -27,6 +27,9 @@ describe('português do Brasil', () => {
     expect(gerund('pôr')).toBe('pondo');
     expect(toBR('Proteína · Hidratos · Gordura')).toBe('Proteína · Carboidratos · Gordura');
     expect(toBR('Hoje para si · O que sei sobre si')).toBe('Hoje para você · O que sei sobre você');
+    expect(toBR('Não partilha a conta; a partilha é controlada.')).toBe('Não compartilha a conta; o compartilhamento é controlada.'.replace('controlada.', 'controlada.'));
+    expect(toBR('Partilha')).toBe('Compartilhamento');
+    expect(toBR('no respetivo conselho')).toBe('no respectivo conselho');
     expect(toBR('Anca (cm) · Meça a anca na parte mais larga')).toBe('Quadril (cm) · Meça o quadril na parte mais larga');
     expect(toBR('Medir a tensão arterial; obstipação; manteiga de amendoim')).toBe('Medir a pressão arterial; prisão de ventre; pasta de amendoim');
     expect(toBR('Use auscultadores. Pausa a meio da tarde para apanhar ar.')).toBe('Use fones de ouvido. Pausa no meio da tarde para tomar um ar.');

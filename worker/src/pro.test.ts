@@ -29,7 +29,7 @@ describe('NEFESH Life Pro', () => {
   });
   it('rascunho: guardar não envia ao aluno; enviar apaga o rascunho', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: '' }, NOW, true);
     const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
     const ex = { name: 'Prancha', sets: 3, reps: '30 s', load: '', rest: '', notes: '' };
     const draft = { workouts: [{ name: 'Treino A', focus: 'Core', day: '', exercises: [ex] }, { name: 'Treino B', focus: 'Inferior', day: '', exercises: [] }], per_week: 3 };
@@ -52,7 +52,7 @@ describe('NEFESH Life Pro', () => {
   });
   it('perfil do aluno: criado com o aluno, aparece no painel, edita-se, limpa-se e sai ao apagar', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: '' }, NOW, true);
     const r = await pro.newStudent(db, 'isa', { name: 'Maria', profile: { sexo: 'f', idade: '34', altura: 165, peso: '62,5', nivel: 'iniciante', objetivo: 'Hipertrofia', lesoes: 'dor no joelho direito' } }, NOW);
     const code = r.body.code as string;
     const st = await pro.proState(db, 'isa', NOW);
@@ -67,16 +67,16 @@ describe('NEFESH Life Pro', () => {
   });
   it('no servidor de teste o profissional fica aprovado logo (também quem já estava pendente)', async () => {
     const db = memoryDB();
-    expect((await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true)).body.pro).toMatchObject({ status: 'aprovado', reg: 'teste' });
+    expect((await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: '' }, NOW, true)).body.pro).toMatchObject({ status: 'aprovado', reg: 'teste' });
     expect((await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).status).toBe(200);
-    await pro.registerPro(db, 'ana', { name: 'Ana', reg: 'CREF 2' }, NOW);
+    await pro.registerPro(db, 'ana', { terms: pro.PRO_TERMS, name: 'Ana', reg: 'CREF 2' }, NOW);
     expect((await pro.proState(db, 'ana', NOW)).body.pro).toMatchObject({ status: 'pendente' });
     expect((await pro.proState(db, 'ana', NOW, true)).body.pro).toMatchObject({ status: 'aprovado' });
   });
   it('profissional pendente até a equipa aprovar; depois cria alunos com código', async () => {
     const db = memoryDB();
-    expect((await pro.registerPro(db, 'isa', { name: 'I', reg: 'x' })).status).toBe(400);
-    expect((await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 012345-G/SP' }, NOW)).body.pro).toMatchObject({ status: 'pendente' });
+    expect((await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'I', reg: 'x' })).status).toBe(400);
+    expect((await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: 'CREF 012345-G/SP' }, NOW)).body.pro).toMatchObject({ status: 'pendente' });
     expect((await pro.newStudent(db, 'isa', { name: 'Maria' })).status).toBe(403);
     await pro.setProStatus(db, 'isa', 'aprovado');
     const r = await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW);
@@ -86,7 +86,7 @@ describe('NEFESH Life Pro', () => {
 
   it('plano limpo e com limites; a versão sobe; o aluno liga-se e recebe-o', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 1' }, NOW);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: 'CREF 1' }, NOW);
     await pro.setProStatus(db, 'isa', 'aprovado');
     const code = String((await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code);
     const plan = { workouts: [{ name: 'Treino A', focus: 'Inferior', exercises: [{ name: 'Agachamento', sets: 4, reps: '8-10', load: '40 kg', rest: '90 s', notes: '' }, { name: '' }] }] };
@@ -99,7 +99,7 @@ describe('NEFESH Life Pro', () => {
 
   it('treino concluído fica no registo e no painel do profissional', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 1' }, NOW);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: 'CREF 1' }, NOW);
     await pro.setProStatus(db, 'isa', 'aprovado');
     const code = String((await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code);
     await pro.savePlan(db, 'isa', { code, plan: { workouts: [{ name: 'Treino A', exercises: [{ name: 'Agachamento' }] }] } }, NOW);
@@ -151,7 +151,7 @@ describe('Pro: periodização', () => {
 describe('Pro: avaliações físicas', () => {
   it('guarda, lista com fotos, atualiza o perfil com a mais recente e apaga tudo com o aluno', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: '' }, NOW, true);
     const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
     const a1 = { day: '2026-10-01', peso: 64, sexo: 'f', idade: 34, protocol: 'jp3', folds: { triceps: 20, suprailiaca: 18, coxa: 25 }, medidas: { cintura: 74 } };
     const a2 = { day: '2026-11-20', peso: '62,5', sexo: 'f', idade: 34, protocol: 'medido', gorduraMedida: 24, medidas: { cintura: 71.5, quadril: 98 } };
@@ -179,7 +179,7 @@ describe('Pro: avaliações físicas', () => {
 describe('Pro: conversa', () => {
   it('personal e aluno trocam mensagens (com referência ao treino); não lidas; só quem está ligado', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: '' }, NOW, true);
     const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
     await pro.linkStudent(db, 'd:telemovel-maria', { code }, NOW);
     const noFetch = (async () => new Response('', { status: 201 })) as unknown as typeof fetch;
@@ -200,7 +200,7 @@ describe('Pro: conversa', () => {
 describe('Pro: relatório partilhado', () => {
   it('só com autorização; só números; desligar ou sair apaga', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: '' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: '' }, NOW, true);
     const code = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
     await pro.linkStudent(db, 'd:telemovel-maria', { code }, NOW);
     expect((await pro.shareReport(db, 'isa', { code })).status).toBe(404);
@@ -238,7 +238,7 @@ describe('Pro: profissional já verificado', () => {
     await pro.ensurePreapproved(db, 'conta-isa', pre!, NOW);
     expect((await pro.proState(db, 'conta-isa', NOW)).body.pro).toMatchObject({ status: 'aprovado' });
     expect((await pro.newStudent(db, 'conta-isa', { name: 'Maria' }, NOW)).status).toBe(200);
-    await pro.registerPro(db, 'outro', { name: 'Outro Personal', reg: 'CREF 1234' }, NOW);
+    await pro.registerPro(db, 'outro', { terms: pro.PRO_TERMS, name: 'Outro Personal', reg: 'CREF 1234' }, NOW);
     expect((await pro.proState(db, 'outro', NOW)).body.pro).toMatchObject({ status: 'pendente' });
   });
 });
@@ -257,5 +257,17 @@ describe('Biblioteca de vídeos NEFESH', () => {
     const g = new FormData(); g.set('v:Agachamento búlgaro', '');
     await exv.saveVideos(db, g, NOW);
     expect(await exv.videoMap(db)).toEqual({});
+  });
+});
+
+describe('termos do NEFESH Life Pro', () => {
+  it('registo e nova área só com os termos aceites, e a aceitação fica guardada com a data', async () => {
+    const db = memoryDB();
+    expect((await pro.registerPro(db, 'z', { name: 'Zé Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW)).status).toBe(400);
+    expect((await pro.registerPro(db, 'z', { terms: pro.PRO_TERMS, name: 'Zé Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true)).status).toBe(200);
+    const row = await db.prepare('SELECT version, at FROM pro_terms WHERE uid = ?').bind('z').first<{ version: string; at: string }>();
+    expect(row?.version).toBe(pro.PRO_TERMS);
+    expect((await pro.requestArea(db, 'z', { kind: 'medico', reg: 'CRM 1' }, true, NOW)).status).toBe(400);
+    expect((await pro.requestArea(db, 'z', { terms: pro.PRO_TERMS, kind: 'medico', reg: 'CRM 1' }, true, NOW)).status).toBe(200);
   });
 });

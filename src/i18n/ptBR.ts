@@ -102,8 +102,19 @@ const PAIRS: [string, string][] = [
   ['a si', 'a você'],
   ['por si', 'por você'],
   ['convosco', 'com vocês'],
+  // "partilha": nome (compartilhamento) só com artigo ou adjetivo; sozinho é o verbo (compartilha)
+  ['partilha controlada', 'compartilhamento controlado'],
   ['a partilha', 'o compartilhamento'],
-  ['partilha', 'compartilhamento'],
+  ['da partilha', 'do compartilhamento'],
+  ['na partilha', 'no compartilhamento'],
+  ['pela partilha', 'pelo compartilhamento'],
+  ['uma partilha', 'um compartilhamento'],
+  ['partilhas', 'compartilhamentos'],
+  ['partilha', 'compartilha'],
+  ['respetivas', 'respectivas'],
+  ['respetivos', 'respectivos'],
+  ['respetiva', 'respectiva'],
+  ['respetivo', 'respectivo'],
   ['hidratos de carbono', 'carboidratos'],
   ['hidratos', 'carboidratos'],
   ['lípidos', 'gorduras'],
@@ -274,8 +285,13 @@ const PROGRESSIVE = new RegExp(
 const STATUS = new RegExp(`^(\\s*)A\\s+([a-zà-ÿ]+(?:ar|er|ir))(?![${L}-])(?=[^…]*…)`, 'u');
 
 /** Converte um texto de português de Portugal para português do Brasil. */
+/** Textos que, sozinhos (um botão ou um título), têm outra tradução. */
+const WHOLE: Record<string, string> = { Partilha: 'Compartilhamento', Partilhar: 'Compartilhar' };
+
 export function toBR(text: string): string {
   if (!text || !/[A-Za-zÀ-ÿ]/.test(text)) return text;
+  const whole = WHOLE[text.trim()];
+  if (whole) return text.replace(text.trim(), whole);
   let t = text.replace(STATUS, (_m, sp: string, v: string) => {
     const g = gerund(v);
     return sp + g[0].toUpperCase() + g.slice(1);

@@ -122,11 +122,20 @@ export async function ensurePreapproved(db: DB, uid: string, p: { name: string; 
 }
 
 /** `auto` (só no servidor de teste): o acesso fica aprovado logo, sem passar pela página da equipa. */
+/** Versão dos Termos do NEFESH Life Pro e do acordo de tratamento de dados (legal/termos-pro.html). */
+export const PRO_TERMS = '2026-11-24';
+const TERMS_MSG = 'Para continuar, aceite os Termos do NEFESH Life Pro e o acordo de tratamento de dados.';
+async function acceptTerms(db: DB, uid: string, now: Date) {
+  await db.prepare('INSERT INTO pro_terms (uid, version, at) VALUES (?, ?, ?) ON CONFLICT(uid, version) DO NOTHING').bind(uid, PRO_TERMS, now.toISOString()).run();
+}
+
 export async function registerPro(db: DB, uid: string, b: Record<string, unknown>, now = new Date(), auto = false): Promise<R> {
   const name = str(b.name, 60), reg = str(b.reg, 40) || (auto ? 'teste' : '');
   const kind = ['personal', 'nutricionista', 'medico', 'outro'].includes(String(b.kind)) ? String(b.kind) : 'personal';
   if (name.length < 2) return bad('Escreva o seu nome profissional.');
   if (reg.length < 3) return bad('Escreva o seu registo profissional (CREF ou título profissional).');
+  if (b.terms !== PRO_TERMS) return bad(TERMS_MSG);
+  await acceptTerms(db, uid, now);
   const cur = await proOf(db, uid);
   if (cur?.status === 'aprovado') return ok({ pro: cur });
   await db.prepare("INSERT INTO pros (uid, name, kind, reg, status, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(uid) DO UPDATE SET name = excluded.name, kind = excluded.kind, reg = excluded.reg, status = CASE WHEN ? THEN 'aprovado' ELSE pros.status END").bind(uid, name, kind, reg, auto ? 'aprovado' : 'pendente', now.toISOString(), auto ? 1 : 0).run();
@@ -798,7 +807,9 @@ export async function requestArea(db: DB, uid: string, b: Record<string, unknown
   const kind = AREA_KINDS.includes(String(b.kind)) ? String(b.kind) : null;
   const reg = str(b.reg, 40);
   if (!kind) return bad('Área inválida.');
+  if (b.terms !== PRO_TERMS) return bad(TERMS_MSG);
   if (reg.length < 3) return bad(kind === 'nutricionista' ? 'Escreva o seu registo de nutricionista (CRN ou cédula da Ordem).' : kind === 'medico' ? 'Escreva o seu registo médico (CRM ou cédula da Ordem).' : 'Escreva o seu registo (CREF ou título profissional).');
+  await acceptTerms(db, uid, now);
   await areasOf(db, uid, now);
   const cur = await db.prepare('SELECT status FROM pro_areas WHERE uid = ? AND kind = ?').bind(uid, kind).first<{ status: string }>();
   if (cur?.status === 'aprovado') return ok({ areas: await areasOf(db, uid, now) });

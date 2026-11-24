@@ -22,7 +22,7 @@ const nutri = { days: [{ name: 'Todos os dias', weekdays: [], meals: [{ key: 'al
 describe('NEFESH Pro para nutricionistas (servidor)', () => {
   it('nutricionista envia plano alimentar; o paciente recebe-o com o tipo de profissional', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'ana', { terms: pro.PRO_TERMS, name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
     const code = (await pro.newStudent(db, 'ana', { name: 'Maria' }, NOW)).body.code as string;
     expect((await pro.savePlan(db, 'ana', { code, plan: { workouts: [], nutri: { ...nutri, days: [] } } }, NOW)).body.error).toMatch(/alimento/);
     expect((await pro.savePlan(db, 'ana', { code, plan: { workouts: [], nutri } }, NOW)).status).toBe(200);
@@ -32,13 +32,13 @@ describe('NEFESH Pro para nutricionistas (servidor)', () => {
   });
   it('um personal não pode enviar plano alimentar', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF', kind: 'personal' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: 'CREF', kind: 'personal' }, NOW, true);
     const code = (await pro.newStudent(db, 'isa', { name: 'João' }, NOW)).body.code as string;
     expect((await pro.savePlan(db, 'isa', { code, plan: { workouts: [], nutri } }, NOW)).status).toBe(400);
   });
   it('registo diário do paciente: adesão e alertas no painel do nutricionista', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'ana', { terms: pro.PRO_TERMS, name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
     const code = (await pro.newStudent(db, 'ana', { name: 'Maria' }, NOW)).body.code as string;
     await pro.savePlan(db, 'ana', { code, plan: { workouts: [], nutri } }, NOW);
     await pro.linkStudent(db, 'd:telemovel-123', { code }, NOW);
@@ -56,7 +56,7 @@ describe('NEFESH Pro para nutricionistas (servidor)', () => {
 describe('fase 2: check-in semanal, consultas e IA', () => {
   const setup = async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'ana', { terms: pro.PRO_TERMS, name: 'Ana Nutri', reg: 'CRN 1234', kind: 'nutricionista' }, NOW, true);
     const code = (await pro.newStudent(db, 'ana', { name: 'Maria' }, NOW)).body.code as string;
     await pro.savePlan(db, 'ana', { code, plan: { workouts: [], nutri } }, NOW);
     await pro.linkStudent(db, 'd:telemovel-123', { code }, NOW);
@@ -105,8 +105,8 @@ describe('fase 2: check-in semanal, consultas e IA', () => {
 describe('fase 3: equipa e diretório', () => {
   it('com autorização do paciente, nutricionista e personal veem o essencial um do outro', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true);
-    await pro.registerPro(db, 'isa', { name: 'Isabela', reg: 'CREF 1', kind: 'personal' }, NOW, true);
+    await pro.registerPro(db, 'ana', { terms: pro.PRO_TERMS, name: 'Ana Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: 'CREF 1', kind: 'personal' }, NOW, true);
     const cn = (await pro.newStudent(db, 'ana', { name: 'Maria' }, NOW)).body.code as string;
     const cp = (await pro.newStudent(db, 'isa', { name: 'Maria' }, NOW)).body.code as string;
     await pro.savePlan(db, 'ana', { code: cn, plan: { workouts: [], nutri, jejum: { protocol: '14:10', open: '10:00' } } }, NOW);
@@ -124,8 +124,8 @@ describe('fase 3: equipa e diretório', () => {
   });
   it('diretório: só aprovados que quiseram aparecer, com contacto válido', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'ana', { name: 'Ana Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true);
-    await pro.registerPro(db, 'zé', { name: 'Zé', reg: 'X', kind: 'personal' }, NOW);
+    await pro.registerPro(db, 'ana', { terms: pro.PRO_TERMS, name: 'Ana Nutri', reg: 'CRN 1', kind: 'nutricionista' }, NOW, true);
+    await pro.registerPro(db, 'zé', { terms: pro.PRO_TERMS, name: 'Zé', reg: 'X', kind: 'personal' }, NOW);
     expect((await pro.saveDirectory(db, 'ana', { on: true, contact: 'javascript:alert(1)' }, NOW)).status).toBe(400);
     expect((await pro.saveDirectory(db, 'ana', { on: true, city: 'Lisboa', online: true, areas: 'Emagrecimento, diabetes', contact: '+351 912 345 678' }, NOW)).status).toBe(200);
     expect((await pro.saveDirectory(db, 'zé', { on: true, contact: 'ze@x.pt' }, NOW)).status).toBe(403);
@@ -139,7 +139,7 @@ describe('fase 3: equipa e diretório', () => {
 describe('áreas do NEFESH Pro (personal / nutrição)', () => {
   it('cada área mostra só os seus; no servidor de teste pode-se trocar de área', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'jo', { name: 'José', reg: 'teste', kind: 'personal' }, NOW, true);
+    await pro.registerPro(db, 'jo', { terms: pro.PRO_TERMS, name: 'José', reg: 'teste', kind: 'personal' }, NOW, true);
     await pro.newStudent(db, 'jo', { name: 'Aluno A' }, NOW);
     expect((await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, false)).status).toBe(403);
     expect((await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, true)).body.pro).toMatchObject({ kind: 'nutricionista' });
@@ -154,9 +154,9 @@ describe('áreas do NEFESH Pro (personal / nutrição)', () => {
 describe('dupla formação: pedir outra área', () => {
   it('pede, fica pendente, a equipa valida, e só então pode trocar', async () => {
     const db = memoryDB();
-    await pro.registerPro(db, 'jo', { name: 'José', reg: 'CREF 1', kind: 'personal' }, NOW, true);
-    expect((await pro.requestArea(db, 'jo', { kind: 'nutricionista', reg: 'x' }, false, NOW)).status).toBe(400);
-    const r = await pro.requestArea(db, 'jo', { kind: 'nutricionista', reg: 'CRN-3 999' }, false, NOW);
+    await pro.registerPro(db, 'jo', { terms: pro.PRO_TERMS, name: 'José', reg: 'CREF 1', kind: 'personal' }, NOW, true);
+    expect((await pro.requestArea(db, 'jo', { terms: pro.PRO_TERMS, kind: 'nutricionista', reg: 'x' }, false, NOW)).status).toBe(400);
+    const r = await pro.requestArea(db, 'jo', { terms: pro.PRO_TERMS, kind: 'nutricionista', reg: 'CRN-3 999' }, false, NOW);
     expect((r.body.areas as pro.ProArea[]).map((a) => `${a.kind} ${a.reg} ${a.status}`).sort()).toEqual(['nutricionista CRN-3 999 pendente', 'personal CREF 1 aprovado']);
     expect((await pro.areaRequests(db)).map((a) => a.kind)).toEqual(['nutricionista']);
     expect((await pro.switchArea(db, 'jo', { kind: 'nutricionista' }, false, NOW)).status).toBe(403);
