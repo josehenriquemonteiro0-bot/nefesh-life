@@ -18,6 +18,7 @@ public class NefeshStorePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "entitlements", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "redeem", returnType: CAPPluginReturnPromise),
     ]
 
     private var updates: Task<Void, Never>?
@@ -135,6 +136,21 @@ public class NefeshStorePlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             if let scene = self.bridge?.viewController?.view.window?.windowScene {
                 try? await AppStore.showManageSubscriptions(in: scene)
+            }
+            call.resolve()
+        }
+    }
+}
+
+extension NefeshStorePlugin {
+    /// Códigos de oferta da Apple (criados no App Store Connect): a Apple mostra o ecrã para escrever o código;
+    /// a assinatura resgatada chega depois por Transaction.updates.
+    @objc func redeem(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            if #available(iOS 16.0, *), let scene = self.bridge?.viewController?.view.window?.windowScene {
+                try? await AppStore.presentOfferCodeRedeemSheet(in: scene)
+            } else {
+                SKPaymentQueue.default().presentCodeRedemptionSheet()
             }
             call.resolve()
         }

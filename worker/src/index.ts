@@ -576,6 +576,8 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         },
         amigo: () => social.addFriend(db, uid, b.code),
         'remover-amigo': () => social.removeFriend(db, uid, b.id),
+        bloquear: () => social.block(db, uid, b.id),
+        desbloquear: () => social.unblock(db, uid, b.id),
         mensagem: async () => {
           const r = await social.sendMessage(db, uid, b.to, b.kind);
           // avisa o amigo no telemóvel, mesmo com a app fechada

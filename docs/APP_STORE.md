@@ -254,6 +254,19 @@ da família, ativar o Pro como nutricionista e validá-la na página de administ
 7. Na primeira versão da app (1.0), em **In-App Purchases and Subscriptions**, juntar as duas assinaturas
    para irem à revisão com a app.
 
+**Premium grátis para família e parceiros (duas formas):**
+1. **Cortesia da equipa (sem código, nunca cobra nada):** página da equipa → NEFESH Premium de cortesia → e-mail da
+   conta e data de fim. Vale no iPhone e na web. Ideal para a família e parceiros próximos.
+2. **Códigos de oferta da Apple (para campanhas e parceiros):** a assinatura → **Offer Codes** → **+** →
+   nome (ex.: `Parceiros 2027`), elegibilidade (novos clientes), oferta **Free** com a duração (ex.: 3 meses) →
+   gerar **códigos únicos** (uma pessoa cada) ou um **código personalizado** (ex.: `NEFESHPARCEIRO`, com limite de usos).
+   Na app: Perfil → Conhecer o Premium → **Tenho um código**. Atenção: no fim do período grátis a assinatura
+   passa a ser paga, a menos que a pessoa a cancele (a Apple avisa no ecrã do código). Para quem nunca deve
+   pagar, usar a cortesia.
+
+> A Apple não permite códigos próprios dentro da app do iPhone para desbloquear funções pagas (regra 3.1.1):
+> por isso os códigos são sempre os da Apple, e a cortesia é dada pela equipa na conta.
+
 **Países e moeda (Pricing and Availability):** o preço que cada pessoa vê é o do **país da sua conta Apple**,
 não o idioma da app. Um brasileiro em Portugal com conta Apple de Portugal paga em euros; com conta do Brasil, em reais.
 - **Availability** da app: Brasil, Portugal e os restantes países da União Europeia (onde vivem muitos brasileiros).

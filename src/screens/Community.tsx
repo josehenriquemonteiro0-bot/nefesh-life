@@ -5,7 +5,7 @@ import { todayKey } from '../domain/dates';
 import { HABIT_POINTS, activityStreak, dayScore, levelOf, totalPoints, weekPayload, weekTotal, type Flag } from '../domain/points';
 import {
   CHALLENGES, CIRCLE_KINDS, DURATIONS, LEVELS, REACTIONS, REPLIES, acceptInvite, acceptPartner, circleOf, clearInvite, inviteUrl, pendingInvite, resetInviteText, createTeam, endPartner, feedText, invitePartner, joinTeam, leaveTeam, react, replyTo, LEAGUES, LEAGUE_COLORS, MESSAGES, addFriend, createChallenge, evolutionRanking, inviteText, join, leaveChallenge,
-  leaveCommunity, markSeen, refresh, removeFriend, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type CircleKind, type Member, type SocialState,
+  blockPerson, leaveCommunity, markSeen, refresh, removeFriend, unblockPerson, resultSeen, sendMessage, suggestFor, unreadCount, useSocial, type CircleKind, type Member, type SocialState,
 } from '../domain/social';
 import { pushPoints } from '../state/socialSync';
 import { SpirulinaCheck } from '../components/SpirulinaCheck';
@@ -177,6 +177,7 @@ function FeedItemRow({ f }: { f: NonNullable<SocialState['feed']>[number] }) {
           {Object.entries(REPLIES).map(([k, t]) => (
             <button key={k} className="chip" onClick={() => { setReplying(false); act(() => replyTo(f.id, k)); }}>{t}</button>
           ))}
+          {f.uid && <button className="link small inline" style={{ color: 'var(--warn)' }} onClick={() => confirm(`Bloquear ${f.nick}? Deixam de ver as fotos, as conquistas e as mensagens um do outro. Pode desbloquear na Comunidade.`) && act(() => blockPerson(f.uid!))}>bloquear {f.nick}</button>}
         </div>
       )}
     </li>
@@ -427,6 +428,17 @@ function FriendRow({ f }: { f: Member & { id: string; today: string } }) {
           >
             remover amigo
           </button>
+          <button
+            className="link small inline"
+            style={{ color: 'var(--warn)' }}
+            onClick={async () => {
+              if (!confirm(`Bloquear ${f.nick}? Deixam de ser amigos e de ver as fotos, as conquistas e as mensagens um do outro. Pode desbloquear mais abaixo.`)) return;
+              try { await blockPerson(f.id); toast(`${f.nick} foi bloqueado(a).`); } catch (e) { toast((e as Error).message); }
+              refresh();
+            }}
+          >
+            bloquear
+          </button>
         </div>
       )}
     </li>
@@ -495,6 +507,20 @@ function FriendsView({ st }: { st: SocialState }) {
           <button className="btn sm" disabled={code.trim().length < 4}>Adicionar</button>
         </form>
       </section>
+      {(st.blocked ?? []).length > 0 && (
+        <section className="card">
+          <h3 style={{ marginTop: 0 }}>Pessoas bloqueadas</h3>
+          <p className="small mute" style={{ margin: '0 0 8px' }}>Não veem as suas fotos, conquistas nem mensagens, e não o podem adicionar.</p>
+          <ul className="plain small">
+            {st.blocked!.map((b) => (
+              <li key={b.id} className="row">
+                <span>{b.nick}</span>
+                <button className="link small inline" onClick={async () => { if (!confirm(`Desbloquear ${b.nick}?`)) return; try { await unblockPerson(b.id); toast(`${b.nick} foi desbloqueado(a).`); } catch (e) { toast((e as Error).message); } refresh(); }}>desbloquear</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }

@@ -9,7 +9,7 @@ import { PLANS, REF_PRICES, annualDeal, money, premiumFromStore, rememberStorePr
 import { legalUrl } from '../domain/platform';
 import { currentLocale } from '../i18n/locale';
 import { getAuth, syncPremium } from '../domain/account';
-import { storeAvailable, storeBuy, storeManage, storeProducts, storeRestore, type StoreProduct } from '../native/store';
+import { storeAvailable, storeBuy, storeManage, storeProducts, storeRedeem, storeRestore, type StoreProduct } from '../native/store';
 import { useStore } from '../state/store';
 
 // abrir/fechar a partir de qualquer ecrã
@@ -163,6 +163,7 @@ function Paywall({ onClose }: { onClose: () => void }) {
         {err && <p className="small" style={{ color: 'var(--warn, #ffb37a)' }}>{err}</p>}
         <p className="small" style={{ marginTop: 8 }}>
           <button className="link small inline" disabled={busy} onClick={restore}>Restaurar compras</button> ·{' '}
+          {native && current?.source !== 'subscription' && <><button className="link small inline" disabled={busy} onClick={() => storeRedeem().catch(() => undefined)}>Tenho um código</button> ·{' '}</>}
           <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a> ·{' '}
           <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Privacidade</a>
         </p>

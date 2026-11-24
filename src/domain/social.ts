@@ -62,6 +62,8 @@ export interface SocialState {
   official?: { kind: string; target: number; done: number; bonus: number };
   feed?: FeedItem[];
   photos?: PhotoMoment[];
+  /** pessoas que bloqueei */
+  blocked?: { id: string; nick: string }[];
   team?: TeamInfo | null;
   teams?: { rank: number; name: string; members: number; avg: number; mine: boolean }[];
   partner?: { status: 'ativo' | 'enviado' | 'recebido'; nick: string; avatar: string | null; streak: number; todayMe: boolean; todayThem: boolean } | null;
@@ -92,6 +94,8 @@ export interface PrizeState {
 export interface FeedItem {
   id: number;
   me: boolean;
+  /** id de quem publicou (só nos outros), para bloquear */
+  uid?: string;
   kind: string;
   value: number;
   created: string;
@@ -117,6 +121,7 @@ export interface PhotoMoment {
   id: string;
   fid: number;
   me: boolean;
+  uid?: string;
   kind: 'treino' | 'receita' | 'spirulina' | 'refeicao';
   created: string;
   nick: string;
@@ -251,6 +256,9 @@ export const updateAvatar = (avatar: string | null) => call('perfil-foto', { ava
 export const syncWeek = (payload: Record<string, unknown>) => call<{ points: number; league: number; bonus: number }>('sincronizar', payload);
 export const addFriend = (code: string) => call<{ nick: string }>('amigo', { code });
 export const removeFriend = (id: string) => call('remover-amigo', { id });
+/** Bloquear: deixa de ser amigo e nenhum dos dois vê as fotos, conquistas ou mensagens do outro. */
+export const blockPerson = (id: string) => call('bloquear', { id });
+export const unblockPerson = (id: string) => call('desbloquear', { id });
 export const sendMessage = (to: string, kind: string) => call('mensagem', { to, kind });
 export const markSeen = () => call('lidas');
 export const cheer = (id: number) => call('aplaudir', { id });

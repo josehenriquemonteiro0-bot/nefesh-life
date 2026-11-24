@@ -63,7 +63,7 @@ export async function recentPhotos(db: DB, uid: string, now = new Date()) {
     )
     .bind(since, uid)
     .all<{ id: string; fid: number; uid: string; kind: string; created: string; nick: string; avatar: string | null }>();
-  return results.map((r) => ({ id: r.id, fid: r.fid, me: r.uid === uid, kind: r.kind, created: r.created, nick: r.nick, avatar: r.avatar }));
+  return results.map((r) => ({ id: r.id, fid: r.fid, me: r.uid === uid, uid: r.uid === uid ? undefined : r.uid, kind: r.kind, created: r.created, nick: r.nick, avatar: r.avatar }));
 }
 
 export async function photoBytes(db: DB, id: string, now = new Date()) {

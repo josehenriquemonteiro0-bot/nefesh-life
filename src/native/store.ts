@@ -22,6 +22,7 @@ interface NefeshStorePlugin {
   entitlements(): Promise<{ transactions: StoreTransaction[] }>;
   restore(): Promise<{ transactions: StoreTransaction[] }>;
   manage(): Promise<void>;
+  redeem(): Promise<void>;
   addListener(e: 'transaction', fn: (t: StoreTransaction) => void): Promise<PluginListenerHandle>;
 }
 const Store = registerPlugin<NefeshStorePlugin>('NefeshStore');
@@ -32,4 +33,6 @@ export const storeBuy = (id: string) => Store.purchase({ id });
 export const storeEntitlements = async () => (storeAvailable() ? (await Store.entitlements()).transactions : []);
 export const storeRestore = async () => (await Store.restore()).transactions;
 export const storeManage = () => Store.manage();
+/** Ecrã da Apple para resgatar um código de oferta (Premium grátis por um período). */
+export const storeRedeem = () => Store.redeem();
 export const onStoreTransaction = (fn: (t: StoreTransaction) => void) => (storeAvailable() ? Store.addListener('transaction', fn) : null);

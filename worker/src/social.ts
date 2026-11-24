@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS pro_areas (uid TEXT NOT NULL, kind TEXT NOT NULL, reg
 CREATE TABLE IF NOT EXISTS pro_terms (uid TEXT NOT NULL, version TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (uid, version));
 CREATE TABLE IF NOT EXISTS access_logs (uid TEXT NOT NULL, ip TEXT NOT NULL, hour TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (uid, ip, hour));
 CREATE TABLE IF NOT EXISTS premium (uid TEXT PRIMARY KEY, product TEXT NOT NULL, otid TEXT NOT NULL, expires TEXT NOT NULL, env TEXT NOT NULL, updated TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS blocks (uid TEXT NOT NULL, other TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY (uid, other));
 CREATE TABLE IF NOT EXISTS ex_videos (k TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, updated TEXT NOT NULL);
 `;
 
@@ -275,6 +276,7 @@ export async function leave(db: DB, id: string): Promise<Ok> {
     db.prepare('DELETE FROM profiles WHERE id = ?').bind(id),
     db.prepare('DELETE FROM weeks WHERE id = ?').bind(id),
     db.prepare('DELETE FROM friends WHERE a = ? OR b = ?').bind(id, id),
+    db.prepare('DELETE FROM blocks WHERE uid = ? OR other = ?').bind(id, id),
     db.prepare('DELETE FROM messages WHERE to_id = ? OR from_id = ?').bind(id, id),
     db.prepare('DELETE FROM challenge_members WHERE uid = ?').bind(id),
     db.prepare('DELETE FROM invites WHERE uid = ? OR by_uid = ?').bind(id, id),
@@ -472,6 +474,7 @@ export async function addFriend(db: DB, id: string, codeRaw: unknown, now = new 
   if (!other) return fail(404, 'Não encontrámos ninguém com esse código.');
   if (other.id === id) return fail(400, 'Esse é o seu próprio código.');
   if (!(await getProfile(db, id))) return fail(404, 'Entre primeiro na comunidade.');
+  if ((await blockedIds(db, id)).has(other.id)) return fail(403, 'Não é possível adicionar esta pessoa.');
   const c = await db.prepare('SELECT COUNT(*) AS n FROM friends WHERE a = ?').bind(id).first<{ n: number }>();
   if ((c?.n ?? 0) >= 200) return fail(400, 'Chegou ao limite de amigos.');
   const at = now.toISOString();
@@ -526,6 +529,27 @@ export async function communityStats(db: DB) {
   };
 }
 
+/** Pessoas bloqueadas nos dois sentidos (quem eu bloqueei e quem me bloqueou): não se veem nem se contactam. */
+export async function blockedIds(db: DB, id: string): Promise<Set<string>> {
+  const { results } = await db.prepare('SELECT other AS x FROM blocks WHERE uid = ? UNION SELECT uid AS x FROM blocks WHERE other = ?').bind(id, id).all<{ x: string }>();
+  return new Set(results.map((r) => r.x));
+}
+
+/** Bloquear alguém: deixa de ser amigo, e nenhum dos dois vê as fotos, as conquistas ou as mensagens do outro. */
+export async function block(db: DB, id: string, otherRaw: unknown, now = new Date()): Promise<Ok> {
+  const other = String(otherRaw ?? '').slice(0, 64);
+  if (!other || other === id) return fail(400, 'Pessoa inválida.');
+  if (!(await getProfile(db, other))) return fail(404, 'Esta pessoa já não está na comunidade.');
+  await db.prepare('INSERT OR IGNORE INTO blocks (uid, other, created) VALUES (?, ?, ?)').bind(id, other, now.toISOString()).run();
+  await removeFriend(db, id, other);
+  return ok({ ok: true });
+}
+
+export async function unblock(db: DB, id: string, otherRaw: unknown): Promise<Ok> {
+  await db.prepare('DELETE FROM blocks WHERE uid = ? AND other = ?').bind(id, String(otherRaw ?? '')).run();
+  return ok({ ok: true });
+}
+
 export async function removeFriend(db: DB, id: string, other: unknown): Promise<Ok> {
   const o = String(other ?? '');
   await db.batch([
@@ -539,7 +563,7 @@ export async function sendMessage(db: DB, id: string, to: unknown, kind: unknown
   const t = String(to ?? '');
   const k = String(kind ?? '');
   if (!(MESSAGE_KINDS as readonly string[]).includes(k)) return fail(400, 'Mensagem desconhecida.');
-  if (!(await areFriends(db, id, t))) return fail(403, 'Só pode enviar mensagens a amigos.');
+  if (!(await areFriends(db, id, t)) || (await blockedIds(db, id)).has(t)) return fail(403, 'Só pode enviar mensagens a amigos.');
   const since = new Date(now.getTime() - 86400000).toISOString();
   const a = await db.prepare('SELECT COUNT(*) AS n FROM messages WHERE from_id = ? AND to_id = ? AND created > ?').bind(id, t, since).first<{ n: number }>();
   if ((a?.n ?? 0) >= 3) return fail(429, 'Já enviou 3 mensagens a este amigo hoje.');
@@ -717,15 +741,16 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     .bind(id, ...circle, since)
     .all<Record<string, unknown>>();
   const extras = await feedExtras(db, id, fd.map((r) => Number(r.id)));
-  const feed = fd.map((r) => {
+  const blocked = await blockedIds(db, id);
+  const feed = fd.filter((r) => !blocked.has(String(r.uid))).map((r) => {
     const x = extras.get(Number(r.id));
-    return { id: r.id, me: r.uid === id, kind: r.kind, value: r.value, created: r.created, nick: r.nick, avatar: r.avatar, cheers: Number(r.cheers) || 0, cheered: Number(r.mine) > 0, reactions: x?.reactions ?? {}, myReaction: x?.mine ?? null, replies: x?.replies ?? [] };
+    return { id: r.id, me: r.uid === id, uid: r.uid === id ? undefined : r.uid, kind: r.kind, value: r.value, created: r.created, nick: r.nick, avatar: r.avatar, cheers: Number(r.cheers) || 0, cheered: Number(r.mine) > 0, reactions: x?.reactions ?? {}, myReaction: x?.mine ?? null, replies: x?.replies ?? [] };
   });
   const teams = await teamState(db, id, week, today);
   // momentos com foto (24 h, toda a comunidade), com as reações de cada um
   const ph = await recentPhotos(db, id, now);
   const phx = await feedExtras(db, id, ph.map((x) => x.fid).filter(Boolean));
-  const photos = ph.map((x) => ({ ...x, reactions: phx.get(x.fid)?.reactions ?? {}, myReaction: phx.get(x.fid)?.mine ?? null }));
+  const photos = ph.filter((x) => !blocked.has(String(x.uid))).map((x) => ({ ...x, reactions: phx.get(x.fid)?.reactions ?? {}, myReaction: phx.get(x.fid)?.mine ?? null }));
   const partner = await partnerState(db, id, today, now);
 
   // desafio oficial da semana
@@ -757,7 +782,8 @@ export async function state(db: DB, id: string, now = new Date()): Promise<Ok> {
     leagueName: LEAGUES[Number(mine?.league ?? me.league) || 0],
     league,
     friends,
-    messages: msgs.map((m) => ({ id: m.id, kind: m.kind, created: m.created, seen: !!m.seen, nick: m.nick ?? 'Ex-membro', avatar: m.avatar, from: m.from_id })),
+    blocked: (await db.prepare('SELECT b.other AS id, p.nick FROM blocks b LEFT JOIN profiles p ON p.id = b.other WHERE b.uid = ? ORDER BY b.created DESC').bind(id).all<{ id: string; nick: string | null }>()).results.map((r) => ({ id: r.id, nick: r.nick ?? 'Ex-membro' })),
+    messages: msgs.filter((m) => !blocked.has(String(m.from_id))).map((m) => ({ id: m.id, kind: m.kind, created: m.created, seen: !!m.seen, nick: m.nick ?? 'Ex-membro', avatar: m.avatar, from: m.from_id })),
     challenges,
     feed,
     photos,

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { compressImage } from '../domain/photo';
-import { PHOTO_LABEL, REACTIONS, deletePhoto, photoUrl, react, refresh, reportPhoto, sharePhoto, type PhotoMoment, type SocialState } from '../domain/social';
+import { PHOTO_LABEL, REACTIONS, blockPerson, deletePhoto, photoUrl, react, refresh, reportPhoto, sharePhoto, type PhotoMoment, type SocialState } from '../domain/social';
 import { useStore } from '../state/store';
 
 const ago = (iso: string) => {
@@ -40,7 +40,10 @@ function MomentCard({ p }: { p: PhotoMoment }) {
           {p.me ? (
             <button className="chip" onClick={() => confirm('Apagar esta foto?') && act(() => deletePhoto(p.id), 'Foto apagada.')}>Apagar a minha foto</button>
           ) : (
-            <button className="chip" onClick={() => confirm('Denunciar esta foto? Deixa de a ver e a equipa NEFESH é avisada.') && act(() => reportPhoto(p.id), 'Obrigado. A foto foi escondida e denunciada.')}>Denunciar</button>
+            <>
+              <button className="chip" onClick={() => confirm('Denunciar esta foto? Deixa de a ver e a equipa NEFESH é avisada.') && act(() => reportPhoto(p.id), 'Obrigado. A foto foi escondida e denunciada.')}>Denunciar</button>
+              {p.uid && <button className="chip" onClick={() => confirm(`Bloquear ${p.nick}? Deixam de ver as fotos, as conquistas e as mensagens um do outro. Pode desbloquear na Comunidade.`) && act(() => blockPerson(p.uid!), `${p.nick} foi bloqueado(a).`)}>Bloquear {p.nick}</button>}
+            </>
           )}
         </div>
       )}

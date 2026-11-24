@@ -178,3 +178,32 @@ describe('desafios longos, 21 Day Reset e convites', () => {
     expect((await so.acceptInvite(db, 'rui', 'NAOEXISTE', '', WED)).status).toBe(404);
   });
 });
+
+describe('bloquear pessoas (regra da Apple para comunidades)', () => {
+  it('bloquear tira a amizade, esconde as conquistas e as mensagens, e impede voltar a adicionar', async () => {
+    const db = memoryDB();
+    const ana = await so.upsertProfile(db, 'ana', { nick: 'Ana' }, MON);
+    const rui = await so.upsertProfile(db, 'rui', { nick: 'Rui' }, MON);
+    await so.addFriend(db, 'ana', (rui.body as { code: string }).code, MON);
+    await so.sendMessage(db, 'rui', 'ana', 'forca', MON);
+    await db.prepare("INSERT INTO feed (uid, kind, value, created) VALUES ('rui', 'sequencia', 7, ?)").bind(MON.toISOString()).run();
+    const before = (await so.state(db, 'ana', MON)).body as { friends: unknown[]; feed: { uid?: string }[]; messages: unknown[] };
+    expect(before.friends).toHaveLength(1);
+    expect(before.feed.some((f) => f.uid === 'rui')).toBe(true);
+    expect(before.messages).toHaveLength(1);
+
+    expect((await so.block(db, 'ana', 'rui', MON)).status).toBe(200);
+    const after = (await so.state(db, 'ana', MON)).body as { friends: unknown[]; feed: { uid?: string }[]; messages: unknown[]; blocked: { id: string; nick: string }[] };
+    expect(after.friends).toHaveLength(0);
+    expect(after.feed.some((f) => f.uid === 'rui')).toBe(false);
+    expect(after.messages).toHaveLength(0);
+    expect(after.blocked).toEqual([{ id: 'rui', nick: 'Rui' }]);
+    // nos dois sentidos: o Rui também não volta a adicionar a Ana nem lhe manda mensagens
+    expect((await so.addFriend(db, 'rui', (ana.body as { code: string }).code, MON)).status).toBe(403);
+    expect((await so.sendMessage(db, 'rui', 'ana', 'forca', MON)).status).toBe(403);
+    // desbloquear volta a permitir adicionar
+    await so.unblock(db, 'ana', 'rui');
+    expect((await so.addFriend(db, 'rui', (ana.body as { code: string }).code, MON)).status).toBe(200);
+    expect((await so.block(db, 'ana', 'ana', MON)).status).toBe(400);
+  });
+});
