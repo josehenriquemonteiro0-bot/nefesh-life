@@ -16,7 +16,7 @@ relatos, humor, ciclo), o **produto** (Spirulina verificada) e os **profissionai
   Apagar a conta dentro da app já existia.
 - **Falta (precisa da conta Apple Developer):** assinar a app, TestFlight, notificações do servidor
   (APNs) para os avisos da comunidade, testar o Apple Health num iPhone, ficha da App Store.
-- Antes do envio: ícone original em 1024 px (hoje é o de 512 ampliado), política de privacidade
+- Ícone original de 1024 px instalado (docs/app-store/icone-1024.png). Antes do envio: política de privacidade
   pública, decidir o preço do Premium dentro da app (pagamento da Apple).
 
 ## Princípio
