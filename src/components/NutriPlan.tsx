@@ -1,3 +1,4 @@
+import { premiumGate } from './Paywall';
 import { useState } from 'react';
 import { todayKey } from '../domain/dates';
 import { loadFile } from '../domain/files';
@@ -21,6 +22,7 @@ export function NutriPlanCard() {
   if (!meta) return null;
 
   const read = async () => {
+    if (!premiumGate(S, 'lerPlano')) return;
     setBusy(true);
     setError(null);
     try {

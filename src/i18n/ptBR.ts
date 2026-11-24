@@ -32,6 +32,8 @@ const PAIRS: [string, string][] = [
   ['os ecrãs', 'as telas'],
   ['ecrãs', 'telas'],
   ['ecrã', 'tela'],
+  // menu do iPhone
+  ['Definições → [o seu nome] → Subscrições', 'Ajustes → [o seu nome] → Assinaturas'],
   // cupão → cupom; bónus → bônus
   ['cupões', 'cupons'],
   ['cupão', 'cupom'],

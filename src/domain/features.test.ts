@@ -7,7 +7,7 @@ describe('planos e feature flags', () => {
   const expired = { premium: { source: 'nefesh_member' as const, until: '2026-01-01' } };
 
   it('na fase de teste está tudo aberto', () => {
-    for (const k of Object.keys(FEATURES) as Feature[]) expect(canAccess(free, k, true)).toBe(true);
+    for (const k of Object.keys(FEATURES) as Feature[]) if (FEATURES[k].enabled) expect(canAccess(free, k, true)).toBe(true);
   });
 
   it('no lançamento, premium exige Premium ativo; grátis fica sempre aberto', () => {

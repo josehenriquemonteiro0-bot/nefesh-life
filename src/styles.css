@@ -871,3 +871,13 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .locale-pick h1{margin:0;font-size:26px}
 .locale-pick p{margin:0 0 6px}
 .locale-pick .btn{font-size:17px;padding:14px}
+
+/* NEFESH Premium */
+.paywall{position:relative;max-height:92vh;overflow:auto}
+.paywall .close{all:unset;position:absolute;top:6px;right:6px;cursor:pointer;font-size:26px;line-height:1;color:var(--mute);padding:6px 10px}
+.paywall-list{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:4px}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.plan{all:unset;cursor:pointer;position:relative;display:grid;gap:2px;padding:14px 12px 12px;border-radius:14px;border:1.5px solid var(--line, rgba(255,255,255,.15));background:var(--panel2)}
+.plan.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,92,.25)}
+.plan small{color:var(--mute);font-size:11px}
+.plan-badge{position:absolute;top:-10px;left:10px;background:var(--gold);color:#111;font:700 10px system-ui;padding:3px 7px;border-radius:99px}

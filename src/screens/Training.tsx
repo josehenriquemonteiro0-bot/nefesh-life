@@ -1,3 +1,5 @@
+import { PremiumLock } from '../components/Paywall';
+import { canAccess } from '../domain/features';
 import { notePremiumUse } from '../domain/analytics';
 import { useEffect, useState } from 'react';
 import { Bar } from '../components/Charts';
@@ -218,6 +220,9 @@ function TrainingHistory() {
         <h2 style={{ margin: 0 }}>Histórico e evolução</h2>
         <PremiumTag f="treinoCompleto" />
       </div>
+      {!canAccess(S, 'treinoCompleto') ? (
+        <PremiumLock text={`No Premium vê os minutos por semana, o histórico completo dos ${hist.length} treinos e a evolução das cargas de cada exercício.`} />
+      ) : (<>
       <p className="small mute" style={{ margin: '6px 0 4px' }}>Minutos de atividade por semana (meta 150)</p>
       <Columns values={weeks.map((w) => w.mvpa)} goal={150} label={(v) => `${v} min`} axis={['há 8 semanas', 'esta semana']} />
       <p className="small" style={{ margin: '6px 0 0' }}>
@@ -254,6 +259,7 @@ function TrainingHistory() {
           {hist.length > 5 && <button className="link small inline" onClick={() => setAll(!all)}>{all ? 'Ver menos' : `Ver os ${hist.length} dias com treino`}</button>}
         </>
       )}
+      </>)}
     </section>
   );
 }

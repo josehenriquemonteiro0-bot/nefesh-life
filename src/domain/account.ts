@@ -161,6 +161,14 @@ export async function healthDays(): Promise<Record<string, import('./healthSync'
 }
 
 /** Envia as escolhas de consentimento para a conta (com o e-mail só se aceitar marketing). */
+/** Envia as assinaturas da App Store para a conta (e recebe o Premium da conta, que também vale na web). */
+export async function syncPremium(transactions: string[]): Promise<import('./features').PremiumInfo | null> {
+  const a = getAuth();
+  if (!a) return null;
+  const r = await call<{ premium: { until: string } | null }>('premium', { token: a.token, transactions });
+  return r.premium ? { source: 'subscription', until: r.premium.until } : null;
+}
+
 export async function saveConsents(c: { rd: boolean; marketing: boolean }) {
   const a = getAuth();
   if (!a) return;

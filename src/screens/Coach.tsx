@@ -1,3 +1,4 @@
+import { premiumGate } from '../components/Paywall';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { PremiumTag } from '../components/PremiumTag';
@@ -153,6 +154,7 @@ export function Coach({ go }: { go: Nav }) {
   // voz: fala → texto (reconhecimento do telemóvel) → mesmo caminho do Coach
   const startVoice = () => {
     if (busy) return;
+    if (!listening && !premiumGate(S, 'voz')) return;
     primeAudio();
     stopSpeaking();
     if (listening) {

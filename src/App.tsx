@@ -44,6 +44,8 @@ import { AccountScreen, ConflictSheet } from './components/Account';
 import { getAuth, logout, saveConsents } from './domain/account';
 import { LocalePicker } from './components/LocalePicker';
 import { useNativeSync } from './native/useNativeSync';
+import { usePremiumSync } from './native/usePremiumSync';
+import { PaywallHost } from './components/Paywall';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { saveInviteFromUrl } from './domain/social';
@@ -104,6 +106,8 @@ export function App() {
   const cloud = useCloudSync();
   // app do iPhone: Apple Health e lembretes agendados no telemóvel
   useNativeSync(S, update);
+  // NEFESH Premium: assinaturas da App Store e Premium da conta
+  usePremiumSync(update);
   useSocialSync();
   /** para onde ir depois do ecrã de conta */
   const [afterAccount, setAfterAccount] = useState<'quiz' | 'perfil' | 'guardar'>('perfil');
@@ -382,6 +386,7 @@ export function App() {
           {screen}
         </main>
       </div>
+      <PaywallHost />
       <nav aria-label="Navegação principal">
         {TABS.map(([k, t, icon]) => (
           <button key={k} data-tour={`nav-${k}`} className={`${(NAV_OF[tab] ?? tab) === k ? 'on' : ''} ${k === 'coach' ? 'nav-coach' : ''}`} aria-current={(NAV_OF[tab] ?? tab) === k ? 'page' : undefined} onClick={() => {

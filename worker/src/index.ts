@@ -40,6 +40,7 @@ import * as pro from './pro';
 import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 import { originAllowed } from './origin';
 import { accessOf, logAccess, purgeAccess, tokenOf } from './accesslog';
+import * as appstore from './appstore';
 export { originAllowed };
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -612,11 +613,21 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       if (action === 'saude-chave') return send(await healthKey(store, b.token, b.nova === true));
       if (action === 'saude-dados') return send(await healthPull(store, b.token));
       if (action === 'consentimentos') return send(await setConsents(store, b.token, b));
+      // Premium: transações da App Store (compra ou restaurar) e estado da conta
+      if (action === 'premium') {
+        const uid = await sessionUser(store, b.token);
+        if (!uid) return json({ error: 'Entre na sua conta para ativar o Premium.' }, 401, h);
+        if (!env.DB) return json({ premium: null }, 200, h);
+        return send(await appstore.savePremium(env.DB, uid, b.transactions));
+      }
       if (action === 'apagar') {
         const uid = await sessionUser(store, b.token);
         const r = await deleteAccount(store, b.token, b.email, b.password);
         // apagar a conta também apaga a participação na comunidade
-        if (r.status === 200 && uid && env.DB) await social.leave(env.DB, uid);
+        if (r.status === 200 && uid && env.DB) {
+          await social.leave(env.DB, uid);
+          await env.DB.prepare('DELETE FROM premium WHERE uid = ?').bind(uid).run();
+        }
         return send(r);
       }
       return json({ error: 'rota desconhecida' }, 404, h);

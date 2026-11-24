@@ -6,6 +6,7 @@ describe('português do Brasil', () => {
     expect(toBR('Abra no telemóvel e veja no ecrã principal.')).toBe('Abra no celular e veja na tela de início.');
     expect(toBR('Mantenha o ecrã ligado.')).toBe('Mantenha a tela ligada.');
     expect(toBR('Ganhou um cupão de 15%: é um bónus. Os cupões ficam no Perfil.')).toBe('Ganhou um cupom de 15%: é um bônus. Os cupons ficam no Perfil.');
+    expect(toBR('Cancele em Definições → [o seu nome] → Subscrições.')).toBe('Cancele em Ajustes → [o seu nome] → Assinaturas.');
     expect(toBR('Treino no ginásio ou em casa')).toBe('Treino na academia ou em casa');
     expect(toBR('Pequeno-almoço: sumo de laranja e bolachas')).toBe('Café da manhã: suco de laranja e biscoitos');
     expect(toBR('Esqueci a palavra-passe')).toBe('Esqueci a senha');

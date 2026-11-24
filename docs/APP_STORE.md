@@ -16,8 +16,8 @@ Limites da Apple já verificados (caracteres entre parênteses).
 | URL de marketing (opcional) | https://www.nefeshglobal.shop |
 | Direitos de autor (Copyright) | 2026 NEFESH BEM-ESTAR LTDA |
 | Preço | Gratuito, com Premium por assinatura (compras dentro da app) |
-| Premium (Brasil) | R$ 29,90 por mês · R$ 199,90 por ano |
-| Premium (Portugal / euro) | 8,90 € por mês · 79,90 € por ano (confirmar se a Apple tem estes valores na tabela de preços; se não, usar o mais próximo, ex.: 8,99 € e 79,99 €) |
+| Premium (Brasil) | R$ 39,90 por mês · R$ 249,90 por ano (7 dias grátis no anual) |
+| Premium (Portugal / euro) | 9,99 € por mês · 69,99 € por ano (7 dias grátis no anual) |
 
 > Quando houver um domínio próprio (ex.: app.nefeshglobal.com), trocamos os URLs.
 
@@ -83,6 +83,8 @@ PRIVACIDADE
 Português do Brasil e de Portugal: escolha o seu país ao abrir o app.
 
 A NEFESH Life é um app de bem-estar. Não faz diagnósticos e não substitui o acompanhamento de um profissional de saúde.
+
+NEFESH Premium: assinatura mensal ou anual, com renovação automática. Termos de Uso: https://josehenriquemonteiro0-bot.github.io/nefesh-life/legal/termos.html · Privacidade: https://josehenriquemonteiro0-bot.github.io/nefesh-life/legal/privacidade.html
 ```
 
 **Novidades desta versão:**
@@ -152,6 +154,8 @@ PRIVACIDADE
 Português de Portugal e do Brasil: escolha o seu país ao abrir a app.
 
 A NEFESH Life é uma app de bem-estar. Não faz diagnósticos nem substitui o acompanhamento de um profissional de saúde.
+
+NEFESH Premium: subscrição mensal ou anual, com renovação automática. Termos de Uso: https://josehenriquemonteiro0-bot.github.io/nefesh-life/legal/termos.html?v=pt · Privacidade: https://josehenriquemonteiro0-bot.github.io/nefesh-life/legal/privacidade.html?v=pt
 ```
 
 **Novidades desta versão:**
@@ -212,6 +216,9 @@ professional license. Demo professional account (already validated):
 AI features (meal photo, document reading, voice assistant) send the user's content to our
 server only on request; photos and documents are not stored.
 
+Subscriptions (NEFESH Premium, monthly and yearly, 7-day free trial on yearly) use Apple
+In-App Purchase. Profile → "Conhecer o Premium" opens the subscription screen, with
+"Restaurar compras" (Restore Purchases), Terms of Use and Privacy Policy links.
 Physical products (Spirulina) are sold on our website, not inside the app.
 Contact: contato@nefeshglobal.com
 ```
@@ -219,6 +226,41 @@ Contact: contato@nefeshglobal.com
 **Antes de enviar para revisão:** criar uma conta de demonstração (ex.: `revisao@nefeshglobal.com`) na versão
 da família, ativar o Pro como nutricionista e validá-la na página de administração. As credenciais vão
 **só** para o App Store Connect, nunca para o repositório.
+
+---
+
+## Assinatura NEFESH Premium (compras dentro da app)
+
+**Antes de tudo (só a titular da conta):** App Store Connect → **Business** (Negócios) → aceitar o acordo
+**Paid Applications** e preencher os dados bancários e fiscais. Sem isto as assinaturas não aparecem na app.
+
+1. A app → **Monetization** → **Subscriptions** → **Subscription Groups** → **+** → Reference Name: `NEFESH Premium`.
+2. No grupo, criar **duas** assinaturas, as duas no **mesmo nível** (mesmo conteúdo, só muda a duração):
+
+| Reference Name | Product ID (tem de ser exatamente este) | Duração | Brasil | Portugal |
+|---|---|---|---|---|
+| Premium Anual | `com.nefesh.life.premium.anual` | 1 year | R$ 249,90 | 69,99 € |
+| Premium Mensal | `com.nefesh.life.premium.mensal` | 1 month | R$ 39,90 | 9,99 € |
+
+   Em **Subscription Prices**, escolher o Brasil como base com o preço em reais e depois, em **Edit Prices** →
+   Portugal, pôr o preço em euro à mão (a Apple propõe uma conversão automática que convém trocar).
+3. Na anual: **Subscription Prices → Introductory Offers → +** → todos os países → **Free Trial** → **1 week**.
+4. Em cada assinatura, **Localization** (Portuguese (Brazil) e Portuguese (Portugal)):
+   - Display Name: `Premium Anual` / `Premium Mensal`
+   - Description: `Assistente, foto do prato, treino e meditações` (máx. 55 caracteres)
+5. **Review Information**: uma captura do ecrã de assinatura (Perfil → Conhecer o Premium) e a nota
+   `Opens from Profile → "Conhecer o Premium".`
+6. No grupo, **App Store Localization**: Subscription Group Display Name `NEFESH Premium` (nas duas línguas).
+7. Na primeira versão da app (1.0), em **In-App Purchases and Subscriptions**, juntar as duas assinaturas
+   para irem à revisão com a app.
+
+**Testar no TestFlight:** as compras no TestFlight são de teste (não se paga nada) e renovam depressa
+(a anual a cada hora, a mensal a cada 5 minutos). A versão do TestFlight já exige o Premium; a versão web
+da família continua com tudo aberto.
+
+**Como funciona por dentro:** o iPhone compra pela Apple (StoreKit 2, `ios/App/App/StorePlugin.swift`) e envia
+a transação assinada ao servidor, que a confirma com o certificado raiz da Apple (`worker/src/appstore.ts`)
+e guarda o Premium na conta (vale também na web). Sem conta, o Premium fica só no iPhone.
 
 ---
 

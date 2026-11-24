@@ -1,3 +1,4 @@
+import { premiumGate } from './Paywall';
 import { useEffect, useState } from 'react';
 import { shortDate, todayKey } from '../domain/dates';
 import { loadFile } from '../domain/files';
@@ -188,6 +189,7 @@ export function TrainPlanCard() {
   if (!meta) return null;
 
   const read = async () => {
+    if (!premiumGate(S, 'lerPlano')) return;
     setBusy(true);
     setError(null);
     try {

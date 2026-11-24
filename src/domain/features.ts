@@ -46,10 +46,10 @@ export const FEATURES = {
   treinoCompleto: { label: 'Treino completo (séries, cargas, histórico)', tier: 'premium', enabled: true, freeNote: 'básico' },
   sonoTendencias: { label: 'Sono e recuperação (tendências)', tier: 'premium', enabled: true, freeNote: 'básico' },
   relatorioCompleto: { label: 'Relatório semanal e mensal completo', tier: 'premium', enabled: true, freeNote: 'resumo' },
-  planosAdaptativos: { label: 'Planos adaptativos', tier: 'premium', enabled: true },
+  planosAdaptativos: { label: 'Planos adaptativos', tier: 'premium', enabled: false },
   timeline: { label: 'Personal Health Timeline', tier: 'premium', enabled: true },
   meditacao: { label: 'Biblioteca de meditação completa', tier: 'premium', enabled: true, freeNote: '4 sessões grátis' },
-  descontoConsultas: { label: 'Desconto em consultas de parceiros', tier: 'premium', enabled: true },
+  descontoConsultas: { label: 'Desconto em consultas de parceiros', tier: 'premium', enabled: false },
 } satisfies Record<string, FeatureConfig>;
 
 export type Feature = keyof typeof FEATURES;

@@ -1,4 +1,5 @@
 import { AboutCard } from '../components/AboutCard';
+import { PremiumCard } from '../components/Paywall';
 import { LocaleCard } from '../components/LocalePicker';
 import { isNative } from '../domain/platform';
 import { enableNativeNotifications } from '../native/notify';
@@ -227,6 +228,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         <BottleCodeForm />
       </section>
 
+
+      <PremiumCard />
 
       <section className="card">
         <div className="row">

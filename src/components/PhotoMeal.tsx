@@ -1,3 +1,4 @@
+import { premiumGate } from './Paywall';
 import { useEffect, useRef, useState } from 'react';
 import { fmtNum } from '../domain/dates';
 import { MEALS, type MealKey } from '../domain/foods';
@@ -189,6 +190,7 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
 /** Cartão no diário: abre a câmara, ou indica que a funcionalidade ainda não está ligada. */
 export function PhotoMealCard() {
   const [open, setOpen] = useState(false);
+  const { S } = useStore();
   if (!PHOTO_API)
     return (
       <section className="card photo-soon" data-tour="foto-prato">
@@ -203,7 +205,7 @@ export function PhotoMealCard() {
     );
   return (
     <>
-      <button className="card photo-cta" data-tour="foto-prato" onClick={() => setOpen(true)}>
+      <button className="card photo-cta" data-tour="foto-prato" onClick={() => premiumGate(S, 'fotoPrato') && setOpen(true)}>
         <Icon name="recipes" />
         <span>
           <b>Fotografar o prato <PremiumTag f="fotoPrato" /></b>

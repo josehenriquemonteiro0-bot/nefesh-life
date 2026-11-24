@@ -192,7 +192,7 @@ export function AccountCard({ openAccount, syncNow }: { openAccount: () => void;
       </div>
       {deleting && (
         <div className="reset-confirm" style={{ marginTop: 12 }}>
-          <p className="small" style={{ margin: '0 0 8px' }}>Apaga a conta e os dados da nuvem. Os dados deste telemóvel ficam. Confirme com a palavra-passe:</p>
+          <p className="small" style={{ margin: '0 0 8px' }}>Apaga a conta e os dados da nuvem. Os dados deste telemóvel ficam. Se tem o NEFESH Premium, a assinatura da Apple não é cancelada aqui: cancele-a em Definições → [o seu nome] → Subscrições. Confirme com a palavra-passe:</p>
           <div className="row" style={{ gap: 8 }}>
             <input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Palavra-passe" style={{ flex: '1 1 140px' }} />
             <button

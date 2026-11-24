@@ -1,3 +1,5 @@
+import { PremiumLock } from './Paywall';
+import { canAccess } from '../domain/features';
 import { useState } from 'react';
 import { PremiumTag } from './PremiumTag';
 import { CAT_LABEL, MONTH_NAMES, timeline, type TimelineCat } from '../domain/timeline';
@@ -21,6 +23,7 @@ export function Timeline() {
         <PremiumTag f="timeline" />
       </div>
       <p className="small mute" style={{ margin: '4px 0 8px' }}>O seu histórico de saúde num só sítio: avaliações, ritual, análises, consultas, prevenção e corpo.</p>
+      {!canAccess(S, 'timeline') ? <PremiumLock text={`No Premium vê aqui os ${ev.length} momentos da sua saúde, por data, com filtros.`} /> : (<>
       <div className="chips" role="group" aria-label="Filtro">
         {CAT_LABEL.map(([k, t]) => (
           <button key={k} className={`chip sm ${cat === k ? 'on' : ''}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{t}</button>
@@ -58,6 +61,7 @@ export function Timeline() {
       {past.length > 10 && (
         <button className="link small inline" onClick={() => { setAll(!all); if (!all) notePremiumUse('timeline'); }}>{all ? 'Ver menos' : `Ver tudo (${past.length})`}</button>
       )}
+      </>)}
     </section>
   );
 }
