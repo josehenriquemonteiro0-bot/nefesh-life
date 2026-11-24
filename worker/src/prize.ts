@@ -13,7 +13,8 @@
  */
 import type { DB } from './social';
 
-export const PRIZE = { winners: 3, minDays: 15, minCheckins: 5, validDays: 14, cooldownWeeks: 4, prefix: 'NEFESH15', percent: 15 };
+/** coupons: false desde 24/11/2026: o ranking é só interação, não há cupões nem prémios (nem pelo back-office). */
+export const PRIZE = { coupons: false, winners: 3, minDays: 15, minCheckins: 5, validDays: 14, cooldownWeeks: 4, prefix: 'NEFESH15', percent: 15 };
 
 const addDays = (key: string, n: number) => {
   const d = new Date(`${key}T12:00:00Z`);
@@ -79,13 +80,18 @@ async function rowsOf(db: DB, week: string) {
 }
 
 /** Fecha a semana: grava os 3 vencedores e gera os cupões (uma vez por semana). */
-export async function closeWeek(db: DB, week: string, now = new Date()) {
+export async function closeWeek(db: DB, week: string, now = new Date(), coupons = PRIZE.coupons) {
   if (await db.prepare('SELECT 1 FROM prize_weeks WHERE week = ?').bind(week).first()) return null;
-  const ranked = (await rowsOf(db, week)).filter((r) => r.el.ok).slice(0, PRIZE.winners);
+  // sem cupões: só os 3 primeiros da semana, para lhes dar os parabéns (sem condições de prémio)
+  const ranked = coupons ? (await rowsOf(db, week)).filter((r) => r.el.ok).slice(0, PRIZE.winners) : (await rowsOf(db, week)).slice(0, PRIZE.winners);
   const at = now.toISOString();
   const expires = addDays(at.slice(0, 10), PRIZE.validDays);
   const winners: { uid: string; nick: string; rank: number; points: number; code: string }[] = [];
   for (const [i, r] of ranked.entries()) {
+    if (!coupons) {
+      winners.push({ uid: r.id, nick: r.nick, rank: i + 1, points: r.points, code: '' });
+      continue;
+    }
     let code = newCouponCode();
     while (await db.prepare('SELECT 1 FROM coupons WHERE code = ?').bind(code).first()) code = newCouponCode();
     await db

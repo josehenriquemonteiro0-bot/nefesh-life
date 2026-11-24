@@ -74,12 +74,6 @@ export function adminForm(key: string) {
 </form>
 <form method="post" action="/admin/videos" class="card"><input type="hidden" name="key" value="${esc(key)}"><h2>Vídeos de demonstração</h2><p class="m">Um vídeo por exercício (YouTube, Instagram…). O aluno vê-o quando o personal não pôs um vídeo seu.</p><button>Abrir a biblioteca de vídeos</button></form>
 <form method="post" action="/admin/profissionais" class="card"><input type="hidden" name="key" value="${esc(key)}"><h2>NEFESH Life Pro</h2><p class="m">Aprovar os profissionais (personal) que pedem acesso para montar treinos.</p><button>Ver profissionais</button></form>
-<form method="post" action="/admin/premios" class="card">
-<input type="hidden" name="key" value="${esc(key)}">
-<h2 style="margin-top:0">Prémios NEFESH15</h2>
-<p class="m">Vencedores do ranking semanal, os códigos de cupão e o e-mail para os enviar.</p>
-<button>Ver prémios</button>
-</form>
 <form method="post" action="/admin/marketing" class="card">
 <input type="hidden" name="key" value="${esc(key)}">
 <h2 style="margin-top:0">Contactos de marketing</h2>

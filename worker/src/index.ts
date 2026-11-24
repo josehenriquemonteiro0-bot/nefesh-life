@@ -214,7 +214,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       }
       return html(admin.prosPage(key, await pro.proList(env.DB), await pro.areaRequests(env.DB)));
     }
-    if ((url.pathname === '/admin/premios' || url.pathname === '/admin/premio') && req.method === 'POST') {
+    if (prize.PRIZE.coupons && (url.pathname === '/admin/premios' || url.pathname === '/admin/premio') && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
       const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
       if (!key || !env.DB) return html('Página indisponível.', 403);

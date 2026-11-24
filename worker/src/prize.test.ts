@@ -23,7 +23,16 @@ async function person(db: so.DB, id: string, created: string, points: number, ch
   await db.prepare('INSERT INTO weeks (id, week, league, grp, points, days, updated) VALUES (?, ?, 0, 0, ?, ?, ?)').bind(id, WEEK, points, JSON.stringify(days(checkins, points)), updated).run();
 }
 
-describe('ranking semanal e cupão NEFESH15', () => {
+describe('ranking semanal (cupões desligados; o mecanismo fica testado)', () => {
+  it('desligado (decisão de 24/11/2026): fecha a semana com os 3 primeiros e não cria cupões', async () => {
+    const db = memoryDB();
+    await person(db, 'ana', '2026-10-01T00:00:00Z', 600, 7);
+    await person(db, 'novo', '2026-11-15T00:00:00Z', 700, 7);
+    const w = await pz.closeWeek(db, WEEK, new Date('2026-11-23T09:05:00Z'));
+    expect(w!.map((x) => [x.rank, x.uid, x.code])).toEqual([[1, 'novo', ''], [2, 'ana', '']]);
+    expect(await pz.couponList(db)).toEqual([]);
+  });
+
   it('só ganha quem cumpre as regras; 3 vencedores com código único; uma vez por semana', async () => {
     const db = memoryDB();
     await person(db, 'ana', '2026-10-01T00:00:00Z', 600, 7);
@@ -34,7 +43,7 @@ describe('ranking semanal e cupão NEFESH15', () => {
     await person(db, 'mia', '2026-10-01T00:00:00Z', 440, 6);
     await person(db, 'fraude', '2026-10-01T00:00:00Z', 900, 7);
     await db.prepare("INSERT INTO reviews (uid, reason, status, created) VALUES ('fraude', 'x', 'aberto', 'x')").run();
-    const w = await pz.closeWeek(db, WEEK, new Date('2026-11-23T09:05:00Z'));
+    const w = await pz.closeWeek(db, WEEK, new Date('2026-11-23T09:05:00Z'), true);
     expect(w!.map((x) => [x.rank, x.uid])).toEqual([[1, 'ana'], [2, 'leo'], [3, 'eva']]);
     expect(w![0].code).toMatch(/^NEFESH15-[A-Z2-9]{4}$/);
     expect(new Set(w!.map((x) => x.code)).size).toBe(3);
@@ -51,7 +60,7 @@ describe('ranking semanal e cupão NEFESH15', () => {
     // a Ana toma Spirulina (mais pontos na liga), o Rui não compra nada mas cumpre mais hábitos
     await db.prepare('UPDATE weeks SET points = 490, days = ? WHERE id = ?').bind(wk(50, 70), 'ana').run();
     await db.prepare('UPDATE weeks SET points = 420, days = ? WHERE id = ?').bind(wk(60, 60), 'rui').run();
-    const w = await pz.closeWeek(db, WEEK, new Date('2026-11-23T09:05:00Z'));
+    const w = await pz.closeWeek(db, WEEK, new Date('2026-11-23T09:05:00Z'), true);
     expect(w!.map((x) => [x.uid, x.points])).toEqual([['rui', 420], ['ana', 350]]);
   });
 
@@ -59,7 +68,7 @@ describe('ranking semanal e cupão NEFESH15', () => {
     const db = memoryDB();
     await person(db, 'ana', '2026-09-01T00:00:00Z', 600, 7);
     await db.prepare("INSERT INTO coupons (code, uid, week, rank, status, created, expires) VALUES ('NEFESH15-AAAA', 'ana', '2026-11-02', 1, 'usado', 'x', 'x')").run();
-    expect(await pz.closeWeek(db, WEEK)).toEqual([]);
+    expect(await pz.closeWeek(db, WEEK, new Date(), true)).toEqual([]);
   });
 
   it('a app vê o ranking, a sua posição, o que falta para poder ganhar e os seus cupões', async () => {
@@ -70,7 +79,7 @@ describe('ranking semanal e cupão NEFESH15', () => {
     expect(s.top.map((t) => t.nick)).toEqual(['ANA', 'RUI']);
     expect(s.me).toMatchObject({ rank: 2, prizeRank: null, eligible: false, checkins: 3 });
     expect(s.me.reasons.join(' ')).toMatch(/15 dias na comunidade \(tem 13\).*check-in em 5 dos 7 dias \(tem 3\)/);
-    await pz.closeWeek(db, WEEK);
+    await pz.closeWeek(db, WEEK, new Date(), true);
     const a = (await pz.prizeState(db, 'ana', '2026-11-23', '2026-11-23')).prize;
     expect(a.coupons[0]).toMatchObject({ rank: 1, seen: false, expired: false });
     await pz.couponSeen(db, 'ana');
@@ -81,7 +90,7 @@ describe('ranking semanal e cupão NEFESH15', () => {
     const db = memoryDB();
     await person(db, 'ana', '2026-10-01T00:00:00Z', 600, 7);
     await pz.saveContact(db, 'ana', 'ana@x.pt');
-    const [w] = (await pz.closeWeek(db, WEEK))!;
+    const [w] = (await pz.closeWeek(db, WEEK, new Date(), true))!;
     let row = (await pz.couponList(db))[0];
     expect(row.email).toBe('ana@x.pt');
     const m = pz.prizeEmail('Ana', 1, w.code, row.expires);
