@@ -10,6 +10,8 @@ export function AboutCard() {
         <b>NEFESH BEM-ESTAR LTDA</b> · CNPJ 61.855.385/0001-63 · Cuiabá – MT, Brasil
         <br />
         <a href="mailto:contato@nefeshglobal.com">contato@nefeshglobal.com</a>
+        <br />
+        Encarregado de proteção de dados (DPO): José Henrique
       </p>
       <p className="small" style={{ margin: '8px 0 0' }}>
         <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Política de Privacidade</a> · <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a> · <a href={support} target="_blank" rel="noreferrer">Suporte</a>
