@@ -1,0 +1,108 @@
+name: App iPhone → TestFlight
+
+# Compila a app do iPhone com o servidor da versão da família, assina-a e envia-a para o
+# App Store Connect (TestFlight). Corre só quando alguém carrega em "Run workflow".
+#
+# Precisa de 4 segredos (Settings → Secrets and variables → Actions → Secrets):
+#   ASC_KEY_ID      ID da chave da API do App Store Connect (10 caracteres)
+#   ASC_ISSUER_ID   Issuer ID (aparece na mesma página das chaves)
+#   ASC_KEY_P8      conteúdo do ficheiro AuthKey_XXXX.p8 (todo o texto, com BEGIN/END)
+#   APPLE_TEAM_ID   Team ID da conta de programador (Membership)
+# Sem eles, o workflow termina sem fazer nada. Guia: docs/TESTFLIGHT.md
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão que as pessoas veem (ex.: 1.0)'
+        required: false
+        default: '1.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    # as máquinas Mac M1+ (arm64) do GitHub andam esgotadas; as Intel também assinam e enviam
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: Verificar segredos
+        id: check
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ] || [ -z "$APPLE_TEAM_ID" ]; then
+            echo "::notice::Faltam segredos da Apple (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID). Nada foi enviado. Guia: docs/TESTFLIGHT.md"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: steps.check.outputs.ready == 'true'
+      - name: Compilar a parte web (servidor da família)
+        if: steps.check.outputs.ready == 'true'
+        run: npm run build:native
+        env:
+          VITE_PHOTO_API: ${{ vars.PHOTO_API_URL }}
+          VITE_PUBLIC_URL: https://josehenriquemonteiro0-bot.github.io/nefesh-life/
+      - name: Copiar para o projeto iOS
+        if: steps.check.outputs.ready == 'true'
+        run: npx cap sync ios
+      - name: Chave da API da Apple (ficheiro temporário)
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/asc"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/asc/AuthKey.p8"
+      - name: Arquivar (assinatura automática pela chave da API)
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION="${{ github.event.inputs.version || '1.0' }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            archive | tail -60
+      - name: Enviar para o App Store Connect (TestFlight)
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          set -o pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -40
+          echo "::notice::Versão ${{ github.event.inputs.version || '1.0' }} (${{ github.run_number }}) enviada. Aparece no TestFlight depois do processamento da Apple (10–30 min)."
+      - name: Apagar a chave
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/asc"
