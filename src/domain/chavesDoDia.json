@@ -1,8 +1,8 @@
 {
-  "versao": 1,
+  "versao": 2,
   "secao": "mente",
   "descricao": "Chaves do Dia: frase de reflexão + referência bíblica. Sem assinatura.",
-  "total": 46,
+  "total": 100,
   "chaves": [
     {
       "id": "chave-001",
@@ -503,6 +503,592 @@
         "propósito"
       ],
       "origem_interna": "post no Instagram (mai/2026)"
+    },
+    {
+      "id": "chave-047",
+      "texto": "Antes de pedir mais, agradeça pelo que já está nas suas mãos.",
+      "referencia": "1 Tessalonicenses 5:18",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "gratidão"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-048",
+      "texto": "A paz de Deus não depende de tudo estar resolvido: ela guarda o coração no meio do processo.",
+      "referencia": "Filipenses 4:6-7",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "paz",
+        "ansiedade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-049",
+      "texto": "Entregue hoje a Ele o peso que você não foi feito para carregar sozinho.",
+      "referencia": "1 Pedro 5:7",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "ansiedade",
+        "entrega"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-050",
+      "texto": "Cada manhã é uma nova chance de recomeçar: as misericórdias Dele se renovam hoje.",
+      "referencia": "Lamentações 3:22-23",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "recomeço",
+        "esperança"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-051",
+      "texto": "O seu corpo é templo: cuidar dele também é um ato de adoração.",
+      "referencia": "1 Coríntios 6:19-20",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "autocuidado",
+        "saúde"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-052",
+      "texto": "Descanso não é preguiça: até Deus descansou no sétimo dia.",
+      "referencia": "Gênesis 2:2-3",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "descanso"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-053",
+      "texto": "Quem espera no Senhor renova as forças: o cansaço de hoje não é o fim da sua corrida.",
+      "referencia": "Isaías 40:31",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "perseverança",
+        "esperança"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-054",
+      "texto": "Pequenos passos dados todos os dias levam mais longe do que grandes saltos dados de vez em quando.",
+      "referencia": "Zacarias 4:10",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "constância",
+        "disciplina"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-055",
+      "texto": "O que você planta hoje no silêncio, vai colher amanhã.",
+      "referencia": "Gálatas 6:7",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "semeadura",
+        "disciplina"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-056",
+      "texto": "Guarde o seu coração: é dele que nascem as suas escolhas.",
+      "referencia": "Provérbios 4:23",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "sabedoria",
+        "identidade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-057",
+      "texto": "Uma palavra boa no tempo certo pode mudar o dia de alguém. Seja essa palavra hoje.",
+      "referencia": "Provérbios 25:11",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "relacionamentos",
+        "bondade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-058",
+      "texto": "Antes de falar, ouça. Antes de reagir, respire.",
+      "referencia": "Tiago 1:19",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "sabedoria",
+        "paciência"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-059",
+      "texto": "Perdoar não muda o passado, mas liberta o seu futuro.",
+      "referencia": "Colossenses 3:13",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "perdão",
+        "cura"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-060",
+      "texto": "Você não é o que dizem de você: você é quem Deus diz que você é.",
+      "referencia": "1 Pedro 2:9",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "identidade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-061",
+      "texto": "O medo grita, mas a fé dá o próximo passo.",
+      "referencia": "Josué 1:9",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "coragem",
+        "fé"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-062",
+      "texto": "Deus não te chamou para ser perfeito, mas para ser fiel no pouco.",
+      "referencia": "Lucas 16:10",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fidelidade",
+        "constância"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-063",
+      "texto": "Onde está o seu tesouro, ali está o seu coração. Cuide do que você guarda.",
+      "referencia": "Mateus 6:21",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "foco",
+        "prioridades"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-064",
+      "texto": "Busque primeiro o que é eterno, e o resto encontra o seu lugar.",
+      "referencia": "Mateus 6:33",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "prioridades",
+        "fé"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-065",
+      "texto": "Um dia de cada vez: o amanhã terá as suas próprias preocupações.",
+      "referencia": "Mateus 6:34",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "ansiedade",
+        "presente"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-066",
+      "texto": "Alegria não é ausência de problemas: é a presença de Deus no meio deles.",
+      "referencia": "Neemias 8:10",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "alegria",
+        "força"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-067",
+      "texto": "A sua força não vem do quanto você aguenta, mas de quem te sustenta.",
+      "referencia": "Filipenses 4:13",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "força",
+        "fé"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-068",
+      "texto": "Quem caminha com sábios aprende a enxergar mais longe.",
+      "referencia": "Provérbios 13:20",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "relacionamentos",
+        "sabedoria"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-069",
+      "texto": "Generosidade é semente: quem abre a mão também abre caminhos.",
+      "referencia": "Provérbios 11:25",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "generosidade",
+        "semeadura"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-070",
+      "texto": "Não compare o seu começo com o meio da caminhada de outra pessoa.",
+      "referencia": "Gálatas 6:4",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "identidade",
+        "jornada"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-071",
+      "texto": "O silêncio também é oração quando o coração está voltado para Deus.",
+      "referencia": "Salmos 46:10",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "oração",
+        "descanso"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-072",
+      "texto": "Há batalhas que se vencem descansando: o Senhor luta por você.",
+      "referencia": "Êxodo 14:14",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "descanso",
+        "fé"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-073",
+      "texto": "A disciplina de hoje é a colheita de paz de amanhã.",
+      "referencia": "Hebreus 12:11",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "disciplina"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-074",
+      "texto": "Tudo o que fizer, faça de coração, como para o Senhor, e o comum ganha propósito.",
+      "referencia": "Colossenses 3:23",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "propósito",
+        "excelência"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-075",
+      "texto": "Quem espera pelas condições perfeitas nunca semeia. Comece pequeno, mas comece hoje.",
+      "referencia": "Eclesiastes 11:4",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "ação",
+        "coragem"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-076",
+      "texto": "Ninguém colhe o que não teve paciência de esperar crescer.",
+      "referencia": "Tiago 5:7",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "paciência",
+        "colheita"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-077",
+      "texto": "Gratidão transforma o que temos em suficiente.",
+      "referencia": "Salmos 103:2",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "gratidão"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-078",
+      "texto": "Este é o dia que o Senhor fez: corações gratos enxergam milagres no cotidiano.",
+      "referencia": "Salmos 118:24",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "gratidão",
+        "alegria"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-079",
+      "texto": "Seja luz onde você estiver: no trabalho, em casa e no caminho.",
+      "referencia": "Mateus 5:14-16",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "testemunho",
+        "propósito"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-080",
+      "texto": "O amor é paciente. Comece sendo paciente consigo mesmo.",
+      "referencia": "1 Coríntios 13:4",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "amor",
+        "autocuidado"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-081",
+      "texto": "Renove a sua mente, e a sua vida acompanha.",
+      "referencia": "Romanos 12:2",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "mente",
+        "transformação"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-082",
+      "texto": "Pense no que é verdadeiro, nobre e bom: os seus pensamentos desenham o seu dia.",
+      "referencia": "Filipenses 4:8",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "mente",
+        "foco"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-083",
+      "texto": "Deus age em todas as coisas para o bem, até nas que você ainda não entende.",
+      "referencia": "Romanos 8:28",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "esperança"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-084",
+      "texto": "Quando a estrada parecer longa, lembre-se de quem caminha com você.",
+      "referencia": "Isaías 41:10",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "coragem",
+        "presença"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-085",
+      "texto": "O coração faz os planos, mas é o Senhor quem dirige os passos.",
+      "referencia": "Provérbios 16:9",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "planejamento",
+        "direção"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-086",
+      "texto": "Confie de todo o coração: Ele endireita os caminhos que você ainda não consegue ver.",
+      "referencia": "Provérbios 3:5-6",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "confiança",
+        "direção"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-087",
+      "texto": "O choro pode durar uma noite, mas a alegria vem pela manhã.",
+      "referencia": "Salmos 30:5",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "esperança",
+        "recomeço"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-088",
+      "texto": "Você não precisa ver a escada inteira para subir o primeiro degrau.",
+      "referencia": "Hebreus 11:1",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fé",
+        "ação"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-089",
+      "texto": "Seja forte e corajoso: o Senhor vai à sua frente.",
+      "referencia": "Deuteronômio 31:8",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "coragem"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-090",
+      "texto": "A humildade abre portas que o orgulho fecha.",
+      "referencia": "Tiago 4:6",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "humildade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-091",
+      "texto": "Onde há união, há bênção.",
+      "referencia": "Salmos 133:1-3",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "relacionamentos",
+        "unidade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-092",
+      "texto": "Um cordão de três dobras não se rompe com facilidade: não caminhe sozinho.",
+      "referencia": "Eclesiastes 4:12",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "amizade",
+        "equipe"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-093",
+      "texto": "Quem é fiel no pouco está sendo preparado para o muito.",
+      "referencia": "Mateus 25:21",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "fidelidade",
+        "preparação"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-094",
+      "texto": "Alimente o espírito como alimenta o corpo: um pouco todos os dias.",
+      "referencia": "Mateus 4:4",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "palavra",
+        "autocuidado"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-095",
+      "texto": "Não se canse de fazer o bem: a colheita vem no tempo certo.",
+      "referencia": "2 Tessalonicenses 3:13",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "perseverança",
+        "bondade"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-096",
+      "texto": "A sua história não acabou: Aquele que começou a boa obra vai completá-la.",
+      "referencia": "Filipenses 1:6",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "esperança",
+        "propósito"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-097",
+      "texto": "Cuidar da sua saúde também é cuidar de quem você ama.",
+      "referencia": "3 João 1:2",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "saúde",
+        "autocuidado"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-098",
+      "texto": "A pressa rouba a presença: desacelere e aprenda a contar bem os seus dias.",
+      "referencia": "Salmos 90:12",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "presente",
+        "sabedoria"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-099",
+      "texto": "Quem semeia com lágrimas colherá com alegria.",
+      "referencia": "Salmos 126:5",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "esperança",
+        "colheita"
+      ],
+      "origem_interna": "NEFESH"
+    },
+    {
+      "id": "chave-100",
+      "texto": "Hoje é um bom dia para recomeçar: em Cristo, tudo se faz novo.",
+      "referencia": "2 Coríntios 5:17",
+      "referencia_origem": "sugerida",
+      "temas": [
+        "recomeço"
+      ],
+      "origem_interna": "NEFESH"
     }
   ]
 }

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { CHAVES, chaveDoDia, chavesPorTema, temasDasChaves } from './chavesDoDia';
 import { addDaysKey } from './dates';
+import { bibleLink } from './biblia';
 
 describe('Chaves do Dia', () => {
-  it('tem as 46 chaves, todas com texto e referência', () => {
-    expect(CHAVES).toHaveLength(46);
+  it('tem as 100 chaves, todas com texto e referência que abre na Bíblia online', () => {
+    expect(CHAVES).toHaveLength(100);
     for (const c of CHAVES) {
       expect(c.texto.length).toBeGreaterThan(5);
       expect(c.referencia.length).toBeGreaterThan(2);
+      expect(bibleLink(c.referencia), c.referencia).toBeTruthy();
     }
+    expect(new Set(CHAVES.map((c) => c.texto)).size).toBe(CHAVES.length);
+    expect(new Set(CHAVES.map((c) => c.id)).size).toBe(CHAVES.length);
   });
   it('nunca expõe a origem interna', () => {
     for (const c of CHAVES) expect(Object.keys(c)).not.toContain('origem_interna');
