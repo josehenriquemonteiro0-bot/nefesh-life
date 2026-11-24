@@ -41,11 +41,14 @@ import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healt
 import { originAllowed } from './origin';
 import { accessOf, logAccess, purgeAccess, tokenOf } from './accesslog';
 import * as appstore from './appstore';
+import * as crashes from './crashes';
 import { FREE_COACH_DAILY, PREMIUM_MESSAGE, enforced, grantCourtesy, hasPremium } from './premiumGate';
 export { originAllowed };
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
 const LOGIN_LIMITS = { device: 20, ip: 40, global: 5000 };
+/** relatórios de falhas: por aparelho, por rede e no total, por dia */
+const CRASH_LIMITS = { device: 30, ip: 100, global: 5000 };
 const SIGNUP_LIMITS = { device: 5, ip: 10, global: 500 };
 
 export interface Env {
@@ -60,6 +63,11 @@ export interface Env {
   PREMIUM_ENFORCED?: string;
   /** segredo opcional que protege a página /stats */
   STATS_KEY?: string;
+  /** envio de e-mail da Cloudflare (Email Routing), para o resumo diário das falhas */
+  MAILER?: { send(m: unknown): Promise<void> };
+  /** remetente e destino do resumo das falhas (por omissão avisos@ e contato@nefeshglobal.com) */
+  CRASH_FROM?: string;
+  CRASH_TO?: string;
   /** "true" na fase de teste (tudo aberto); "false" no lançamento */
   TEST_MODE?: string;
   /** "true" só no servidor de teste: profissionais aprovados sem passar pela página da equipa */
@@ -139,6 +147,9 @@ export default {
     ctx.waitUntil(closePrizeWeek(env.DB, env.LIMITS));
     // Marco Civil: os registos de acesso guardam-se 6 meses e depois apagam-se
     ctx.waitUntil(purgeAccess(env.DB).catch(() => undefined));
+    // falhas da app: limpeza aos 90 dias e resumo diário por e-mail (às 8h de Lisboa)
+    ctx.waitUntil(crashes.purgeCrashes(env.DB).catch(() => undefined));
+    ctx.waitUntil(crashes.emailDigest(env.DB, env.MAILER, env.CRASH_FROM?.trim() || 'avisos@nefeshglobal.com', env.CRASH_TO?.trim() || 'contato@nefeshglobal.com', 'a página da equipa → Falhas da app').catch(() => undefined));
   },
 
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -183,6 +194,14 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         cursor = r.cursor;
       }
       return html(admin.marketingPage(key, rows.sort((a, b) => b.at.localeCompare(a.at))));
+    }
+    if (url.pathname === '/admin/falhas' && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html(admin.adminLogin(true), 403);
+      const f = await req.formData();
+      if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      return html(admin.crashesPage(key, await crashes.listCrashes(env.DB), !!env.MAILER));
     }
     if (url.pathname === '/admin/cortesia' && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
@@ -663,10 +682,19 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
 
     const path = url.pathname;
     // NEFESH Premium confirmado no servidor (só com PREMIUM_ENFORCED = "true")
-    const FREE_PATHS = new Set(['/evento', '/rotulo', '/analises', '/receita', '/relatorio', '/dica', '/coach']);
+    const FREE_PATHS = new Set(['/falha', '/evento', '/rotulo', '/analises', '/receita', '/relatorio', '/dica', '/coach']);
     const gated = enforced(env);
     const premium = gated ? await hasPremium(env.DB, env.LIMITS as never, body as never) : true;
     if (gated && !premium && !FREE_PATHS.has(path)) return json({ error: PREMIUM_MESSAGE, premium: true }, 402, h);
+    // aviso automático de falha da app (anónimo)
+    if (path === '/falha') {
+      if (!env.DB) return new Response(null, { status: 204, headers: h });
+      const ok = await check(env.LIMITS, CRASH_LIMITS, device, ip, new Date(), 'f');
+      if (!ok.ok) return new Response(null, { status: 204, headers: h });
+      await count(env.LIMITS, CRASH_LIMITS, device, ip, new Date(), 'f');
+      const r = await crashes.saveCrash(env.DB, body as never);
+      return json(r.body, r.status, h);
+    }
     if (path === '/evento') {
       await savePing(env.LIMITS as never, device, body as Record<string, unknown>);
       return new Response(null, { status: 204, headers: h });

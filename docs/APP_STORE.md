@@ -182,9 +182,10 @@ Respostas coerentes com o que a app faz e com a Política de Privacidade.
 | **Identificadores → ID do utilizador** | Sim (com conta) | Funcionalidade da app | Sim |
 | **Identificadores → ID do dispositivo** | Sim (identificador próprio da app, para os limites diários da IA) | Funcionalidade da app | Não |
 | **Dados de utilização → Interação com o produto** | Sim (estatísticas anónimas diárias, pode desligar) | Análises | Não |
+| **Diagnóstico → Dados de falhas** | Sim (avisos anónimos de erro: mensagem, ecrã, versão) | Funcionalidade da app | Não |
 
 **Não recolhidos:** localização (o GPS dos treinos fica no telemóvel), contactos, histórico de navegação/pesquisa,
-dados financeiros, diagnósticos/falhas, informação sensível além da saúde.
+dados financeiros, informação sensível além da saúde.
 Fotos de pratos, receitas, análises e relatórios enviados à IA são processados e **não ficam guardados**
 (não contam como "recolhidos" pela definição da Apple).
 

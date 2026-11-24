@@ -80,6 +80,12 @@ export function adminForm(key: string) {
 <p class="m">Só as pessoas que aceitaram receber comunicações da NEFESH, com a data da autorização.</p>
 <button>Ver contactos</button>
 </form>
+<form method="post" action="/admin/falhas" class="card">
+<input type="hidden" name="key" value="${esc(key)}">
+<h2 style="margin-top:0">Falhas da app</h2>
+<p class="m">Erros que a app registou sozinha (anónimos), com quantas vezes aconteceram.</p>
+<button>Ver falhas</button>
+</form>
 <form method="post" action="/admin/cortesia" class="card">
 <input type="hidden" name="key" value="${esc(key)}">
 <h2 style="margin-top:0">NEFESH Premium de cortesia</h2>
@@ -221,5 +227,19 @@ ${msg ? `<div class="card"><p style="margin:0">${esc(msg)}</p></div>` : ''}
 <label>E-mail da conta<input name="email" type="email" required></label>
 <label>Premium até (AAAA-MM-DD)<input name="until" type="date" required></label>
 <button>Guardar</button></form>
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
+}
+
+/** Falhas registadas pela app (anónimas), as mais recentes primeiro. */
+export function crashesPage(key: string, rows: { message: string; stack: string; place: string; version: string; platform: string; first: string; last: string; count: number }[], mail: boolean) {
+  const d = (iso: string) => iso.slice(0, 16).replace('T', ' ');
+  const list = rows.length
+    ? rows.map((r) => `<div class="card"><p style="margin:0"><b>${r.count}×</b> ${esc(r.message)}</p>
+<p class="m" style="margin:6px 0">${esc(r.platform)} · ${esc(r.place || '—')} · versão ${esc(r.version || '—')} · primeira ${d(r.first)} · última ${d(r.last)} (UTC)</p>
+<details><summary class="m">Percurso no código</summary><pre style="white-space:pre-wrap;font-size:12px">${esc(r.stack || '—')}</pre></details></div>`).join('')
+    : '<div class="card"><p style="margin:0">Sem falhas registadas. 🎉</p></div>';
+  return page(`<h1>Falhas da app</h1>
+<p class="m">Relatórios anónimos (sem nome, e-mail, conta nem dados de saúde), guardados 90 dias. ${mail ? 'O resumo diário vai por e-mail às 8h.' : 'O resumo por e-mail ainda não está configurado (ver docs/FALHAS.md).'}</p>
+${list}
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }

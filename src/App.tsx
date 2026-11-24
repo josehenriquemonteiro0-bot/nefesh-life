@@ -46,6 +46,7 @@ import { LocalePicker } from './components/LocalePicker';
 import { useNativeSync } from './native/useNativeSync';
 import { usePremiumSync } from './native/usePremiumSync';
 import { PaywallHost } from './components/Paywall';
+import { setCrashScreen } from './domain/crash';
 import { useCloudSync } from './state/cloud';
 import { useSocialSync } from './state/socialSync';
 import { saveInviteFromUrl } from './domain/social';
@@ -89,6 +90,8 @@ const mealsCount = (S: AppState) => Object.values(S.logs[todayKey()]?.meals ?? {
 export function App() {
   const { S, update, replace, toast, toastMsg } = useStore();
   const [tab, setTab] = useState<Tab>('home');
+  // avisos de falhas: em que ecrã aconteceu
+  useEffect(() => setCrashScreen(tab), [tab]);
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   // abertura em cada utilização: boas-vindas completas sem plano, abertura curta com escolha com plano
   const [intro, setIntro] = useState<null | 'welcome' | 'return'>(S.ans ? 'return' : null);

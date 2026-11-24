@@ -61,6 +61,8 @@ jobs:
           VITE_PUBLIC_URL: https://josehenriquemonteiro0-bot.github.io/nefesh-life/
           # versão da loja: as funções Premium exigem assinatura (a versão web da família continua aberta)
           VITE_TEST_MODE: "false"
+          # versão nos avisos de falhas
+          APP_VERSION: ${{ inputs.version }}
       - name: Copiar para o projeto iOS
         if: steps.check.outputs.ready == 'true'
         run: npx cap sync ios

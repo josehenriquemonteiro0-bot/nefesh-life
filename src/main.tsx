@@ -6,6 +6,8 @@ import { currentLocale } from './i18n/locale';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { installCrashReporting } from './domain/crash';
 import { StoreProvider } from './state/store';
 // letras incluídas na app (não carregadas do Google: o IP das pessoas não vai para terceiros)
 import '@fontsource/sora/500.css';
@@ -20,11 +22,16 @@ import './styles.css';
 // idioma: aplica o vocabulário do país escolhido a todo o texto da app
 startLocale(currentLocale());
 
+// avisos automáticos de falhas (anónimos)
+installCrashReporting();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StoreProvider>
-      <App />
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <App />
+      </StoreProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );
 
