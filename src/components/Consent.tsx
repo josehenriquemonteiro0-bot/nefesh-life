@@ -42,7 +42,7 @@ export function Consent({ onAccept, onCancel, onLogin }: { onAccept: () => void;
       </section>
       <label className="check">
         <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />
-        <span>Li e aceito que a NEFESH Life guarde estes dados para criar e personalizar o meu plano, os <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a> e a <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Política de Privacidade</a>. <span className="mute">(necessário)</span></span>
+        <span>Tenho 18 anos ou mais. Li e aceito que a NEFESH Life guarde estes dados para criar e personalizar o meu plano, os <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a> e a <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Política de Privacidade</a>. <span className="mute">(necessário)</span></span>
       </label>
       <p className="small mute" style={{ margin: '14px 0 4px' }}>Opcional — pode mudar quando quiser no Perfil:</p>
       <label className="check">

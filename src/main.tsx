@@ -7,6 +7,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { StoreProvider } from './state/store';
+// letras incluídas na app (não carregadas do Google: o IP das pessoas não vai para terceiros)
+import '@fontsource/sora/500.css';
+import '@fontsource/sora/600.css';
+import '@fontsource/sora/700.css';
+import '@fontsource/manrope/400.css';
+import '@fontsource/manrope/500.css';
+import '@fontsource/manrope/600.css';
+import '@fontsource/manrope/700.css';
 import './styles.css';
 
 // idioma: aplica o vocabulário do país escolhido a todo o texto da app

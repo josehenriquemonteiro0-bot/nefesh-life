@@ -5,7 +5,7 @@ import type { ShareDay, ShareSummary } from '../domain/proShare';
 const fmt = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '—' : String(Math.round(n * 10 ** d) / 10 ** d).replace('.', ','));
 const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const dmy = (d: string) => `${dm(d)}/${d.slice(2, 4)}`;
-const GOAL: Record<string, string> = { energia: 'mais energia', desporto: 'desempenho no desporto', imunidade: 'imunidade', foco: 'foco', nutricao: 'nutrição', peso: 'controlo do peso' };
+const GOAL: Record<string, string> = { energia: 'mais energia', desporto: 'desempenho no desporto', imunidade: 'bem-estar geral', foco: 'foco', nutricao: 'nutrição', peso: 'controlo do peso' };
 
 /** Barras de 14 dias para uma métrica. */
 function Days({ days, pick, max, label }: { days: ShareDay[]; pick: (d: ShareDay) => number | undefined; max: number; label: string }) {

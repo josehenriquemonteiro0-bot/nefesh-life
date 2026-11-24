@@ -21,7 +21,7 @@ export const GLASS_ML = 250;
 export const GOALS: [Goal, string][] = [
   ['energia', 'Mais energia e vitalidade'],
   ['desporto', 'Desempenho e recuperação no treino'],
-  ['imunidade', 'Reforçar as defesas'],
+  ['imunidade', 'Cuidar do bem-estar geral'],
   ['foco', 'Foco e clareza mental'],
   ['nutricao', 'Completar uma alimentação vegetal'],
   ['peso', 'Saciedade e controlo de peso'],
@@ -127,7 +127,7 @@ export interface Professional {
 }
 
 export const PROS: Professional[] = [
-  { i: 'NU', n: 'Nutricionista', a: 'Plano alimentar e ajuste da dose ao seu caso', m: 'Online · Portugal e Brasil' },
+  { i: 'NU', n: 'Nutricionista', a: 'Plano alimentar e acompanhamento nutricional', m: 'Online · Portugal e Brasil' },
   { i: 'MI', n: 'Médico(a) de medicina integrativa', a: 'Avaliação clínica e situações que pedem cautela', m: 'Lisboa · Online' },
   { i: 'PE', n: 'Profissional de exercício', a: 'Treino, recuperação e rotina de performance', m: 'Tomar · Online' },
   { i: 'PS', n: 'Psicólogo(a) de bem-estar', a: 'Stress, sono e mudança de hábitos', m: 'Online' },

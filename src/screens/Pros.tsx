@@ -7,7 +7,7 @@ export function Pros({ openReport }: { openReport: () => void }) {
   return (
     <>
       <h1>Profissionais NEFESH</h1>
-      <p className="mute">A rede de profissionais parceiros que acompanham o seu ritual e ajustam a dose ao seu caso.</p>
+      <p className="mute">A rede de profissionais parceiros que podem acompanhar a sua alimentação, o seu treino e a sua saúde.</p>
       {PROS.map((p) => (
         <section className="card pro" key={p.i}>
           <div className="av">{p.i}</div>

@@ -61,6 +61,7 @@ export function PrizeRanking({ p }: { p: PrizeState }) {
           <li>Desempate: mais dias com check-in; depois, quem chegou primeiro à pontuação.</li>
           <li>O ranking fecha ao domingo. Na segunda-feira de manhã, os {p.winners} primeiros recebem um código único de {p.percent}%, de uso único, válido {p.rules.validDays} dias, na app e por e-mail.</li>
           <li>No máximo 1 cupão a cada {p.rules.cooldownWeeks} semanas, para dar oportunidade a mais pessoas.</li>
+          <li>Participar é gratuito e não exige compras. A organização é da NEFESH BEM-ESTAR LTDA; a Apple não é patrocinadora nem participa deste ranking.</li>
         </ul>
       )}
     </section>

@@ -1,3 +1,4 @@
+import { AboutCard } from '../components/AboutCard';
 import { LocaleCard } from '../components/LocalePicker';
 import { isNative } from '../domain/platform';
 import { enableNativeNotifications } from '../native/notify';
@@ -258,6 +259,8 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
       <LocaleCard />
 
       <PrivacyCard />
+
+      <AboutCard />
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Separadores da Saúde</h2>

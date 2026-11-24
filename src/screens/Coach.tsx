@@ -267,6 +267,8 @@ export function Coach({ go }: { go: Nav }) {
         <h1 style={{ margin: 0 }}>NEFESH Voice Assistant</h1>
         <PremiumTag f="coach" />
       </div>
+      {/* transparência (AI Act, art. 50): a pessoa sabe que conversa com uma IA */}
+      <p className="small mute ai-note" style={{ margin: '4px 0 0' }}>🤖 Assistente de inteligência artificial. Pode enganar-se: confirme o que for importante e, para decisões de saúde, fale com um profissional.</p>
       <div className="row" style={{ gap: 8, justifyContent: 'flex-start', margin: '8px 0 0', flexWrap: 'wrap' }}>
         <button className={`chip sm ${showMemory ? 'on' : ''}`} aria-pressed={showMemory} onClick={() => setShowMemory(!showMemory)}>🧠 O que sei sobre si</button>
         <button className="chip sm" onClick={() => { primeAudio(); const t = daySummary(S); save([...hist, { role: 'assistant', text: `🔊 ${t}`, at: new Date().toISOString(), summary: true }]); speak(t, lang); }}>🔊 Resumo do meu dia</button>
