@@ -85,7 +85,32 @@ export function adminForm(key: string) {
 <h2 style="margin-top:0">Contactos de marketing</h2>
 <p class="m">Só as pessoas que aceitaram receber comunicações da NEFESH, com a data da autorização.</p>
 <button>Ver contactos</button>
+</form>
+<form method="post" action="/admin/acessos" class="card">
+<input type="hidden" name="key" value="${esc(key)}">
+<h2 style="margin-top:0">Registos de acesso (Marco Civil)</h2>
+<p class="m">IP e data/hora de quem usa a app com conta, guardados 6 meses. Consultar <b>só</b> para cumprir uma ordem judicial.</p>
+<button>Abrir</button>
 </form>`);
+}
+
+/** Registos de acesso de uma pessoa (Marco Civil, art. 15): só para responder a ordem judicial. */
+export function accessPage(key: string, q?: { email: string; from: string; to: string; rows: { ip: string; at: string }[] | null }) {
+  const v = (x?: string) => esc(x ?? '');
+  const table = !q
+    ? ''
+    : !q.rows
+      ? '<div class="card"><p style="margin:0">Não há conta com esse e-mail.</p></div>'
+      : `<div class="card"><p style="margin:0 0 8px"><b>${q.rows.length}</b> registo(s) de ${v(q.email)} entre ${v(q.from)} e ${v(q.to)} (horas em UTC).</p><textarea readonly>${esc(['ip,data_hora_utc', ...q.rows.map((r) => `${r.ip},${r.at}`)].join('\n'))}</textarea></div>`;
+  return page(`<h1>Registos de acesso</h1>
+<p class="m">Marco Civil da Internet (Lei 12.965/2014, art. 15). Entregar estes dados <b>só</b> com ordem judicial, ao juízo que a emitiu. Guarde a ordem e a data da entrega.</p>
+<form method="post" action="/admin/acessos" class="card"><input type="hidden" name="key" value="${esc(key)}">
+<label>E-mail da conta<input name="email" type="email" required value="${v(q?.email)}"></label>
+<label>De (AAAA-MM-DD)<input name="from" type="date" required value="${v(q?.from)}"></label>
+<label>Até (AAAA-MM-DD)<input name="to" type="date" required value="${v(q?.to)}"></label>
+<button>Consultar</button></form>
+${table}
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }
 
 /** Contactos que aceitaram marketing (RGPD/LGPD: só estes podem receber comunicações). */

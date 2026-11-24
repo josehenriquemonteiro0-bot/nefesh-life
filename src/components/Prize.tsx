@@ -56,12 +56,13 @@ export function PrizeRanking({ p }: { p: PrizeState }) {
       <button className="link small inline" onClick={() => setRules(!rules)}>{rules ? 'Fechar as regras' : 'Como funciona o prémio?'}</button>
       {rules && (
         <ul className="small mute" style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-          <li>Conta a consistência: Spirulina, check-in, água, movimento e desafios, com um máximo de pontos por dia.</li>
+          <li>Conta a consistência nos hábitos: check-in, água, refeições, treino, passos e sono, com um máximo de pontos por dia.</li>
+          <li>O ranking dos cupões não depende de compras: a Spirulina não conta aqui (só nos pontos da liga) e quem não compra nada pode ganhar da mesma forma.</li>
           <li>Pode ganhar quem está há {p.rules.minDays} dias ou mais na comunidade e fez check-in em pelo menos {p.rules.minCheckins} dos 7 dias.</li>
           <li>Desempate: mais dias com check-in; depois, quem chegou primeiro à pontuação.</li>
           <li>O ranking fecha ao domingo. Na segunda-feira de manhã, os {p.winners} primeiros recebem um código único de {p.percent}%, de uso único, válido {p.rules.validDays} dias, na app e por e-mail.</li>
           <li>No máximo 1 cupão a cada {p.rules.cooldownWeeks} semanas, para dar oportunidade a mais pessoas.</li>
-          <li>Participar no ranking é gratuito. A organização é da NEFESH BEM-ESTAR LTDA; a Apple não é patrocinadora nem participa deste ranking.</li>
+          <li>Participar no ranking é gratuito e o cupão é um bónus da comunidade. A organização é da NEFESH BEM-ESTAR LTDA; a Apple não é patrocinadora nem participa deste ranking.</li>
         </ul>
       )}
     </section>

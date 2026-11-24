@@ -32,6 +32,10 @@ const PAIRS: [string, string][] = [
   ['os ecrãs', 'as telas'],
   ['ecrãs', 'telas'],
   ['ecrã', 'tela'],
+  // cupão → cupom; bónus → bônus
+  ['cupões', 'cupons'],
+  ['cupão', 'cupom'],
+  ['bónus', 'bônus'],
   // ginásio (masculino) → academia (feminino)
   ['no ginásio', 'na academia'],
   ['do ginásio', 'da academia'],

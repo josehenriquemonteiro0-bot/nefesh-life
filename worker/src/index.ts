@@ -39,6 +39,7 @@ import * as notify from './notify';
 import * as pro from './pro';
 import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 import { originAllowed } from './origin';
+import { accessOf, logAccess, purgeAccess, tokenOf } from './accesslog';
 export { originAllowed };
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -132,9 +133,31 @@ export default {
     if (!env.DB) return;
     ctx.waitUntil(push.runSchedule(env.DB, env.LIMITS));
     ctx.waitUntil(closePrizeWeek(env.DB, env.LIMITS));
+    // Marco Civil: os registos de acesso guardam-se 6 meses e depois apagam-se
+    ctx.waitUntil(purgeAccess(env.DB).catch(() => undefined));
   },
 
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const peek = req.method === 'POST' && env.DB ? req.clone() : null;
+    const res = await handle(req, env, ctx);
+    if (peek && env.DB) ctx.waitUntil(recordAccess(env, peek, res.clone()));
+    return res;
+  },
+};
+
+/** Registo de acesso (Marco Civil, art. 15) de quem tem sessão: IP e hora, nunca o conteúdo. */
+async function recordAccess(env: Env, req: Request, res: Response) {
+  try {
+    const token = await tokenOf(req, res);
+    const uid = token ? await sessionUser(env.LIMITS as never, token) : null;
+    await logAccess(env.DB!, uid, req.headers.get('CF-Connecting-IP'));
+  } catch {
+    // o registo nunca pode fazer falhar o pedido
+  }
+}
+
+async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  {
     const h = cors(env, req.headers.get('Origin'));
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     const url = new URL(req.url);
@@ -156,6 +179,19 @@ export default {
         cursor = r.cursor;
       }
       return html(admin.marketingPage(key, rows.sort((a, b) => b.at.localeCompare(a.at))));
+    }
+    if (url.pathname === '/admin/acessos' && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html(admin.adminLogin(true), 403);
+      const f = await req.formData();
+      if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      const email = String(f.get('email') ?? '').trim();
+      const from = String(f.get('from') ?? '');
+      const to = String(f.get('to') ?? '');
+      if (!email || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return html(admin.accessPage(key));
+      const uid = await userIdForEmail(env.LIMITS as never, email);
+      return html(admin.accessPage(key, { email, from, to, rows: uid ? await accessOf(env.DB, uid, `${from}T00`, `${to}T23`) : null }));
     }
     if ((url.pathname === '/admin/videos' || url.pathname === '/admin/video') && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
@@ -688,5 +724,5 @@ export default {
     } catch (err) {
       return apiError(err, h);
     }
-  },
-};
+  }
+}

@@ -17,10 +17,10 @@ function memoryDB(): so.DB {
 }
 
 const WEEK = '2026-11-16';
-const days = (checkins: number) => Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`2026-11-${16 + i}`, { p: 20, f: i < checkins ? 'sc' : 's' }]));
+const days = (checkins: number, points = 140) => Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`2026-11-${16 + i}`, { p: i ? 0 : points, f: i < checkins ? 'sc' : 's' }]));
 async function person(db: so.DB, id: string, created: string, points: number, checkins: number, updated = '2026-11-22T10:00:00Z') {
   await db.prepare('INSERT INTO profiles (id, nick, code, created, updated) VALUES (?, ?, ?, ?, ?)').bind(id, id.toUpperCase(), `C${id}`, created, created).run();
-  await db.prepare('INSERT INTO weeks (id, week, league, grp, points, days, updated) VALUES (?, ?, 0, 0, ?, ?, ?)').bind(id, WEEK, points, JSON.stringify(days(checkins)), updated).run();
+  await db.prepare('INSERT INTO weeks (id, week, league, grp, points, days, updated) VALUES (?, ?, 0, 0, ?, ?, ?)').bind(id, WEEK, points, JSON.stringify(days(checkins, points)), updated).run();
 }
 
 describe('ranking semanal e cupão NEFESH15', () => {
@@ -41,6 +41,18 @@ describe('ranking semanal e cupão NEFESH15', () => {
     expect(await pz.closeWeek(db, WEEK)).toBeNull();
     const list = await pz.couponList(db);
     expect(list[0]).toMatchObject({ status: 'atribuido', expires: '2026-12-07' });
+  });
+
+  it('o ranking dos cupões não depende de compras: conta os pontos neutros, sem a Spirulina', async () => {
+    const db = memoryDB();
+    await person(db, 'ana', '2026-10-01T00:00:00Z', 0, 7);
+    await person(db, 'rui', '2026-10-01T00:00:00Z', 0, 7);
+    const wk = (pn: number, p: number) => JSON.stringify(Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`2026-11-${16 + i}`, { p, pn, f: 'c' }])));
+    // a Ana toma Spirulina (mais pontos na liga), o Rui não compra nada mas cumpre mais hábitos
+    await db.prepare('UPDATE weeks SET points = 490, days = ? WHERE id = ?').bind(wk(50, 70), 'ana').run();
+    await db.prepare('UPDATE weeks SET points = 420, days = ? WHERE id = ?').bind(wk(60, 60), 'rui').run();
+    const w = await pz.closeWeek(db, WEEK, new Date('2026-11-23T09:05:00Z'));
+    expect(w!.map((x) => [x.uid, x.points])).toEqual([['rui', 420], ['ana', 350]]);
   });
 
   it('no máximo 1 cupão a cada 4 semanas', async () => {

@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS pro_directory (uid TEXT PRIMARY KEY, data TEXT NOT NU
 CREATE TABLE IF NOT EXISTS pro_student_kind (code TEXT PRIMARY KEY, kind TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS pro_areas (uid TEXT NOT NULL, kind TEXT NOT NULL, reg TEXT NOT NULL, status TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY (uid, kind));
 CREATE TABLE IF NOT EXISTS pro_terms (uid TEXT NOT NULL, version TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (uid, version));
+CREATE TABLE IF NOT EXISTS access_logs (uid TEXT NOT NULL, ip TEXT NOT NULL, hour TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (uid, ip, hour));
 CREATE TABLE IF NOT EXISTS ex_videos (k TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, updated TEXT NOT NULL);
 `;
 
@@ -173,7 +174,7 @@ const OFFICIAL = ['ritual', 'ritual_agua', 'ritual_treino', 'ritual_checkin', 'r
 
 type Day = { p: number; f: string };
 /** dia guardado: pontos, letras declaradas, letras verificadas, Spirulina declarada e totais */
-export type StoredDay = Day & { v?: string; ds?: number; dv?: number; dd?: number };
+export type StoredDay = Day & { v?: string; ds?: number; dv?: number; dd?: number; pn?: number };
 type Ok = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown>): Ok => ({ status: 200, body });
 const fail = (status: number, error: string): Ok => ({ status, body: { error } });
@@ -357,7 +358,7 @@ export async function sync(db: DB, id: string, b: SyncBody, now = new Date(), he
     const check = await isCheckDay(id, d);
     const sOk = !over.has(d) && (!check || pr.spirulinaPhoto);
     const sc = scoreDay(parts[d], pr, sOk, streakIn);
-    days[d] = { p: sc.points, f: flagsIn[d].f, v: sc.v, ds: parts[d].s, dv: sc.verified, dd: sc.declared };
+    days[d] = { p: sc.points, f: flagsIn[d].f, v: sc.v, ds: parts[d].s, dv: sc.verified, dd: sc.declared, pn: sc.neutral };
   }
   const evo = Math.max(0, Math.min(EVO_CAP, Math.round(Number(b.evo) || 0)));
   const official = CHALLENGE_KINDS[officialChallenge(week)];

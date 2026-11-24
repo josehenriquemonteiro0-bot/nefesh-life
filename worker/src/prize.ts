@@ -1,7 +1,8 @@
 /**
  * Ranking semanal global e cupão NEFESH15 (especificação v2, secção 10; decisões da NEFESH):
  * - um só ranking global (sem regiões), semana de segunda a domingo no fuso de Lisboa;
- * - pontos já com teto diário (verify.ts), por consistência;
+ * - conta só os pontos neutros (`pn`, verify.ts): a Spirulina e as compras não entram, o cupão é um bónus
+ *   da comunidade e não exige comprar nada;
  * - pode ganhar: 15+ dias na comunidade, check-in em 5+ dos 7 dias, sem revisão aberta,
  *   e no máximo 1 cupão a cada 4 semanas;
  * - os 3 primeiros recebem um código único de uso único NEFESH15-XXXX, válido 14 dias;
@@ -17,7 +18,7 @@ const addDays = (key: string, n: number) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-const parse = (s: unknown): Record<string, { p: number; f: string }> => {
+const parse = (s: unknown): Record<string, { p: number; f: string; pn?: number }> => {
   try {
     return typeof s === 'string' ? JSON.parse(s) : {};
   } catch {
@@ -27,6 +28,10 @@ const parse = (s: unknown): Record<string, { p: number; f: string }> => {
 /** Dias da semana com check-in feito. */
 export const checkinDays = (days: string | null | undefined, week: string) =>
   Object.entries(parse(days)).filter(([k, d]) => k >= week && k <= addDays(week, 6) && d.f?.includes('c')).length;
+
+/** Pontos do ranking dos cupões na semana: soma dos pontos neutros (dias antigos sem `pn` contam `p`). */
+export const prizePoints = (days: string | null | undefined, week: string) =>
+  Object.entries(parse(days)).filter(([k]) => k >= week && k <= addDays(week, 6)).reduce((t, [, d]) => t + (d.pn ?? d.p ?? 0), 0);
 
 export function newCouponCode() {
   const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -66,7 +71,8 @@ async function rowsOf(db: DB, week: string) {
   const review = new Set(rev.map((r) => r.uid));
   const had = new Set(recent.map((r) => r.uid));
   return results
-    .map((r) => ({ ...r, el: eligibility(r, week, { review: review.has(r.id), recentCoupon: had.has(r.id) }) }))
+    .map((r) => ({ ...r, league: r.points, points: prizePoints(r.days, week), el: eligibility(r, week, { review: review.has(r.id), recentCoupon: had.has(r.id) }) }))
+    .filter((r) => r.points > 0)
     .sort((a, b) => b.points - a.points || b.el.checkins - a.el.checkins || a.updated.localeCompare(b.updated));
 }
 

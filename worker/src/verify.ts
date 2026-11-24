@@ -34,6 +34,8 @@ export interface DayScore {
   points: number;
   verified: number;
   declared: number;
+  /** pontos do ranking dos cupões, iguais com ou sem compras */
+  neutral: number;
   /** letras dos hábitos verificados */
   v: string;
 }
@@ -87,7 +89,9 @@ export function scoreDay(parts: Record<Habit, number>, proofs: Proofs, spirulina
   verified += ver.s;
   const mult = streak >= 30 ? 1.1 : streak >= 7 ? 1.05 : 1;
   const points = Math.min(DAY_CAP, Math.round((verified + declared) * mult));
-  return { points, verified, declared, v: (Object.keys(ver) as Habit[]).filter((k) => ver[k] > 0).join('') };
+  // pontos do ranking dos cupões: não dependem de compras (sem Spirulina, sem metade, sem multiplicador)
+  const neutral = Math.min(DAY_CAP, sum(ver, true) + Math.min(DECLARED_CAP, sum(dec, true)));
+  return { points, verified, declared, neutral, v: (Object.keys(ver) as Habit[]).filter((k) => ver[k] > 0).join('') };
 }
 
 /** Dia de verificação da Spirulina: cerca de 1 em cada 7, igual para a app e o servidor, imprevisível sem o id. */

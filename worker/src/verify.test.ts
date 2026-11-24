@@ -34,6 +34,15 @@ describe('pontos verificados', () => {
     expect(v.scoreDay({ ...all, s: 0 }, none, true).points).toBe(25);
   });
 
+  it('pontos neutros (cupões): iguais com ou sem Spirulina, sem multiplicador', () => {
+    const com = v.scoreDay(all, none, true, 40);
+    const sem = v.scoreDay({ ...all, s: 0 }, none, true, 40);
+    expect(com.neutral).toBe(50);
+    expect(sem.neutral).toBe(50);
+    expect(com.points).toBeGreaterThan(sem.points);
+    expect(v.scoreDay(all, { meals: 3, spirulinaPhoto: true, steps: 9000, sleepH: 7.5, exMin: 40 }, true).neutral).toBe(75);
+  });
+
   it('stock: as tomas para além dos frascos registados deixam de contar', () => {
     const dates = Array.from({ length: 40 }, (_, i) => `2026-10-${String(i + 1).padStart(2, '0')}`).slice(0, 31);
     const over = v.overStock(dates, 4, []); // 120 unidades de boas-vindas = 30 dias com 4 por dia
