@@ -9,7 +9,8 @@ export function PrivacyText() {
   return (
     <div className="small privacy">
       <p><b>O que guardamos:</b> as suas respostas à avaliação (incluindo informação de saúde como sono, peso ou gravidez), as tomas, a água, os check-ins e os passos e o sono que registar.</p>
-      <p><b>Onde:</b> neste telemóvel. Se criar uma conta, também numa base de dados na Cloudflare (Europa e outras regiões), ligada ao seu e-mail, para não perder nada ao trocar de telemóvel. As fotos de refeições e os planos que enviar para leitura são analisados e não ficam guardados.</p>
+      <p><b>Onde:</b> neste telemóvel. Se criar uma conta, também numa base de dados na Cloudflare, ligada ao seu e-mail, para não perder nada ao trocar de telemóvel. As fotos de refeições e os planos que enviar para leitura são analisados e não ficam guardados.</p>
+      <p className="hl"><b>Servidores fora do Brasil e da UE:</b> a conta fica na Cloudflare e as leituras por IA são feitas pela Anthropic, com servidores nos Estados Unidos. A transferência é feita com os acordos de proteção de dados destes fornecedores e com o seu consentimento (LGPD, art. 33; RGPD, art. 49.º).</p>
       <p><b>Notificações:</b> se as ativar, guardamos o endereço de notificações do telemóvel, a hora do lembrete e se já fez o ritual nesse dia, só para lhe enviar o lembrete, as mensagens dos amigos e o aviso da liga. Pode desligá-las no Perfil.</p>
       <p><b>Comunidade:</b> se entrar, os outros membros veem a sua alcunha, foto de perfil, pontos, sequência e conquistas. As fotos que partilhar nos Momentos ficam visíveis para toda a comunidade durante 24 horas e depois são apagadas; antes de serem publicadas, são revistas por IA.</p>
       <p><b>Estatísticas anónimas:</b> uma vez por dia contamos que partes da app foram usadas, sem cookies, sem nome, sem e-mail e sem dados de saúde. Pode desligar em Perfil.</p>
@@ -42,7 +43,7 @@ export function Consent({ onAccept, onCancel, onLogin }: { onAccept: () => void;
       </section>
       <label className="check">
         <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />
-        <span>Tenho 18 anos ou mais. Li e aceito que a NEFESH Life guarde estes dados para criar e personalizar o meu plano, os <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a> e a <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Política de Privacidade</a>. <span className="mute">(necessário)</span></span>
+        <span>Tenho 18 anos ou mais. Li e aceito que a NEFESH Life guarde estes dados para criar e personalizar o meu plano, incluindo em servidores nos Estados Unidos quando usar a conta ou a IA, os <a href={legalUrl('termos')} target="_blank" rel="noreferrer">Termos de Uso</a> e a <a href={legalUrl('privacidade')} target="_blank" rel="noreferrer">Política de Privacidade</a>. <span className="mute">(necessário)</span></span>
       </label>
       <p className="small mute" style={{ margin: '14px 0 4px' }}>Opcional — pode mudar quando quiser no Perfil:</p>
       <label className="check">

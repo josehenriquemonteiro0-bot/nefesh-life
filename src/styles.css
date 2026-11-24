@@ -182,6 +182,7 @@ input[type=time]{background:var(--panel2);border:1px solid var(--line);border-ra
 .hin input{background:transparent;border:0;border-bottom:1px solid var(--line);font:600 18px Sora,sans-serif;width:100%;padding:2px 0;color:var(--ink)}
 .hin input:focus{outline:none;border-color:var(--neon)}
 .privacy p{margin:0 0 8px}.privacy p:last-child{margin:0}
+.privacy p.hl{padding:8px 10px;border-radius:10px;background:var(--panel2);border-left:3px solid var(--gold)}
 .check{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;margin-top:6px;cursor:pointer}
 .check input{width:24px;height:24px;accent-color:var(--neon);margin:2px 0 0}
 .steps code{font:600 12.5px ui-monospace,Menlo,monospace;background:var(--panel2);padding:1px 5px;border-radius:5px;color:var(--neon)}
