@@ -264,6 +264,16 @@ da família, ativar o Pro como nutricionista e validá-la na página de administ
    passa a ser paga, a menos que a pessoa a cancele (a Apple avisa no ecrã do código). Para quem nunca deve
    pagar, usar a cortesia.
 
+**Para os códigos não passarem de mão em mão:**
+- A parceiros (ex.: um nutricionista a experimentar), dar **um código único** (uso único, fica preso ao Apple ID de
+  quem o usa) ou a **cortesia na conta dele**. Nunca um código personalizado: esse pode ser usado por várias pessoas
+  até ao limite de usos.
+- Código personalizado só para campanhas abertas, com o limite de usos que a campanha comportar.
+- Nas assinaturas, deixar **Family Sharing desligado** (senão uma assinatura serve até 6 pessoas da família Apple).
+- O servidor só aceita o mesmo Premium (conta ou assinatura) em **3 aparelhos por dia**; uma conta partilhada com
+  muita gente deixa de ter Premium nos aparelhos a mais. E uma conta partilhada mostra a todos o diário e os dados
+  de quem a deu, o que por si só desencoraja.
+
 > A Apple não permite códigos próprios dentro da app do iPhone para desbloquear funções pagas (regra 3.1.1):
 > por isso os códigos são sempre os da Apple, e a cortesia é dada pela equipa na conta.
 

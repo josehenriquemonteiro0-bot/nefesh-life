@@ -46,6 +46,9 @@ describe('Premium confirmado no servidor', () => {
     await pg.grantCourtesy(db, 'ana', '2027-01-31');
     expect(await pg.hasPremium(db, store, { token: TOKEN }, NOW)).toBe(true);
     expect(await pg.hasPremium(db, store, { token: TOKEN }, Date.parse('2027-02-01'))).toBe(false);
+    // conta partilhada com muita gente: o 4.º aparelho do dia fica sem Premium
+    for (const d of ['d1', 'd2', 'd3']) expect(await pg.hasPremium(db, store, { token: TOKEN, device: d }, NOW)).toBe(true);
+    expect(await pg.hasPremium(db, store, { token: TOKEN, device: 'd4' }, NOW)).toBe(false);
     expect(await pg.hasPremium(db, store, {}, NOW)).toBe(false);
   });
 
@@ -57,6 +60,11 @@ describe('Premium confirmado no servidor', () => {
     expect(await pg.hasPremium(db, store, { premium: ok }, NOW, fx.rootSha256)).toBe(true);
     expect([...store.m.keys()].some((k) => k.startsWith('pj:'))).toBe(true);
     expect(await pg.hasPremium(db, store, { premium: await sign({ ...tx, expiresDate: NOW - 1 }) }, NOW, fx.rootSha256)).toBe(false);
+    // a mesma assinatura em aparelhos diferentes: até 3 por dia
+    const st2 = kv();
+    for (const d of ['a1', 'a2', 'a3']) expect(await pg.hasPremium(db, st2, { premium: ok, device: d }, NOW, fx.rootSha256)).toBe(true);
+    expect(await pg.hasPremium(db, st2, { premium: ok, device: 'a4' }, NOW, fx.rootSha256)).toBe(false);
+    expect(await pg.hasPremium(db, st2, { premium: ok, device: 'a1' }, NOW, fx.rootSha256)).toBe(true);
     // com a raiz verdadeira da Apple, a cadeia de teste não passa
     expect(await pg.hasPremium(db, kv(), { premium: ok }, NOW)).toBe(false);
   });
