@@ -1,3 +1,4 @@
+import { FirstStepsCard } from '../components/FirstSteps';
 import { FastingMini } from '../components/Fasting';
 import { MonthCelebration, showMonth } from '../components/MonthCelebration';
 import { DayPanel, EnergyWeek, NextActionCard, Shortcuts, TodayCarousel } from '../components/HomePanel';
@@ -224,6 +225,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       <h1>{greeting()}{S.ans.name ? `, ${S.ans.name}` : ''}</h1>
 
       {showMonth(S) && <MonthCelebration />}
+      <FirstStepsCard go={go} />
       <DayPanel go={go} />
       <NextActionCard go={go} />
       {low && (

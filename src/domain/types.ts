@@ -139,6 +139,10 @@ export interface AppState {
   /** Início progressivo (só para quem começou com esta versão) e o interruptor do Perfil */
   homeProgressive?: boolean;
   homeAll?: boolean;
+  /** já usou o assistente pelo menos uma vez (Primeiros passos) */
+  usedCoach?: boolean;
+  /** fechou o cartão Primeiros passos */
+  firstStepsDone?: boolean;
   /** último insight da Evolução já visto (n.º de check-ins) */
   insightSeen?: number;
   /** o ecrã dos 30 dias já foi visto */

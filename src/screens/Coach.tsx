@@ -107,6 +107,8 @@ export function Coach({ go }: { go: Nav }) {
       const before: DayLog | null = S.logs[key] ? structuredClone(S.logs[key]) : null;
       const extra = structuredClone({ memory: S.memory, gymLoadLog: S.gymLoadLog, gymLoads: S.gymLoads, exNames: S.exNames, bodyLog: S.bodyLog, ans: S.ans, fastSessions: S.fastSessions });
       let applied: string[] = [];
+      // Primeiros passos: já usou o assistente
+      if (!S.usedCoach) update((d) => { d.usedCoach = true; });
       const auto = r.actions.filter((a) => !NEEDS_CONFIRM.includes(a.type));
       if (auto.length) {
         // aplica num rascunho para saber o que mudou, e grava de uma vez
