@@ -38,9 +38,9 @@ const rng = (seed: number) => () => {
 };
 
 /** Ordem embaralhada das chaves para um ciclo; muda a cada ciclo completo. */
-const ordemDoCiclo = (ciclo: number, n: number) => {
+const ordemDoCiclo = (ciclo: number, n: number, pessoa = 0) => {
   const ordem = Array.from({ length: n }, (_, i) => i);
-  const r = rng(ciclo + 1);
+  const r = rng(((ciclo + 1) ^ pessoa) | 0);
   for (let i = n - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
     [ordem[i], ordem[j]] = [ordem[j], ordem[i]];
@@ -50,16 +50,28 @@ const ordemDoCiclo = (ciclo: number, n: number) => {
 
 const INICIO = parseKey('2026-01-01');
 
+/** Número a partir da semente pessoal (FNV-1a de 32 bits). */
+const hashSemente = (s: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return h | 0;
+};
+
+/** Semente pessoal nova (guardada no estado da pessoa, vai com a conta para outros aparelhos). */
+export const novaSemente = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('');
+
 /**
- * Chave do dia: uma por dia, sem repetir até todas terem aparecido;
- * depois recomeça noutra ordem. Igual para todos os utilizadores no mesmo dia.
+ * Chave do dia: uma por dia, sem repetir até todas terem aparecido; depois recomeça noutra ordem.
+ * Com a semente pessoal, cada pessoa tem a sua ordem (e por isso, quase sempre, uma chave diferente da
+ * dos amigos no mesmo dia), estável ao longo do dia e igual em todos os seus aparelhos.
+ * Sem semente, é igual para todos.
  */
-export const chaveDoDia = (dia = todayKey(), lista: ChaveDoDia[] = CHAVES): ChaveDoDia => {
+export const chaveDoDia = (dia = todayKey(), lista: ChaveDoDia[] = CHAVES, semente = ''): ChaveDoDia => {
   const n = lista.length;
   const dias = Math.round((parseKey(dia).getTime() - INICIO.getTime()) / 864e5);
   const d = ((dias % n) + n) % n;
   const ciclo = Math.floor((dias - d) / n);
-  return lista[ordemDoCiclo(ciclo, n)[d]];
+  return lista[ordemDoCiclo(ciclo, n, semente ? hashSemente(semente) : 0)[d]];
 };
 
 /** Todos os temas existentes, por ordem alfabética. */

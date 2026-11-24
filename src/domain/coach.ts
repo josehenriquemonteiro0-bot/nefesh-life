@@ -5,6 +5,8 @@
  * Os cálculos (calorias, macros) são feitos aqui, com a tabela de alimentos da app;
  * o modelo só escolhe os alimentos e as quantidades.
  */
+import { premiumProof } from './premium';
+import { getAuth } from './account';
 import { bodyContext } from './bodyLog';
 import { activeFast, endFast, fastState, fastingContext, fastingSafety, isDaily, protocolOf, startFast } from './fasting';
 import { GOAL_LABEL, QUESTIONS, TRAINING } from './content';
@@ -498,7 +500,7 @@ export async function askCoach(S: AppState, history: CoachMsg[], extra: { friend
     res = await fetch(`${PHOTO_API}/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: todaysMessages(history), context: buildContext(S, new Date(), extra), device: deviceId() }),
+      body: JSON.stringify({ messages: todaysMessages(history), context: buildContext(S, new Date(), extra), device: deviceId(), ...premiumProof(getAuth()?.token) }),
     });
   } catch {
     throw new CoachError('Sem ligação à internet. Tente outra vez.', 0);

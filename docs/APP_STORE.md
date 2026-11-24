@@ -178,7 +178,7 @@ Respostas coerentes com o que a app faz e com a Política de Privacidade.
 | **Saúde e fitness → Fitness** | Sim (com conta: passos, treinos, sono) | Funcionalidade da app | Sim |
 | **Conteúdo do utilizador → Fotos ou vídeos** | Sim (fotos publicadas na comunidade, apagadas em 24 h) | Funcionalidade da app | Sim |
 | **Conteúdo do utilizador → Outro conteúdo** | Sim (mensagens a amigos e profissionais, notas) | Funcionalidade da app | Sim |
-| **Compras → Histórico de compras** | Sim (códigos dos frascos de Spirulina registados) | Funcionalidade da app | Sim |
+| **Compras → Histórico de compras** | Sim (códigos dos frascos de Spirulina registados e a assinatura NEFESH Premium: plano e data de fim) | Funcionalidade da app | Sim |
 | **Identificadores → ID do utilizador** | Sim (com conta) | Funcionalidade da app | Sim |
 | **Identificadores → ID do dispositivo** | Sim (identificador próprio da app, para os limites diários da IA) | Funcionalidade da app | Não |
 | **Dados de utilização → Interação com o produto** | Sim (estatísticas anónimas diárias, pode desligar) | Análises | Não |
@@ -257,6 +257,13 @@ da família, ativar o Pro como nutricionista e validá-la na página de administ
 **Testar no TestFlight:** as compras no TestFlight são de teste (não se paga nada) e renovam depressa
 (a anual a cada hora, a mensal a cada 5 minutos). A versão do TestFlight já exige o Premium; a versão web
 da família continua com tudo aberto.
+
+**No dia do lançamento (o servidor passa a confirmar o Premium):**
+1. Página da equipa → **NEFESH Premium de cortesia**: dar Premium às contas da família, parceiros e à conta
+   de demonstração da revisão da Apple (cada pessoa precisa de ter conta).
+2. Em `worker/wrangler.toml`, mudar `PREMIUM_ENFORCED = "false"` para `"true"` e publicar.
+   A partir daí, a foto do prato, a voz e a leitura do plano exigem Premium também no servidor, e o
+   assistente por escrito fica com 5 mensagens grátis por dia para quem não tem Premium.
 
 **Como funciona por dentro:** o iPhone compra pela Apple (StoreKit 2, `ios/App/App/StorePlugin.swift`) e envia
 a transação assinada ao servidor, que a confirma com o certificado raiz da Apple (`worker/src/appstore.ts`)

@@ -34,3 +34,22 @@ describe('Chaves do Dia', () => {
     expect(chavesPorTema('foco').every((c) => c.temas.includes('foco'))).toBe(true);
   });
 });
+
+describe('chave do dia pessoal', () => {
+  it('cada pessoa tem a sua: no mesmo dia, pessoas diferentes recebem quase sempre chaves diferentes', () => {
+    const hoje = '2026-11-24';
+    const sementes = Array.from({ length: 40 }, (_, i) => `pessoa-${i}`);
+    const chaves = new Set(sementes.map((s) => chaveDoDia(hoje, CHAVES, s).id));
+    expect(chaves.size).toBeGreaterThan(20);
+  });
+  it('a mesma pessoa vê a mesma chave o dia todo e não repete até ver todas', () => {
+    expect(chaveDoDia('2026-11-24', CHAVES, 'ana').id).toBe(chaveDoDia('2026-11-24', CHAVES, 'ana').id);
+    for (const ciclo of [0, 1, 2]) {
+      const ids = Array.from({ length: CHAVES.length }, (_, i) => chaveDoDia(addDaysKey('2026-01-01', ciclo * CHAVES.length + i), CHAVES, 'ana').id);
+      expect(new Set(ids).size).toBe(CHAVES.length);
+    }
+  });
+  it('sem semente, é igual para todos (como antes)', () => {
+    expect(chaveDoDia('2026-11-24', CHAVES, '').id).toBe(chaveDoDia('2026-11-24').id);
+  });
+});

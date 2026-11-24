@@ -41,6 +41,7 @@ import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healt
 import { originAllowed } from './origin';
 import { accessOf, logAccess, purgeAccess, tokenOf } from './accesslog';
 import * as appstore from './appstore';
+import { FREE_COACH_DAILY, PREMIUM_MESSAGE, enforced, grantCourtesy, hasPremium } from './premiumGate';
 export { originAllowed };
 
 /** Tentativas falhadas de entrar e contas novas, por dia. */
@@ -55,6 +56,8 @@ export interface Env {
   GLOBAL_LIMIT?: string;
   ALLOWED_ORIGIN?: string;
   MODEL?: string;
+  /** "true" no lançamento: o servidor confirma o NEFESH Premium (premiumGate.ts) */
+  PREMIUM_ENFORCED?: string;
   /** segredo opcional que protege a página /stats */
   STATS_KEY?: string;
   /** "true" na fase de teste (tudo aberto); "false" no lançamento */
@@ -180,6 +183,20 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         cursor = r.cursor;
       }
       return html(admin.marketingPage(key, rows.sort((a, b) => b.at.localeCompare(a.at))));
+    }
+    if (url.pathname === '/admin/cortesia' && req.method === 'POST') {
+      const key = env.STATS_KEY?.trim();
+      const html = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      if (!key || !env.DB) return html(admin.adminLogin(true), 403);
+      const f = await req.formData();
+      if (String(f.get('key') ?? '').trim() !== key) return html(admin.adminLogin(true), 403);
+      const email = String(f.get('email') ?? '').trim();
+      const until = String(f.get('until') ?? '');
+      if (!email || !/^\d{4}-\d{2}-\d{2}$/.test(until)) return html(admin.courtesyPage(key));
+      const uid = await userIdForEmail(env.LIMITS as never, email);
+      if (!uid) return html(admin.courtesyPage(key, 'Não há conta com esse e-mail.'));
+      await grantCourtesy(env.DB, uid, until);
+      return html(admin.courtesyPage(key, `Feito: ${email} com Premium até ${until.split('-').reverse().join('/')}.`));
     }
     if (url.pathname === '/admin/acessos' && req.method === 'POST') {
       const key = env.STATS_KEY?.trim();
@@ -643,6 +660,11 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     const ip = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
 
     const path = url.pathname;
+    // NEFESH Premium confirmado no servidor (só com PREMIUM_ENFORCED = "true")
+    const FREE_PATHS = new Set(['/evento', '/rotulo', '/analises', '/receita', '/relatorio', '/dica', '/coach']);
+    const gated = enforced(env);
+    const premium = gated ? await hasPremium(env.DB, env.LIMITS as never, body as never) : true;
+    if (gated && !premium && !FREE_PATHS.has(path)) return json({ error: PREMIUM_MESSAGE, premium: true }, 402, h);
     if (path === '/evento') {
       await savePing(env.LIMITS as never, device, body as Record<string, unknown>);
       return new Response(null, { status: 204, headers: h });
@@ -677,7 +699,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     if (path === '/coach') {
       try {
         const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-        return await handleCoach(body as Record<string, unknown>, env.LIMITS, coachLimits(env), client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
+        return await handleCoach(body as Record<string, unknown>, env.LIMITS, premium ? coachLimits(env) : { device: FREE_COACH_DAILY, ip: FREE_COACH_DAILY * 4, global: 3000 }, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
       } catch (err) {
         return apiError(err, h);
       }

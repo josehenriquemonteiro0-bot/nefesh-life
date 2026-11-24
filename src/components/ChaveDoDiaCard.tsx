@@ -1,6 +1,6 @@
 import { appUrl } from '../domain/platform';
 import { useEffect, useRef, useState } from 'react';
-import { chaveDoDia, chavesPorTema, temasDasChaves } from '../domain/chavesDoDia';
+import { chaveDoDia, chavesPorTema, novaSemente, temasDasChaves } from '../domain/chavesDoDia';
 import { whatsappShare } from '../domain/content';
 import { bibleLink } from '../domain/biblia';
 import { drawChaveCard, shareImage } from '../domain/shareCard';
@@ -14,13 +14,17 @@ function Ref({ r }: { r: string }) {
 
 /** Cartão "Chave do dia" (Mente): frase em destaque, referência por baixo e leitura por tema. */
 export function ChaveDoDiaCard() {
-  const c = chaveDoDia();
+  const { S, update, toast } = useStore();
+  // cada pessoa tem a sua chave do dia (semente criada uma vez e guardada com os dados)
+  useEffect(() => {
+    if (!S.chaveSeed) update((d) => { d.chaveSeed ??= novaSemente(); });
+  }, [S.chaveSeed]); // eslint-disable-line react-hooks/exhaustive-deps
+  const c = chaveDoDia(undefined, undefined, S.chaveSeed ?? '');
   const [aberto, setAberto] = useState(false);
   const [tema, setTema] = useState<string | null>(null);
-  const { toast } = useStore();
   const [busy, setBusy] = useState(false);
   const link = appUrl();
-  const legenda = `🔑 Chave do dia: “${c.texto}” (${c.referencia})\n\nUma chave nova todos os dias na NEFESH Life 🌿 ${link}`;
+  const legenda = `🔑 Chave do dia: “${c.texto}” (${c.referencia})\n\nCada pessoa recebe a sua chave, todos os dias, na NEFESH Life 🌿 ${link}`;
   // a imagem fica pronta antes do toque: o iPhone só abre a partilha logo a seguir ao toque
   const img = useRef<Promise<Blob> | null>(null);
   useEffect(() => {
@@ -47,7 +51,7 @@ export function ChaveDoDiaCard() {
   };
   return (
     <section className="card chave-card">
-      <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>🔑 Chave do dia</p>
+      <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>🔑 A sua chave do dia</p>
       <p className="chave-texto">{c.texto}</p>
       <p className="small" style={{ margin: 0 }}><Ref r={c.referencia} /></p>
       <div className="row" style={{ gap: 12, justifyContent: 'flex-start', marginTop: 10 }}>

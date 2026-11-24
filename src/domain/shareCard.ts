@@ -249,7 +249,7 @@ export async function drawChaveCard(c: { texto: string; referencia: string }): P
   // rodapé: convite à app (acima da zona da caixa de resposta do Instagram)
   ctx.fillStyle = 'rgba(238,243,240,.9)';
   ctx.font = font(600, 38);
-  ctx.fillText('Uma chave nova todos os dias na', SW / 2, SH - 300);
+  ctx.fillText('Descubra a sua chave do dia na', SW / 2, SH - 300);
   ctx.fillStyle = NEON;
   ctx.font = font(700, 44);
   ctx.fillText('NEFESH Life', SW / 2, SH - 240);

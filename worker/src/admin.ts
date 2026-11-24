@@ -80,6 +80,12 @@ export function adminForm(key: string) {
 <p class="m">Só as pessoas que aceitaram receber comunicações da NEFESH, com a data da autorização.</p>
 <button>Ver contactos</button>
 </form>
+<form method="post" action="/admin/cortesia" class="card">
+<input type="hidden" name="key" value="${esc(key)}">
+<h2 style="margin-top:0">NEFESH Premium de cortesia</h2>
+<p class="m">Para a família, parceiros e a conta de demonstração da revisão da Apple. A pessoa precisa de ter conta.</p>
+<button>Abrir</button>
+</form>
 <form method="post" action="/admin/acessos" class="card">
 <input type="hidden" name="key" value="${esc(key)}">
 <h2 style="margin-top:0">Registos de acesso (Marco Civil)</h2>
@@ -203,5 +209,17 @@ export function videosPage(key: string, list: { name: string; group: string }[],
 <p class="m">Cole o link de um vídeo com a técnica correta (YouTube, Shorts, Instagram, Vimeo). Apague o link para tirar. Mais tarde, os vídeos próprios da NEFESH substituem estes links aqui.</p></div>
 <form method="post" action="/admin/video"><input type="hidden" name="key" value="${esc(key)}">${rows}
 <button style="position:sticky;bottom:12px;width:100%">Guardar</button></form>
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
+}
+
+/** Premium de cortesia: dar a uma conta até uma data (ou tirar, com a data de hoje). */
+export function courtesyPage(key: string, msg?: string) {
+  return page(`<h1>Premium de cortesia</h1>
+<p class="m">A conta fica com o NEFESH Premium até à data escolhida, sem pagamento. Para tirar, escolha a data de ontem.</p>
+${msg ? `<div class="card"><p style="margin:0">${esc(msg)}</p></div>` : ''}
+<form method="post" action="/admin/cortesia" class="card"><input type="hidden" name="key" value="${esc(key)}">
+<label>E-mail da conta<input name="email" type="email" required></label>
+<label>Premium até (AAAA-MM-DD)<input name="until" type="date" required></label>
+<button>Guardar</button></form>
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }

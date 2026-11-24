@@ -42,3 +42,26 @@ export function premiumFromStore(list: StoreTransaction[], now = Date.now()): Pr
   const until = Math.max(...ok.map((t) => t.expires!));
   return { source: 'subscription', until: new Date(until).toISOString().slice(0, 10) };
 }
+
+const JWS_KEY = 'nefesh-premium-jws';
+/** Guarda a última assinatura ativa da Apple (para o servidor confirmar o Premium sem conta). */
+export function rememberStoreProof(list: StoreTransaction[], now = Date.now()) {
+  const best = list.filter((t) => t.verified && !t.revoked && t.productId && planOf(t.productId) && (t.expires ?? 0) > now).sort((a, b) => (b.expires ?? 0) - (a.expires ?? 0))[0];
+  try {
+    if (best) localStorage.setItem(JWS_KEY, best.jws);
+    else localStorage.removeItem(JWS_KEY);
+  } catch {
+    /* sem armazenamento */
+  }
+}
+
+/** O que vai nos pedidos de IA para o servidor confirmar o Premium: o token da conta e/ou a assinatura da Apple. */
+export function premiumProof(token?: string): { token?: string; premium?: string } {
+  let premium: string | undefined;
+  try {
+    premium = localStorage.getItem(JWS_KEY) ?? undefined;
+  } catch {
+    premium = undefined;
+  }
+  return { ...(token ? { token } : {}), ...(premium ? { premium } : {}) };
+}

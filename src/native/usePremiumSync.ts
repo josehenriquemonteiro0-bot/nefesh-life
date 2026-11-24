@@ -5,7 +5,7 @@
  */
 import { useEffect } from 'react';
 import { getAuth, syncPremium, useAuth } from '../domain/account';
-import { premiumFromStore, type StoreTransaction } from '../domain/premium';
+import { premiumFromStore, rememberStoreProof, type StoreTransaction } from '../domain/premium';
 import type { AppState } from '../domain/types';
 import { onStoreTransaction, storeAvailable, storeEntitlements } from './store';
 
@@ -20,6 +20,7 @@ export function usePremiumSync(update: (fn: (d: AppState) => void) => void) {
       busy = true;
       try {
         const list = native ? [...(await storeEntitlements().catch(() => [])), ...extra] : [];
+        if (native) rememberStoreProof(list);
         const local = premiumFromStore(list);
         const server = getAuth() ? await syncPremium(list.map((t) => t.jws)).catch(() => undefined) : undefined;
         // sem resposta do servidor nem da loja: não mexe

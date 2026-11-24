@@ -1,3 +1,4 @@
+import { premiumProof } from './premium';
 import { notePremiumUse } from './analytics';
 import type { FoodEntry, MealKey } from './foods';
 
@@ -74,7 +75,7 @@ export async function analyzePhoto(image: { data: string; media_type: string }, 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // com conta, a foto conta como prova da refeição para os pontos
-      body: JSON.stringify({ image: image.data, media_type: image.media_type, device: deviceId(), hint, token: getAuth()?.token }),
+      body: JSON.stringify({ image: image.data, media_type: image.media_type, device: deviceId(), hint, ...premiumProof(getAuth()?.token) }),
     });
   } catch {
     throw new PhotoError('Sem ligação à internet. Tente outra vez.', 0);

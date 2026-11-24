@@ -1,3 +1,5 @@
+import { premiumProof } from './premium';
+import { getAuth } from './account';
 import { notePremiumUse } from './analytics';
 import { PHOTO_API, PhotoError, deviceId } from './photo';
 import type { FoodEntry, MealKey } from './foods';
@@ -69,7 +71,7 @@ async function readFile<T>(file: Blob, name: string, path: '/plano' | '/treino')
     res = await fetch(`${PHOTO_API.replace(/\/$/, '')}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, name, device: deviceId() }),
+      body: JSON.stringify({ ...payload, name, device: deviceId(), ...premiumProof(getAuth()?.token) }),
     });
   } catch {
     throw new PhotoError('Sem ligação à internet. Tente outra vez.', 0);

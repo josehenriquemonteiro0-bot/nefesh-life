@@ -13,6 +13,8 @@ ALLOWED_ORIGIN = "https://josehenriquemonteiro0-bot.github.io,capacitor://localh
 # NEFESH Life Pro: "true" aprova os profissionais sem a página da equipa (só no servidor de teste)
 PRO_AUTO_APPROVE = "false"
 MODEL = "claude-opus-5-5"
+# NEFESH Premium confirmado no servidor: "true" no lançamento da App Store (antes, dar cortesia à família)
+PREMIUM_ENFORCED = "false"
 # limites diários de fotos
 DAILY_LIMIT = "15"
 IP_LIMIT = "45"

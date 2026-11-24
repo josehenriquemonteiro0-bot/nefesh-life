@@ -3,6 +3,8 @@
  * telemóvel (sem custo e sem enviar áudio para servidores da NEFESH), e leitura das
  * respostas em voz alta. O texto ouvido segue pelo mesmo caminho do Coach.
  */
+import { premiumProof } from './premium';
+import { getAuth } from './account';
 import { convertText, storedLocale } from '../i18n/locale';
 import type { AppState } from './types';
 
@@ -334,7 +336,7 @@ const toBase64 = (b: Blob) =>
 export async function transcribe(audio: Blob, api: string, device: string): Promise<string> {
   let res: Response;
   try {
-    res = await fetch(`${api}/voz`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio: await toBase64(audio), mime: audio.type, device }) });
+    res = await fetch(`${api}/voz`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio: await toBase64(audio), mime: audio.type, device, ...premiumProof(getAuth()?.token) }) });
   } catch {
     throw new Error('Sem ligação à internet. Tente outra vez.');
   }

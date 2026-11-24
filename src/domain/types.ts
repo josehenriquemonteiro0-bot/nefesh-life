@@ -172,6 +172,8 @@ export interface AppState {
   /** assinatura Premium (para o lançamento; na fase de testes está tudo aberto) */
   /** Premium ativo: origem e validade (o formato antigo `true` conta como teste) */
   premium?: boolean | import('./features').PremiumInfo;
+  /** semente da Chave do dia pessoal (cada pessoa tem a sua ordem de chaves) */
+  chaveSeed?: string;
   /** dicas de execução já pedidas, por nome do exercício */
   exerciseTips?: Record<string, import('./tips').ExerciseTip>;
   /** plano de treino do personal lido pela IA */

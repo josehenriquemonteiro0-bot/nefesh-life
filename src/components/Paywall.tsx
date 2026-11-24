@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { FEATURES, canAccess, premiumOf, type Feature } from '../domain/features';
-import { PLANS, REF_PRICES, annualDeal, money, premiumFromStore, type Plan } from '../domain/premium';
+import { PLANS, REF_PRICES, annualDeal, money, premiumFromStore, rememberStoreProof, type Plan } from '../domain/premium';
 import { legalUrl } from '../domain/platform';
 import { currentLocale } from '../i18n/locale';
 import { getAuth, syncPremium } from '../domain/account';
@@ -62,6 +62,7 @@ function Paywall({ onClose }: { onClose: () => void }) {
   const settings = currentLocale() === 'pt-BR' ? 'Ajustes → [o seu nome] → Assinaturas' : 'Definições → [o seu nome] → Subscrições';
 
   const apply = async (list: { jws: string; verified: boolean }[]) => {
+    if (storeAvailable()) rememberStoreProof(list as never);
     const local = premiumFromStore(list as never);
     let server = null;
     if (getAuth()) server = await syncPremium(list.map((t) => t.jws)).catch(() => null);
