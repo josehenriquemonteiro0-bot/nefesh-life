@@ -80,7 +80,7 @@ export async function closePrizeWeek(db: social.DB, store: KVNamespace, now = ne
   const winners = await prize.closeWeek(db, prev, now);
   for (const w of winners ?? []) {
     await push
-      .notifyUser(db, store as never, w.uid, { title: `🏆 Ficou em ${w.rank}.º lugar no ranking!`, body: `Ganhou um cupão de ${prize.PRIZE.percent}% na loja NEFESH. Veja-o na app (Perfil → Os meus benefícios).`, tag: 'nefesh-premio' }, fetch, now)
+      .notifyUser(db, store as never, w.uid, { title: `🏆 Ficou em ${w.rank}.º lugar no ranking da semana!`, body: 'Parabéns pela consistência. Continue assim com a comunidade NEFESH.', tag: 'nefesh-ranking' }, fetch, now)
       .catch(() => 0);
   }
   return winners;

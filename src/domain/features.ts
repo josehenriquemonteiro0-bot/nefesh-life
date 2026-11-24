@@ -33,7 +33,7 @@ export const FEATURES = {
   checkin: { label: 'Check-in diário', tier: 'free', enabled: true },
   agua: { label: 'Contador de água', tier: 'free', enabled: true },
   comunidade: { label: 'Comunidade, Circles e desafios', tier: 'free', enabled: true },
-  ranking: { label: 'Ranking semanal e cupão NEFESH15', tier: 'free', enabled: true },
+  ranking: { label: 'Ranking semanal', tier: 'free', enabled: true },
   profissionais: { label: 'Diretório de profissionais', tier: 'free', enabled: true },
   metasProfissional: { label: 'Metas definidas pelo nutricionista', tier: 'free', enabled: true },
   planosProfissional: { label: 'Guardar os planos do profissional', tier: 'free', enabled: true },

@@ -15,7 +15,9 @@ Limites da Apple já verificados (caracteres entre parênteses).
 | URL de suporte | https://josehenriquemonteiro0-bot.github.io/nefesh-life/legal/suporte.html |
 | URL de marketing (opcional) | https://www.nefeshglobal.shop |
 | Direitos de autor (Copyright) | 2026 NEFESH BEM-ESTAR LTDA |
-| Preço | Gratuito (o Premium, se houver, é decidido à parte) |
+| Preço | Gratuito, com Premium por assinatura (compras dentro da app) |
+| Premium (Brasil) | R$ 29,90 por mês · R$ 199,90 por ano |
+| Premium (Portugal / euro) | 8,90 € por mês · 79,90 € por ano (confirmar se a Apple tem estes valores na tabela de preços; se não, usar o mais próximo, ex.: 8,99 € e 79,99 €) |
 
 > Quando houver um domínio próprio (ex.: app.nefeshglobal.com), trocamos os URLs.
 

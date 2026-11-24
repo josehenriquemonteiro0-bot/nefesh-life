@@ -1,5 +1,7 @@
 /**
  * Ranking semanal global e cupão NEFESH15 (especificação v2, secção 10; decisões da NEFESH):
+ * - desde 24/11/2026 a app NÃO mostra o cupão nem o prémio: o ranking é só interação. A equipa
+ *   envia o cupão por e-mail, como presente, a partir da página da equipa;
  * - um só ranking global (sem regiões), semana de segunda a domingo no fuso de Lisboa;
  * - conta só os pontos neutros (`pn`, verify.ts): a Spirulina e as compras não entram, o cupão é um bónus
  *   da comunidade e não exige comprar nada;
@@ -159,10 +161,10 @@ export async function setCouponStatus(db: DB, code: string, status: 'enviado' | 
 export function prizeEmail(nick: string, rank: number, code: string, expires: string, shopUrl = 'https://www.nefeshglobal.shop') {
   const d = expires.split('-').reverse().join('/');
   return {
-    subject: `Ganhou um cupão de ${PRIZE.percent}% na NEFESH 🏆`,
+    subject: `Parabéns pelo ranking da semana: um presente da NEFESH 🏆`,
     body: `Olá ${nick || ''}!
 
-Parabéns: ficou em ${rank}.º lugar no ranking semanal da NEFESH Life. A sua consistência valeu um prémio 🌿
+Parabéns: ficou em ${rank}.º lugar no ranking semanal da NEFESH Life. Como agradecimento pela sua consistência, a NEFESH oferece-lhe um presente 🌿
 
 O seu cupão de ${PRIZE.percent}% de desconto, de utilização única:
 ${code}

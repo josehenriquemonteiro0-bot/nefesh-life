@@ -275,7 +275,6 @@ export const proveHealth = (image: string, media_type: string) =>
   call<{ ok: boolean; note: string; steps?: number; exMin?: number; sleepH?: number }>('prova-saude', { image, media_type });
 export const proveSpirulina = (image: string, media_type: string) => call<{ ok: boolean; note: string }>('prova-spirulina', { image, media_type });
 export const resultSeen = () => call('resultado-visto');
-export const couponSeen = () => call('cupao-visto');
 export const createChallenge = (kind: string, friends: string[]) => call<{ id: string }>('desafio', { kind, friends });
 export const acceptInvite = (code: string, cid?: string) => call<{ nick?: string; joined?: boolean; self?: boolean }>('convite', { code, cid });
 

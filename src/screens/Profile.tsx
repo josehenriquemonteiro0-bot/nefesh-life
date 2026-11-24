@@ -23,7 +23,6 @@ import { AccountCard } from '../components/Account';
 import { AvatarEdit } from '../components/Avatar';
 import { BottleCodeForm } from '../components/BottleCode';
 import { syncedLabel } from '../domain/account';
-import { Benefits } from '../components/Prize';
 import { PrivacyCard } from '../components/PrivacyCard';
 import { showWomen } from '../domain/women';
 
@@ -228,7 +227,6 @@ export function Profile({ startQuiz, replayIntro, openBottle, openReport, printR
         <BottleCodeForm />
       </section>
 
-      <Benefits />
 
       <section className="card">
         <div className="row">
