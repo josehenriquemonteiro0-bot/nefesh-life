@@ -81,6 +81,9 @@ export function cleanExamItems(v: unknown): ExamItem[] {
   return out;
 }
 
+/** título curto, cortado numa palavra inteira */
+const shortTitle = (v: unknown) => { const t = one(v, 200); if (t.length <= 60) return t; const cut = t.slice(0, 58).replace(/[\s,;(·-]+\S*$/, ''); return `${cut}…`; };
+
 export function cleanExam(x: unknown): Exam | null {
   const o = (x ?? {}) as Record<string, unknown>;
   const items = cleanExamItems(o.items);
@@ -88,7 +91,7 @@ export function cleanExam(x: unknown): Exam | null {
   if (!items.length && !note) return null;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(o.date ?? '')) ? String(o.date) : '';
   const id = /^[a-z0-9]{4,16}$/.test(String(o.id ?? '')) ? String(o.id) : Math.random().toString(36).slice(2, 10);
-  return { id, date, lab: one(o.lab, 60), title: one(o.title, 60), items, ...(note ? { note } : {}) };
+  return { id, date, lab: one(o.lab, 60), title: shortTitle(o.title), items, ...(note ? { note } : {}) };
 }
 
 /** Exames limpos, do mais recente para o mais antigo (sem data no fim). */
