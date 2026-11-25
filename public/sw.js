@@ -1,5 +1,5 @@
 // Service worker NEFESH Life: app shell em cache para funcionar offline.
-const CACHE = 'nefesh-life-v3';
+const CACHE = 'nefesh-life-v4';
 // serviço que guarda as mensagens das notificações
 const API = new URL(self.location).searchParams.get('api') || 'https://nefesh-foto.josehenriquemonteiro0.workers.dev';
 // caminhos relativos ao âmbito do service worker (funciona na raiz ou numa subpasta)
@@ -20,6 +20,19 @@ self.addEventListener('install', (e) => {
   );
 });
 
+/** Guarda o index.html novo e os ficheiros que ele usa (a cópia offline acompanha sempre a última versão aberta com rede). */
+async function refreshShell(res) {
+  try {
+    const c = await caches.open(CACHE);
+    const html = await res.clone().text();
+    await c.put(BASE + 'index.html', res);
+    const assets = [...html.matchAll(/(?:src|href)="([^"]+\/assets\/[^"]+)"/g)].map((m) => new URL(m[1], self.location).href);
+    await Promise.all(assets.map((a) => c.match(a).then((hit) => hit || c.add(a).catch(() => undefined))));
+  } catch (err) {
+    /* sem espaço ou sem rede: fica a cópia anterior */
+  }
+}
+
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
@@ -30,9 +43,16 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // navegação: rede primeiro, cache como recurso offline
+  // navegação: rede primeiro; cada abertura com rede atualiza a cópia offline (sem rede abre a versão mais recente que já viu)
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).catch(() => caches.match(BASE + 'index.html')));
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) e.waitUntil(refreshShell(res.clone()));
+          return res;
+        })
+        .catch(() => caches.match(BASE + 'index.html')),
+    );
     return;
   }
   const sameOrigin = url.origin === self.location.origin;
