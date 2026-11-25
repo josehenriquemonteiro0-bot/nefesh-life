@@ -1,8 +1,12 @@
-# Avaliação real da IA da ficha integrativa (notas da consulta e exames), só quando é pedida.
+# Avaliação real da IA da ficha integrativa (notas da consulta e exames): quando é pedida
+# ou quando os pedidos à IA da ficha mudam no ramo de desenvolvimento.
 # Usa a chave ANTHROPIC_API_KEY dos segredos; custa poucos cêntimos por execução.
 name: Avaliação da IA · ficha integrativa
 
 on:
+  push:
+    branches: [nefesh-life-v2]
+    paths: [worker/src/proAI.ts, worker/eval/integ.ts, src/domain/proInteg.ts, .github/workflows/eval-integ.yml]
   workflow_dispatch:
     inputs:
       model:
@@ -20,7 +24,7 @@ jobs:
         working-directory: worker
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
-      MODEL: ${{ inputs.model }}
+      MODEL: ${{ inputs.model || 'claude-opus-5-5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
