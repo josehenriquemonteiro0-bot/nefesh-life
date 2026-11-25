@@ -86,6 +86,12 @@ export function adminForm(key: string) {
 <p class="m">Erros que a app registou sozinha (anónimos), com quantas vezes aconteceram.</p>
 <button>Ver falhas</button>
 </form>
+<form method="post" action="/admin/ia" class="card">
+<input type="hidden" name="key" value="${esc(key)}">
+<h2 style="margin-top:0">Custo da IA</h2>
+<p class="m">Quanto custa a IA por pessoa ativa por mês, com o uso real, e em que funções. Só números, sem conversas.</p>
+<button>Ver custo da IA</button>
+</form>
 <form method="post" action="/admin/cortesia" class="card">
 <input type="hidden" name="key" value="${esc(key)}">
 <h2 style="margin-top:0">NEFESH Premium de cortesia</h2>
@@ -241,5 +247,27 @@ export function crashesPage(key: string, rows: { message: string; stack: string;
   return page(`<h1>Falhas da app</h1>
 <p class="m">Relatórios anónimos (sem nome, e-mail, conta nem dados de saúde), guardados 90 dias. ${mail ? 'O resumo diário vai por e-mail às 8h.' : 'O resumo por e-mail ainda não está configurado (ver docs/FALHAS.md).'}</p>
 ${list}
+<form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
+}
+
+/** Custo real da IA (para o plano de negócio): por pessoa ativa por mês e por função. */
+export function aiCostPage(key: string, s: { from: string; days: number; usd: number; calls: number; people: number; perPersonMonth: { mean: number; median: number; p90: number }; features: { label: string; calls: number; usd: number; people: number; perCall: number }[]; daily: { day: string; calls: number; usd: number; people: number }[] }, days: number, fx: number) {
+  const brl = (usd: number) => `R$ ${(usd * fx).toFixed(2).replace('.', ',')}`;
+  const pm = s.perPersonMonth;
+  const verdict = !s.people ? '' : pm.mean * fx <= 6 ? '✅ Dentro do uso normal do plano (até R$ 6 por pessoa por mês): o estágio 1 paga-se.' : pm.mean * fx <= 10 ? '⚠️ Entre o uso normal e o intenso (R$ 6 a 10): o estágio 1 paga-se mais tarde; acompanhar.' : '❗ Acima de R$ 10 por pessoa por mês: com este uso, o estágio 1 não se paga. Rever preços antes do lançamento.';
+  const feats = s.features.map((f) => `<tr><td>${esc(f.label)}</td><td>${f.calls}</td><td>${f.people}</td><td>${brl(f.perCall)}</td><td>${brl(f.usd)}</td></tr>`).join('');
+  const daily = s.daily.slice(0, 31).map((d) => `<tr><td>${esc(d.day)}</td><td>${d.people}</td><td>${d.calls}</td><td>${brl(d.usd)}</td></tr>`).join('');
+  const tabs = [7, 30, 90].map((n) => `<form method="post" action="/admin/ia" style="display:inline"><input type="hidden" name="key" value="${esc(key)}"><input type="hidden" name="dias" value="${n}"><button class="${n === days ? '' : 'ghost'}">${n} dias</button></form>`).join(' ');
+  return page(`<h1>Custo da IA</h1>
+<p class="m">Uso real desde ${esc(s.from)} (${s.days} ${s.days === 1 ? 'dia' : 'dias'} com dados). Câmbio de referência: US$ 1 = R$ ${fx.toFixed(2).replace('.', ',')}. Uma "pessoa" é um aparelho ou uma conta (código irreversível). Os valores por mês projetam os dias que já existem para 30 dias.</p>
+<p>${tabs}</p>
+${s.people ? `<div class="card"><h2 style="margin-top:0">Por pessoa ativa, por mês</h2>
+<p style="font-size:28px;margin:4px 0"><b>${brl(pm.mean)}</b> <span class="m">em média</span></p>
+<p class="m" style="margin:0">Metade das pessoas gasta até ${brl(pm.median)}; 9 em cada 10 até ${brl(pm.p90)}.</p>
+<p style="margin:10px 0 0">${verdict}</p>
+<p class="m" style="margin:6px 0 0">${s.people} pessoas · ${s.calls} pedidos · total ${brl(s.usd)} (US$ ${s.usd.toFixed(2)})</p></div>
+<div class="card"><h2 style="margin-top:0">Por função</h2><table style="width:100%;font-size:14px"><tr><th align="left">Função</th><th>Pedidos</th><th>Pessoas</th><th>Por pedido</th><th>Total</th></tr>${feats}</table></div>
+<div class="card"><h2 style="margin-top:0">Por dia</h2><table style="width:100%;font-size:14px"><tr><th align="left">Dia</th><th>Pessoas</th><th>Pedidos</th><th>Custo</th></tr>${daily}</table></div>` : '<div class="card"><p style="margin:0">Ainda sem pedidos registados. O contador começa a contar a partir de agora.</p></div>'}
+<p class="m">Referência do plano: uso normal ≈ R$ 6 por pagante por mês (a app paga-se em 2027–2028); uso intenso ≈ R$ 10 (não se paga sem mudar preços).</p>
 <form method="post" action="/admin"><input type="hidden" name="key" value="${esc(key)}"><button class="ghost">Voltar</button></form>`);
 }
