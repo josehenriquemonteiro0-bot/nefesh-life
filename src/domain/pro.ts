@@ -21,6 +21,10 @@ export interface ProStudent {
   /** nutricionistas: último dia registado pelo paciente e dias com registos na última semana */
   nutriLast?: (import('./proNutri').NutriDayLog & { day: string }) | null;
   nutriWeek?: number;
+  /** terapias integrativas: dias com hábitos marcados na última semana, adesão (%) e a última nota do paciente */
+  wellWeek?: number;
+  wellPct?: number | null;
+  wellNote?: string | null;
   /** os outros profissionais do mesmo paciente (só com autorização dele) */
   team?: { pro: string; kind: string; summary: string[] }[];
   code: string;
@@ -77,6 +81,12 @@ function applyFastRx(S: AppState, j: ParsedWorkoutPlan['jejum'], pro: string) {
 /** Põe o plano do personal na app (no mesmo sítio do plano lido de PDF). Códigos de nutricionistas vão para a Nutrição. */
 export function applyProPlan(S: AppState, r: { code: string; pro: string; plan: ParsedWorkoutPlan | null; version: number; kind?: string }) {
   if (isNutriKind(r.kind)) return applyNutriPlan(S, r);
+  if (r.kind === 'integrativo') {
+    // terapias integrativas: o plano de bem-estar vai para a Mente (ver proWell.ts)
+    S.wellLink = { code: r.code, pro: r.pro, version: r.version, at: todayKey() };
+    if (r.plan?.bemestar) S.wellPlan = r.plan.bemestar;
+    return;
+  }
   const name = `NEFESH Pro · ${r.pro}`;
   S.proLink = { code: r.code, pro: r.pro, version: r.version, at: todayKey() };
   if (!r.plan) return;

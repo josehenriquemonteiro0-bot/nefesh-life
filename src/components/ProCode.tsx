@@ -114,6 +114,7 @@ export function ProCodeCard() {
       const r = await proApi<{ code: string; pro: string; kind?: string; plan: ParsedWorkoutPlan | null; version: number }>('aluno/ligar', { code: normCode(code) });
       update((d) => applyProPlan(d, r));
       if (isNutriKind(r.kind)) { toast(`Ligado a ${r.pro} (nutrição): o plano alimentar fica em Saúde → Nutrição.`); return; }
+      if (r.kind === 'integrativo') { toast(`Ligado a ${r.pro} (práticas integrativas): o plano de bem-estar fica em Saúde → Mente.`); return; }
       toast(r.plan ? `Treino de ${r.pro} carregado: ${r.plan.workouts.length} ${r.plan.workouts.length === 1 ? 'treino' : 'treinos'}.` : `Ligado a ${r.pro}. O treino aparece assim que estiver pronto.`);
     } catch (e) {
       setErr((e as Error).message);

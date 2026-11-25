@@ -156,7 +156,7 @@ export function NutriLinkCard() {
     setBusy(true);
     try {
       const r = await proApi<{ code: string; pro: string; kind?: string; plan: ParsedWorkoutPlan | null; version: number }>('aluno/ligar', { code: normCode(code) });
-      if (!isNutriKind(r.kind)) { setErr(`Este código é de ${r.pro}, que é personal: use-o em Saúde → Treino → Com personal.`); return; }
+      if (!isNutriKind(r.kind)) { setErr(r.kind === 'integrativo' ? `Este código é de ${r.pro}, terapeuta de práticas integrativas: use-o em Saúde → Mente.` : `Este código é de ${r.pro}, que é personal: use-o em Saúde → Treino → Com personal.`); return; }
       update((d) => applyNutriPlan(d, r));
       toast(r.plan?.nutri ? `Plano alimentar de ${r.pro} carregado. 🥗` : `Ligado a ${r.pro}. O plano aparece assim que estiver pronto.`);
     } catch (e) {

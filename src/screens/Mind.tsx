@@ -4,6 +4,7 @@ import { MOODS, MOOD_LABEL, STRESS_LABEL, TECHNIQUES, gratitudeLog, logBreath, m
 import { BreathSession } from '../components/BreathSession';
 import { useStore } from '../state/store';
 import { MeditationLibrary } from '../components/MeditationLibrary';
+import { WellLinkCard } from '../components/WellLink';
 import { ChaveDoDiaCard } from '../components/ChaveDoDiaCard';
 import { HabitsCard } from './Home';
 import { homeVisibility } from '../domain/firstWeek';
@@ -69,6 +70,8 @@ export function Mind({ go }: { go: Nav }) {
           <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => go('pros')}>Ver profissionais</button>
         </section>
       )}
+
+      <WellLinkCard />
 
       <MeditationLibrary />
 

@@ -17,6 +17,8 @@ export interface ParsedWorkoutPlan {
   jejum?: { protocol: import('./fasting').FastProtocol; open: string; lowDays?: number[]; notes?: string };
   /** plano alimentar prescrito por um nutricionista ou médico (NEFESH Pro) */
   nutri?: import('./proNutri').NutriRx;
+  /** plano de bem-estar de um terapeuta de práticas integrativas (NEFESH Pro) */
+  bemestar?: import('./proWell').WellPlan;
 }
 
 export interface ParsedPlan { is_plan: boolean; meals: PlanMeal[]; daily_kcal: number; daily_protein_g: number; professional: string; notes: string }

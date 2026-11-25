@@ -18,6 +18,7 @@ import { ShareReport } from '../components/ProReport';
 import { DirectoryEditor } from '../components/ProDirectory';
 import { FastRxEditor, NutriEditor, NutriLogs, NutriVisits, TeamCard } from '../components/ProNutri';
 import { isNutriKind } from '../domain/proNutriClient';
+import { WellEditor, WellLogs } from '../components/ProWell';
 import { profileText } from '../domain/proProfile';
 import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
@@ -32,7 +33,15 @@ const AREAS: [string, string, string, string][] = [
   ['personal', '🏋️', 'Personal trainer', 'Treinos, periodização, avaliações físicas'],
   ['nutricionista', '🥗', 'Nutricionista', 'Planos alimentares, jejum, adesão, consultas'],
   ['medico', '🩺', 'Médico(a)', 'Ficha clínica, plano alimentar, análises, consultas'],
+  ['integrativo', '🌿', 'Terapias integrativas', 'Plano de bem-estar, hábitos, práticas guiadas, sessões'],
 ];
+/** O que escrever no registo de cada área. */
+const REG_HINT: Record<string, string> = {
+  nutricionista: 'CRN no Brasil, cédula da Ordem dos Nutricionistas em Portugal',
+  medico: 'CRM no Brasil, cédula da Ordem dos Médicos em Portugal',
+  integrativo: 'formação ou certificação: naturopatia, terapias integrativas…',
+  personal: 'CREF no Brasil, título profissional em Portugal',
+};
 const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅', adesao: '📉', fome: '🍽️', peso: '⚖️', checkin: '📝', retorno: '📅' };
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
@@ -449,20 +458,23 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
       <>
         <h1>NEFESH Life Pro</h1>
         <section className="card hero">
-          <h2 style={{ marginTop: 0 }}>Para personais, nutricionistas e médicos</h2>
-          <p className="small">Personal: monte o treino dos alunos e veja cada treino concluído. Nutricionista ou médico: monte o plano alimentar dos pacientes e acompanhe a adesão. Cada um recebe um código e tudo entra na app dele.</p>
+          <h2 style={{ marginTop: 0 }}>Para personais, nutricionistas, médicos e terapeutas</h2>
+          <p className="small">Personal: monte o treino dos alunos e veja cada treino concluído. Nutricionista ou médico: monte o plano alimentar dos pacientes e acompanhe a adesão. Terapeuta de práticas integrativas: monte um plano de bem-estar com hábitos e práticas guiadas. Cada um recebe um código e tudo entra na app dele.</p>
           <button className="btn" onClick={openAccount}>Entrar ou criar conta</button>
         </section>
       </>
     );
   const nutri = isNutriKind(pro?.kind);
-  const who = nutri ? 'paciente' : 'aluno';
+  const well = pro?.kind === 'integrativo';
+  const who = nutri || well ? 'paciente' : 'aluno';
+  if (edit && well) return <WellEditor student={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
+  if (logs && well) return <WellLogs student={logs} onClose={() => setLogs(null)} />;
   if (edit && nutri) return <NutriEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
   if (edit) return <PlanEditor kind={pro?.kind} student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
   if (reportOf) return <ShareReport student={reportOf} onClose={() => setReportOf(null)} />;
   if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
-  if (profileOf) return <ProfileEditor nutri={nutri} student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
+  if (profileOf) return <ProfileEditor nutri={nutri || well} student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
   if (visitsOf) return <NutriVisits student={visitsOf} onClose={() => { setVisitsOf(null); load(); }} />;
   if (logs && nutri) return <NutriLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
   if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
@@ -486,8 +498,9 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             ))}
           </div>
           <label className="small" style={{ display: 'block', marginTop: 10 }}>Nome profissional<input className="field" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          {form.kind === 'integrativo' && <p className="small mute" style={{ margin: '6px 0 0' }}>Para terapeutas de práticas integrativas (naturopatia e outras): ficha e anamnese, plano de bem-estar com hábitos diários e práticas guiadas da app, adesão, conversa, sessões e notas privadas. Sem prescrição de dieta nem de medicação: as práticas integrativas complementam o acompanhamento médico.</p>}
           {isNutriKind(form.kind) && <p className="small mute" style={{ margin: '6px 0 0' }}>{form.kind === 'medico' ? 'Para médicos: ficha clínica e anamnese, plano alimentar e jejum, análises e medidas partilhadas pelo paciente, check-ins semanais, consultas de retorno e notas privadas.' : 'Para nutricionistas: ficha e anamnese, construtor de planos alimentares com a tabela TACO, jejum, adesão diária, check-ins semanais, consultas e notas privadas.'}</p>}
-          <label className="small" style={{ display: 'block', marginTop: 8 }}>Registo profissional ({form.kind === 'nutricionista' ? 'CRN no Brasil, cédula da Ordem dos Nutricionistas em Portugal' : form.kind === 'medico' ? 'CRM no Brasil, cédula da Ordem dos Médicos em Portugal' : 'CREF no Brasil, título profissional em Portugal'})<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
+          <label className="small" style={{ display: 'block', marginTop: 8 }}>{form.kind === 'integrativo' ? 'Formação' : 'Registo profissional'} ({REG_HINT[form.kind] ?? REG_HINT.personal})<input className="field" value={form.reg} maxLength={40} onChange={(e) => setForm({ ...form, reg: e.target.value })} /></label>
           {termsLabel}
           <button className="btn" style={{ marginTop: 12 }} disabled={!termsOk} onClick={() => proApi<{ pro: ProInfo }>('registar', { ...form, terms: PRO_TERMS }).then((r) => setPro(r.pro)).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir acesso'}</button>
         </section>
@@ -514,7 +527,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
           {addArea && (
             <section className="card pro-ask">
               <p className="small" style={{ margin: '0 0 6px' }}><b>Também é {AREAS.find((x) => x[0] === addArea.kind)?.[2].toLowerCase()}?</b> {isTestCopy() ? 'Na cópia de teste fica ativo logo.' : 'A equipa NEFESH confirma o registo e ativa a área; os seus alunos e pacientes ficam separados por área.'}</p>
-              <input className="field sm" style={{ width: '100%' }} maxLength={40} value={addArea.reg} onChange={(e) => setAddArea({ ...addArea, reg: e.target.value })} placeholder={addArea.kind === 'nutricionista' ? 'Registo: CRN (Brasil) ou cédula da Ordem dos Nutricionistas' : addArea.kind === 'medico' ? 'Registo: CRM (Brasil) ou cédula da Ordem dos Médicos' : 'Registo: CREF (Brasil) ou título profissional'} aria-label="Registo profissional da nova área" />
+              <input className="field sm" style={{ width: '100%' }} maxLength={40} value={addArea.reg} onChange={(e) => setAddArea({ ...addArea, reg: e.target.value })} placeholder={`${addArea.kind === 'integrativo' ? 'Formação' : 'Registo'}: ${REG_HINT[addArea.kind] ?? REG_HINT.personal}`} aria-label="Registo profissional da nova área" />
               {termsLabel}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
                 <button className="btn sm" disabled={addArea.reg.trim().length < 3 || !termsOk} onClick={() => proApi<{ areas: ProArea[] }>('area/pedir', { ...addArea, terms: PRO_TERMS }).then((r) => { setAreas(r.areas); setAddArea(null); toast(isTestCopy() ? 'Área ativada. Toque nela para trocar.' : 'Pedido enviado: avisamos quando a área for validada.'); }).catch((e) => setErr((e as Error).message))}>{isTestCopy() ? 'Ativar' : 'Pedir validação'}</button>
@@ -522,7 +535,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
               </div>
             </section>
           )}
-          {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber {nutri ? 'quando os pacientes lhe escrevem' : 'quando os alunos concluem um treino'}.</p>}
+          {!S.notifications && <p className="small warn">Ative as notificações no Perfil para saber {nutri || well ? 'quando os pacientes lhe escrevem' : 'quando os alunos concluem um treino'}.</p>}
           {students.some((s) => s.alerts?.length) && (
             <section className="card pro-attn">
               <h2 style={{ marginTop: 0 }}>Precisa de atenção</h2>
@@ -543,28 +556,35 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             {askProfile && (
               <div className="pro-ask">
                 <p className="small" style={{ margin: 0 }}><b>✓ Código de {askProfile.name}: {askProfile.code}</b></p>
-                <p className="small" style={{ margin: '6px 0 8px' }}>{nutri ? `Quer preencher a ficha de ${askProfile.name} (medidas, objetivo, anamnese: doenças, medicação, alergias, rotina)? As metas do plano são sugeridas a partir dela.` : `Quer registar um perfil mais detalhado de ${askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.`}</p>
+                <p className="small" style={{ margin: '6px 0 8px' }}>{well ? `Quer preencher a ficha de ${askProfile.name} (objetivo, doenças, medicação, alergias, rotina)? Ajuda a montar o plano de bem-estar com segurança.` : nutri ? `Quer preencher a ficha de ${askProfile.name} (medidas, objetivo, anamnese: doenças, medicação, alergias, rotina)? As metas do plano são sugeridas a partir dela.` : `Quer registar um perfil mais detalhado de ${askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.`}</p>
                 <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
-                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code) ?? ({ code: askProfile.code, name: askProfile.name, profile: null } as ProStudent); setAskProfile(null); setProfileOf(st); }}>{nutri ? 'Preencher ficha' : 'Registar perfil'}</button>
-                  <button className="btn ghost sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code); setAskProfile(null); if (st) setEdit(st); }}>{nutri ? 'Agora não, montar plano' : 'Agora não, montar treino'}</button>
+                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code) ?? ({ code: askProfile.code, name: askProfile.name, profile: null } as ProStudent); setAskProfile(null); setProfileOf(st); }}>{nutri || well ? 'Preencher ficha' : 'Registar perfil'}</button>
+                  <button className="btn ghost sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code); setAskProfile(null); if (st) setEdit(st); }}>{nutri || well ? 'Agora não, montar plano' : 'Agora não, montar treino'}</button>
                 </div>
               </div>
             )}
             {askPlan && !askProfile && (
               <div className="pro-ask">
-                <p className="small" style={{ margin: '0 0 8px' }}>{nutri ? 'Ficha' : 'Perfil'} de {askPlan.name} guardad{nutri ? 'a' : 'o'}. Montar o {nutri ? 'plano alimentar' : 'treino'} agora?</p>
+                <p className="small" style={{ margin: '0 0 8px' }}>{nutri || well ? 'Ficha' : 'Perfil'} de {askPlan.name} guardad{nutri || well ? 'a' : 'o'}. Montar o {well ? 'plano de bem-estar' : nutri ? 'plano alimentar' : 'treino'} agora?</p>
                 <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
-                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askPlan.code) ?? askPlan; setAskPlan(null); setEdit(st); }}>{nutri ? 'Montar plano' : 'Montar treino'}</button>
+                  <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askPlan.code) ?? askPlan; setAskPlan(null); setEdit(st); }}>{nutri || well ? 'Montar plano' : 'Montar treino'}</button>
                   <button className="link small inline" onClick={() => setAskPlan(null)}>Depois</button>
                 </div>
               </div>
             )}
           </section>
-          {students.length === 0 && <p className="small mute">{nutri ? 'Ainda sem pacientes. Crie um código para cada paciente e monte o plano alimentar dele.' : 'Ainda sem alunos. Crie um código para cada aluno e monte o treino dele.'}</p>}
+          {students.length === 0 && <p className="small mute">{well ? 'Ainda sem pacientes. Crie um código para cada paciente e monte o plano de bem-estar dele.' : nutri ? 'Ainda sem pacientes. Crie um código para cada paciente e monte o plano alimentar dele.' : 'Ainda sem alunos. Crie um código para cada aluno e monte o treino dele.'}</p>}
           {students.map((s) => (
             <section className="card pro-student" key={s.code}>
               <div className="row"><h2 style={{ margin: 0 }}>{s.name}</h2><span className="small mute">{s.code}</span></div>
-              {nutri ? (
+              {well ? (
+                <p className="small" style={{ margin: '4px 0' }}>
+                  {s.linked ? '✓ Ligado na app' : '⏳ À espera que o paciente use o código'}
+                  {s.plan?.bemestar ? ` · plano enviado (${s.plan.bemestar.habits.length} ${s.plan.bemestar.habits.length === 1 ? 'hábito' : 'hábitos'})` : s.draft ? ' · plano por enviar' : ' · plano por montar'}
+                  {s.linked && s.plan?.bemestar ? ` · ${s.wellWeek ?? 0} ${s.wellWeek === 1 ? 'dia' : 'dias'} com hábitos nos últimos 7${s.wellPct != null ? `, adesão ${s.wellPct}%` : ''}` : ''}
+                  {s.wellNote ? ` · "${s.wellNote}"` : ''}
+                </p>
+              ) : nutri ? (
                 <p className="small" style={{ margin: '4px 0' }}>
                   {s.linked ? '✓ Ligado na app' : '⏳ À espera que o paciente use o código'}
                   {s.plan?.nutri ? ' · plano enviado' : s.draft ? ' · plano por enviar' : ' · plano por montar'}
@@ -578,17 +598,17 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
                 {s.linked ? ` · ${s.week} ${s.week === 1 ? 'treino' : 'treinos'} nos últimos 7 dias` : ''}
               </p>
               )}
-              {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 {nutri ? 'Plano' : 'Treino'} guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
+              {s.draft && <p className="small gold" style={{ margin: '0 0 6px' }}>📝 {nutri || well ? 'Plano' : 'Treino'} guardado, ainda não enviado{s.draftAt ? ` (${new Date(s.draftAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })})` : ''}</p>}
               {s.profile && profileText(s.profile) && <p className="small mute pro-prof-line" style={{ margin: '0 0 6px' }}>👤 {profileText(s.profile)}</p>}
               <TeamCard team={s.team} compact />
               {s.last && <p className="small mute" style={{ margin: '0 0 6px' }}>Último: {s.last.workout}, {shortDate(s.last.day)} · {STATUS[s.last.status] ?? s.last.status}{s.last.note ? ` · "${s.last.note}"` : ''}</p>}
               <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                <button className="btn sm" onClick={() => setEdit(s)}>{nutri ? (s.draft ? 'Continuar plano' : s.plan ? 'Editar plano' : 'Montar plano') : s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
-                <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{nutri ? (s.profile ? 'Ficha' : '+ Ficha') : s.profile ? 'Perfil' : '+ Perfil'}</button>
+                <button className="btn sm" onClick={() => setEdit(s)}>{nutri || well ? (s.draft ? 'Continuar plano' : s.plan ? 'Editar plano' : 'Montar plano') : s.draft ? 'Continuar treino' : s.plan ? 'Editar treino' : 'Montar treino'}</button>
+                <button className="btn ghost sm" onClick={() => setProfileOf(s)}>{nutri || well ? (s.profile ? 'Ficha' : '+ Ficha') : s.profile ? 'Perfil' : '+ Perfil'}</button>
                 <button className="btn ghost sm" onClick={() => setChatOf({ s, ref: '' })}>💬 Conversa{s.unread ? <span className="badge">{s.unread}</span> : null}</button>
                 {s.shareAt && <button className="btn ghost sm" onClick={() => setReportOf(s)}>📊 Relatório</button>}
-                {nutri && <button className="btn ghost sm" onClick={() => setVisitsOf(s)}>🗓️ Consultas</button>}
-                <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>
+                {(nutri || well) && <button className="btn ghost sm" onClick={() => setVisitsOf(s)}>🗓️ {well ? 'Sessões' : 'Consultas'}</button>}
+                {!well && <button className="btn ghost sm" onClick={() => setAssessOf(s)}>Avaliações</button>}
                 <button className="btn ghost sm" onClick={() => setLogs(s)}>Registos</button>
                 {!s.linked && <a className="btn ghost sm" href={whatsappShare(inviteText(s.name, s.code, pro.name, appLink))} target="_blank" rel="noreferrer">Enviar código</a>}
                 <button className="link small inline" onClick={() => confirm(`Apagar ${s.name} e os registos?`) && proApi('aluno/apagar', { code: s.code }).then(load)}>Apagar</button>

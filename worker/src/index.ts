@@ -385,6 +385,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         'aluno/escrever': () => pro.studentWrite(db, env.LIMITS as never, key!, b),
         'aluno/partilha': () => pro.studentShare(db, key!, b),
         'aluno/dia': () => pro.logNutriDay(db, key!, b),
+        'aluno/habitos': () => pro.logWellnessDay(db, key!, b),
         'aluno/checkin': () => pro.studentCheckin(db, env.LIMITS as never, key!, b),
         'aluno/equipa': () => pro.studentTeam(db, key!, b),
       };

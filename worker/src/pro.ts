@@ -6,6 +6,7 @@
  * Tabelas: pros, pro_students, pro_logs (CREATE IF NOT EXISTS; reversível com DROP TABLE).
  */
 import { localNow, sendPush, type KeyStore } from './push';
+import { WELL_LOG, cleanWell, isWellPro, logWellDay, wellSummary, wellTeamSummary } from './proWell';
 import type { DB } from './social';
 import { isQuiet } from './notify';
 import { cleanProfile, profileEmpty, type StudentProfile } from '../../src/domain/proProfile';
@@ -16,6 +17,8 @@ import { checkinConcern, cleanCheckin, cleanDayLog, cleanNutri, nutriAttention, 
 export const isNutriPro = (kind?: string | null) => kind === 'nutricionista' || kind === 'medico';
 /** Registo diário de alimentação do paciente (na tabela pro_logs, com este nome de 'treino'). */
 export const NUTRI_LOG = '__nutri';
+/** Módulo de cada área: personal (treino), nutri (nutricionista e médico) ou integrativo (terapias integrativas). */
+export const moduleOf = (kind?: string | null) => (isNutriPro(kind) ? 'nutri' : isWellPro(kind) ? 'integrativo' : 'personal');
 
 type R = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown> = { ok: true }): R => ({ status: 200, body });
@@ -79,7 +82,9 @@ export function cleanPlan(p: unknown) {
   const jejum = j && ['12:12', '14:10', '16:8', '18:6', '20:4', '5:2'].includes(jp) && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(j.open)) && (jp !== '5:2' || lowDays.length === 2)
     ? { protocol: jp, open: String(j.open), ...(jp === '5:2' ? { lowDays } : {}), notes: str(j.notes, 200) } : null;
   const nutri = cleanNutri(o.nutri);
+  const bemestar = cleanWell(o.bemestar);
   return {
+    ...(bemestar ? { bemestar } : {}),
     ...(jejum ? { jejum } : {}),
     ...(nutri ? { nutri } : {}),
     is_workout: true, workouts, per_week: Math.max(1, Math.min(7, Math.round(Number(o.per_week) || workouts.length || 3))), professional: str(o.professional, 60), notes: str(o.notes, 600),
@@ -131,9 +136,9 @@ async function acceptTerms(db: DB, uid: string, now: Date) {
 
 export async function registerPro(db: DB, uid: string, b: Record<string, unknown>, now = new Date(), auto = false): Promise<R> {
   const name = str(b.name, 60), reg = str(b.reg, 40) || (auto ? 'teste' : '');
-  const kind = ['personal', 'nutricionista', 'medico', 'outro'].includes(String(b.kind)) ? String(b.kind) : 'personal';
+  const kind = ['personal', 'nutricionista', 'medico', 'integrativo', 'outro'].includes(String(b.kind)) ? String(b.kind) : 'personal';
   if (name.length < 2) return bad('Escreva o seu nome profissional.');
-  if (reg.length < 3) return bad('Escreva o seu registo profissional (CREF ou título profissional).');
+  if (reg.length < 3) return bad(kind === 'integrativo' ? 'Escreva a sua formação ou certificação (por exemplo, naturopatia).' : 'Escreva o seu registo profissional (CREF ou título profissional).');
   if (b.terms !== PRO_TERMS) return bad(TERMS_MSG);
   await acceptTerms(db, uid, now);
   const cur = await proOf(db, uid);
@@ -157,14 +162,15 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
   const nutriPro = isNutriPro(pro.kind);
   const { results } = await db.prepare('SELECT s.code, s.name, s.uid, s.plan, s.version, s.status, s.updated, k.kind AS module FROM pro_students s LEFT JOIN pro_student_kind k ON k.code = s.code WHERE s.pro = ? ORDER BY s.created DESC').bind(uid).all<{ code: string; name: string; uid: string | null; plan: string | null; version: number; status: string; updated: string; module: string | null }>();
   const students = [];
-  const mine = nutriPro ? 'nutri' : 'personal';
+  const mine = moduleOf(pro.kind);
+  const wellPro = isWellPro(pro.kind);
   for (const s of results) {
     // cada área (personal / nutrição) mostra só os seus; os antigos sem área contam pelo plano
-    const module = s.module ?? (s.plan && /"nutri"|"jejum"/.test(s.plan) && !/"exercises":\[\{/.test(s.plan) ? 'nutri' : 'personal');
+    const module = s.module ?? (s.plan && /"bemestar"/.test(s.plan) ? 'integrativo' : s.plan && /"nutri"|"jejum"/.test(s.plan) && !/"exercises":\[\{/.test(s.plan) ? 'nutri' : 'personal');
     if (module !== mine) continue;
     const { results: recentLogs } = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY day DESC, created DESC LIMIT 12').bind(s.code).all<{ day: string; workout: string; data: string; created: string }>();
     const last = recentLogs[0] ?? null;
-    const parsed = recentLogs.filter((l) => l.workout !== NUTRI_LOG).map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
+    const parsed = recentLogs.filter((l) => l.workout !== NUTRI_LOG && l.workout !== WELL_LOG).map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
     const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND workout != '__nutri' AND json_extract(data, '$.status') != 'saltado'").bind(s.code, weekAgo(now)).first<{ n: number }>();
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = s.plan ? (JSON.parse(s.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
@@ -185,11 +191,16 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
       nutriLast = days[0] ? { day: days[0].day, ...days[0].data } : null;
       nutriWeek = days.filter((d) => d.day >= weekAgo(now) && d.data.meals.some((m) => m.status)).length;
     }
+    let well: Awaited<ReturnType<typeof wellSummary>> | null = null;
+    if (wellPro) {
+      well = await wellSummary(db, s.code, { linked: !!s.uid, hasPlan: !!plan?.bemestar, planSince: s.updated, hasDraft: !!dr }, now);
+      alerts = well.alerts;
+    }
     const unread = await unreadFor(db, s.code, 'pro');
     const sh = await db.prepare('SELECT updated FROM pro_share WHERE code = ?').bind(s.code).first<{ updated: string }>();
-    const lastW = recentLogs.find((l) => l.workout !== NUTRI_LOG) ?? null;
+    const lastW = recentLogs.find((l) => l.workout !== NUTRI_LOG && l.workout !== WELL_LOG) ?? null;
     const team = await teamOf(db, s.uid, s.code, now);
-    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}), ...(team.length ? { team } : {}) });
+    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}), ...(well ? { wellWeek: well.wellWeek, wellPct: well.wellPct, wellNote: well.wellNote } : {}), ...(team.length ? { team } : {}) });
   }
   return ok({ pro, students, areas });
 }
@@ -213,7 +224,7 @@ export async function newStudent(db: DB, uid: string, b: Record<string, unknown>
     const code = studentCode();
     if (await db.prepare('SELECT 1 FROM pro_students WHERE code = ?').bind(code).first()) continue;
     await db.prepare("INSERT INTO pro_students (code, pro, name, version, status, created, updated) VALUES (?, ?, ?, 0, 'convite', ?, ?)").bind(code, uid, name, at, at).run();
-    await db.prepare('INSERT OR REPLACE INTO pro_student_kind (code, kind) VALUES (?, ?)').bind(code, isNutriPro(pro.kind) ? 'nutri' : 'personal').run();
+    await db.prepare('INSERT OR REPLACE INTO pro_student_kind (code, kind) VALUES (?, ?)').bind(code, moduleOf(pro.kind)).run();
     if (b.profile && !profileEmpty(cleanProfile(b.profile))) await putProfile(db, code, b.profile, now);
     return ok({ code, name });
   }
@@ -230,11 +241,17 @@ export async function savePlan(db: DB, uid: string, b: Record<string, unknown>, 
   const plan = cleanPlan({ ...raw, professional: pro?.name, start: raw.start || (Number(raw.weeks) || (Array.isArray(raw.phases) && raw.phases.length) ? now.toISOString().slice(0, 10) : '') });
   // o jejum só pode ser prescrito por nutricionistas e médicos
   if (!isNutriPro(pro?.kind)) { delete (plan as { jejum?: unknown }).jejum; delete (plan as { nutri?: unknown }).nutri; }
+  // terapias integrativas: só o plano de bem-estar (sem treino, plano alimentar nem jejum); as outras áreas não o enviam
+  if (isWellPro(pro?.kind)) {
+    plan.workouts = [];
+    if (!plan.bemestar) return bad('Acrescente pelo menos um hábito, uma prática ou uma orientação.');
+    if (plan.bemestar.weeks && !plan.bemestar.start) plan.bemestar.start = now.toISOString().slice(0, 10);
+  } else delete (plan as { bemestar?: unknown }).bemestar;
   // plano alimentar com duração: começa no dia em que é enviado (se ainda não tinha começado)
   if (plan.nutri?.weeks && !plan.nutri.start) plan.nutri.start = now.toISOString().slice(0, 10);
   if (plan.nutri && !plan.nutri.weeks) delete plan.nutri.start;
   if (plan.nutri && !nutriFilled(plan.nutri)) delete (plan as { nutri?: unknown }).nutri;
-  if (!plan.workouts.length && !plan.jejum && !plan.nutri) return bad(isNutriPro(pro?.kind) ? 'Acrescente pelo menos um alimento ao plano.' : 'Acrescente pelo menos um treino com um exercício.');
+  if (!plan.workouts.length && !plan.jejum && !plan.nutri && !plan.bemestar) return bad(isNutriPro(pro?.kind) ? 'Acrescente pelo menos um alimento ao plano.' : 'Acrescente pelo menos um treino com um exercício.');
   await db.batch([
     db.prepare('UPDATE pro_students SET plan = ?, version = version + 1, updated = ? WHERE code = ?').bind(JSON.stringify(plan), now.toISOString(), s.code),
     db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code),
@@ -391,8 +408,8 @@ export async function studentPlan(db: DB, key: string, b: Record<string, unknown
   let plan: unknown = null;
   try { plan = s.plan ? JSON.parse(s.plan) : null; } catch { plan = null; }
   const nutri = isNutriPro(s.pro_kind);
-  const visit = nutri ? await db.prepare("SELECT day, time, text FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(s.code, now.toISOString().slice(0, 10)).first<{ day: string; time: string; text: string }>() : null;
-  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, now)), nextVisit: visit ?? null } : {}) });
+  const visit = nutri || isWellPro(s.pro_kind) ? await db.prepare("SELECT day, time, text FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(s.code, now.toISOString().slice(0, 10)).first<{ day: string; time: string; text: string }>() : null;
+  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, now)), nextVisit: visit ?? null } : isWellPro(s.pro_kind) ? { nextVisit: visit ?? null } : {}) });
 }
 
 /** O aluno desliga-se do personal (o histórico do personal fica, sem novos registos). */
@@ -509,6 +526,13 @@ export async function deleteNote(db: DB, uid: string, b: Record<string, unknown>
 }
 
 /** Dia de alimentação do paciente (refeições do plano, adesão, fome…): um registo por dia, corrigir substitui. */
+export async function logWellnessDay(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  await logWellDay(db, s.code, b, now);
+  return ok();
+}
+
 export async function logNutriDay(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
   const s = await linkedStudent(db, key, b.code);
   if (!s) return bad('Código não ligado a este telemóvel.', 404);
@@ -730,7 +754,8 @@ export async function teamOf(db: DB, studentUid: string | null, code: string, no
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = r.plan ? (JSON.parse(r.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
     const summary: string[] = [];
-    if (isNutriPro(r.kind)) {
+    if (isWellPro(r.kind)) summary.push(...wellTeamSummary(plan as never));
+    else if (isNutriPro(r.kind)) {
       const n = plan?.nutri;
       if (n) {
         const tg = n.targets;
@@ -753,7 +778,7 @@ export async function teamOf(db: DB, studentUid: string | null, code: string, no
 
 /* ───────── diretório de profissionais verificados ───────── */
 
-const KINDS = ['personal', 'nutricionista', 'medico', 'outro'];
+const KINDS = ['personal', 'nutricionista', 'medico', 'integrativo', 'outro'];
 /** Contacto público: link https, e-mail ou telefone (só dígitos e +). */
 export function cleanContact(v: unknown): string {
   const t = String(v ?? '').trim().slice(0, 200);
@@ -787,7 +812,7 @@ export async function directory(db: DB): Promise<R> {
 
 /* ───────── áreas profissionais (dupla formação: personal + nutricionista, etc.) ───────── */
 
-const AREA_KINDS = ['personal', 'nutricionista', 'medico'];
+const AREA_KINDS = ['personal', 'nutricionista', 'medico', 'integrativo'];
 export interface ProArea { kind: string; reg: string; status: string }
 /** As áreas do profissional: a atual (a do registo) e as pedidas depois, cada uma com o seu registo e estado. */
 export async function areasOf(db: DB, uid: string, now = new Date()): Promise<ProArea[]> {

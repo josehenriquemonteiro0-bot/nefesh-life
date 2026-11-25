@@ -101,6 +101,8 @@ export interface DayLog {
   /** ritual da noite feito neste dia, e o que a pessoa escreveu para esvaziar a cabeça (só no telemóvel) */
   ritual?: boolean;
   nightDump?: { worries?: string; tomorrow?: string };
+  /** hábitos do plano de bem-estar feitos neste dia (índices) */
+  wellDone?: number[];
 }
 
 export interface Bottle {
@@ -161,6 +163,10 @@ export interface AppState {
   /** o aluno partilha o resumo de bem-estar com o personal (autorização revogável); at = último envio */
   /** NEFESH Pro: nutricionista (ou médico) a que a pessoa está ligada, o plano dele e a partilha do resumo */
   nutriLink?: { code: string; pro: string; version: number; at: string };
+  /** terapeuta de práticas integrativas (NEFESH Pro): ligação, plano de bem-estar e partilha do resumo */
+  wellLink?: { code: string; pro: string; version: number; at: string };
+  wellPlan?: import('./proWell').WellPlan | null;
+  wellShare?: { on: boolean; at?: string };
   proNutriRx?: import('./proNutri').NutriRx | null;
   nutriShare?: { on: boolean; at?: string; body?: boolean; labs?: boolean };
   /** os profissionais da pessoa (personal e nutricionista) veem o essencial uns dos outros */
