@@ -385,14 +385,14 @@ export async function linkStudent(db: DB, key: string, b: Record<string, unknown
   return studentPlan(db, key, b);
 }
 
-export async function studentPlan(db: DB, key: string, b: Record<string, unknown>): Promise<R> {
+export async function studentPlan(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
   const s = await linkedStudent(db, key, b.code);
   if (!s) return bad('Código não ligado a este telemóvel.', 404);
   let plan: unknown = null;
   try { plan = s.plan ? JSON.parse(s.plan) : null; } catch { plan = null; }
   const nutri = isNutriPro(s.pro_kind);
-  const visit = nutri ? await db.prepare("SELECT day, time, text FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(s.code, new Date().toISOString().slice(0, 10)).first<{ day: string; time: string; text: string }>() : null;
-  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, new Date())), nextVisit: visit ?? null } : {}) });
+  const visit = nutri ? await db.prepare("SELECT day, time, text FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(s.code, now.toISOString().slice(0, 10)).first<{ day: string; time: string; text: string }>() : null;
+  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, now)), nextVisit: visit ?? null } : {}) });
 }
 
 /** O aluno desliga-se do personal (o histórico do personal fica, sem novos registos). */

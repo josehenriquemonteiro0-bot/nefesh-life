@@ -81,7 +81,7 @@ describe('fase 2: check-in semanal, consultas e IA', () => {
     expect((await pro.addNote(db, 'ana', { code, kind: 'nota', text: 'S: mais fome à tarde. P: lanche com proteína.' }, NOW)).status).toBe(200);
     await pro.addNote(db, 'ana', { code, kind: 'retorno', day: '2026-12-10', time: '18:00', text: 'Consultório' }, NOW);
     await pro.addNote(db, 'ana', { code, kind: 'retorno', day: '2026-11-24', time: '09:30', text: '' }, NOW);
-    expect((await pro.studentPlan(db, 'd:telemovel-123', { code })).body.nextVisit).toMatchObject({ day: '2026-11-24', time: '09:30' });
+    expect((await pro.studentPlan(db, 'd:telemovel-123', { code }, NOW)).body.nextVisit).toMatchObject({ day: '2026-11-24', time: '09:30' });
     const notes = (await pro.listNotes(db, 'ana', { code })).body.list as { kind: string }[];
     expect(notes.filter((n) => n.kind === 'retorno')).toHaveLength(1);
     expect(notes.filter((n) => n.kind === 'nota')).toHaveLength(1);
