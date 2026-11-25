@@ -10,32 +10,38 @@ import numpy as np
 
 T = 25
 def run(st, N=400, seed_rng=1, shock=None):
-    shock = shock or {}
+    shock = dict(shock or {})
+    reg = st.get('reg', {})
+    fx = reg.get('fx', 1.0)                      # R$ por unidade da moeda da região
+    vat = reg.get('vat', 0.0)                    # IVA incluído no preço da app (Europa 23%)
+    mkt = reg.get('mkt', 1.0)                    # tamanho do mercado/rede (profissionais e empresas que se conseguem alcançar)
+    acq = reg.get('acq', 1.0)                    # custo de aquisição relativo (salários e eventos mais caros)
+    start = reg.get('start', 0)                  # mês em que a região arranca
     rng = np.random.default_rng(seed_rng)
     U = lambda a, b: rng.uniform(a, b, N)
     app_m, app_y = st['app']
     a_share = np.clip(st['annual'] + U(-0.1, 0.1), 0.2, 0.85)
     seat_p, lic_p = st['seat'], st['lic']
-    el_app = 1.0 if app_m == 39.9 else 0.8
-    el_seat = {24.9: 1.15, 29.9: 1.0, 34.9: 0.85, 39.9: 0.7}[seat_p]
-    el_lic = 1.0 if lic_p == 249 else 0.88
+    el_app = reg.get('el_app', 1.0 if app_m == 39.9 else 0.8)
+    el_seat = reg.get('el_seat') or {24.9: 1.15, 29.9: 1.0, 34.9: 0.85, 39.9: 0.7}[seat_p]
+    el_lic = reg.get('el_lic') or (1.0 if lic_p == 249 else 0.88)
     # incertezas
-    cpp = U(350, 900) / el_lic * shock.get('pros_cost', 1)
-    cpc = U(3000, 8000) / el_seat * (1.15 if st['b2b_year'] else 1) * shock.get('b2b_cost', 1)
-    founder_pros = U(6, 15); founder_b2b = U(0.3, 1.2) * el_seat
+    cpp = U(350, 900) / el_lic * acq * st.get('eff_p', 1) * shock.get('pros_cost', 1)
+    cpc = U(3000, 8000) / el_seat * (1.15 if st['b2b_year'] else 1) * acq * st.get('eff_c', 1) * shock.get('b2b_cost', 1)
+    founder_pros = U(6, 15) * mkt; founder_b2b = U(0.3, 1.2) * el_seat * mkt
     pro_active = U(0.45, 0.7); pat_add = U(1.5, 4.0); pat_cap = U(15, 30)
     lic_adopt = U(0.20, 0.45) * el_lic; pat_conv = U(0.12, 0.30) * el_app
     pro_year = U(0.3, 0.5) if st['pro_year'] else np.zeros(N)
     seats = U(60, 200); seat_use = U(0.5, 0.8)
     churn_b2b_m = U(0.01, 0.03); renew_b2b = U(0.75, 0.9)
     prepay = U(0.3, 0.6) if st['b2b_year'] else np.zeros(N)
-    bundle_take = U(0.2, 0.5); shop_new = U(15, 60); churn_bun = U(0.04, 0.08)
-    organic = U(800, 2500); k = U(0.03, 0.07); trial = U(0.04, 0.09) * el_app; t2p = U(0.3, 0.5)
+    bundle_take = U(0.2, 0.5); shop_new = U(15, 60) * reg.get('shop', 1); churn_bun = U(0.04, 0.08)
+    organic = U(800, 2500) * mkt; k = U(0.03, 0.07); trial = U(0.04, 0.09) * el_app; t2p = U(0.3, 0.5)
     churn_m = U(0.06, 0.11) * shock.get('churn', 1); renew_y = U(0.45, 0.65)
-    free_ret = U(0.55, 0.7); ai_paid = U(6, 14) * shock.get('ai', 1); ai_free = U(0.3, 0.9) * shock.get('ai', 1)
-    fixed = 6000 + U(0, 3000)
+    free_ret = U(0.55, 0.7); ai_paid = U(6, 14) * shock.get('ai', 1) * st.get('ai_m', 1) / fx; ai_free = U(0.3, 0.9) * shock.get('ai', 1) * st.get('ai_m', 1) / fx
+    fixed = (6000 + U(0, 3000)) * reg.get('fixed', 1) / fx + st.get('fixed_add', 0)
     delay = shock.get('delay', 0)            # meses sem a app na loja (atraso da Apple)
-    net_m = app_m * 0.85 * 0.9; net_y = app_y * 0.85 * 0.9
+    net_m = app_m / (1 + vat) * 0.85 * 0.9; net_y = app_y / (1 + vat) * 0.85 * 0.9
     lic_m = lic_p * 0.9; lic_y = lic_p * 10 * 0.9; seat_m = seat_p * 0.9; seat_y = seat_p * 10 * 0.9; bun_net = 15 * 0.9
 
     H = T + 13
@@ -43,16 +49,20 @@ def run(st, N=400, seed_rng=1, shock=None):
     cy_new = np.zeros((H, N))                # contratos anuais novos por mês
     ly_new = np.zeros((H, N))                # licenças anuais novas por mês
     pros = np.zeros(N); pats = np.zeros(N); pat_pay = np.zeros(N)
-    b2c_m = np.zeros(N); ctr_m = np.zeros(N); free = np.zeros(N); bun = 350 * bundle_take
+    b2c_m = np.zeros(N); ctr_m = np.zeros(N); free = np.zeros(N); bun = reg.get('base', 350) * bundle_take
     pipe_p = np.zeros((H, N)); pipe_c = np.zeros((H, N)); ramp_c = np.zeros(N)
     cash = np.zeros(N); low = np.zeros(N); rev_prev = np.zeros(N); apple_due = np.zeros(N); lic_prev = np.zeros(N)
     PAY = np.zeros((T, N)); CASH = np.zeros((T, N)); REV = np.zeros((T, N)); COST = np.zeros((T, N)); MIX = np.zeros((T, 5, N))
     for t in range(T):
-        growth = (st['seed'] if t < st['seed_m'] else 0) + st['alpha'] * rev_prev
+        if t < start:
+            PAY[t] = 0; CASH[t] = 0; REV[t] = 0; COST[t] = 0; MIX[t] = 0
+            continue
+        tt = t - start
+        growth = (st['seed'] if tt < st['seed_m'] else 0) + st['alpha'] * rev_prev
         pipe_p[t + 1] += growth * st['split'] / cpp
         pipe_c[t + 2] += growth * (1 - st['split']) / cpc
         new_pros = (founder_pros + pipe_p[t]) * shock.get('pros', 1)
-        new_ctr = (founder_b2b * min(1, t / 2) + pipe_c[t]) * shock.get('b2b', 1)
+        new_ctr = (founder_b2b * min(1, tt / 2) + pipe_c[t]) * shock.get('b2b', 1)
         pros = pros * 0.97 + new_pros
         act = pros * pro_active
         pats = np.minimum(pats + act * pat_add, act * pat_cap)
@@ -94,7 +104,7 @@ def run(st, N=400, seed_rng=1, shock=None):
         low = np.minimum(low, cash); rev_prev = rev
         PAY[t] = paying; CASH[t] = cash; REV[t] = rev; COST[t] = cost
         MIX[t] = [b2c, pat_pay + pats_lic, corp, bun, act]
-    return PAY, CASH, REV, COST, low, MIX
+    return PAY, CASH * fx, REV * fx, COST * fx, low * fx, MIX
 
 def score(PAY, CASH, REV, COST, low):
     both = (PAY[12] >= 10000) & (PAY[24] >= 20000)
