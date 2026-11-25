@@ -179,14 +179,14 @@ export const PROGRAM: ProgramDay[] = [
   {
     day: 2,
     title: 'A hora de acordar manda',
-    why: 'O relógio do corpo acerta-se sobretudo pela hora a que acorda e pela luz que recebe de manhã. Uma hora fixa de levantar, mesmo depois de uma noite má, é a base de todo o programa.',
+    why: 'O relógio do corpo é acertado sobretudo pela hora a que acorda e pela luz que recebe de manhã. Uma hora fixa de levantar, mesmo depois de uma noite má, é a base de todo o programa.',
     todo: ['Levantar-se à hora escolhida, mesmo que tenha dormido mal', 'Apanhar 10 a 30 minutos de luz natural na primeira hora do dia'],
     practice: { kind: 'diario', label: 'Registar a noite' },
   },
   {
     day: 3,
     title: 'A cama é para dormir',
-    why: 'Quando a cama serve para ver séries, trabalhar ou preocupar-se, o cérebro deixa de a ligar ao sono. Reservar a cama para dormir (e para a intimidade) ensina-o outra vez.',
+    why: 'Quando a cama serve para ver séries, trabalhar ou preocupar-se, o cérebro deixa de associar a cama ao sono. Reservar a cama para dormir (e para a intimidade) volta a criar essa ligação.',
     todo: ['Nada de ecrãs na cama esta noite', 'Ir para a cama só quando tiver sono, não só cansaço'],
     practice: { kind: 'respiracao', id: 'expira', label: 'Expiração prolongada (4–8)' },
   },
@@ -207,7 +207,7 @@ export const PROGRAM: ProgramDay[] = [
   {
     day: 6,
     title: 'Esvaziar a cabeça',
-    why: 'Muitas noites sem sono são noites de pensamentos às voltas. Escrever as preocupações e a lista de amanhã antes de deitar tira-as da cabeça e põe-nas no papel; num estudo, ajudou as pessoas a adormecer mais depressa.',
+    why: 'Muitas noites sem sono são noites de pensamentos às voltas. Escrever as preocupações e a lista de amanhã antes de deitar ajuda a tirá-las da cabeça; num estudo, ajudou as pessoas a adormecer mais depressa.',
     todo: ['Escrever as preocupações e a lista de amanhã no ritual', 'Se as preocupações voltarem na cama, lembre-se: já estão escritas, tratam-se amanhã'],
     practice: { kind: 'ritual', label: 'Esvaziar a cabeça no ritual' },
   },
@@ -221,7 +221,7 @@ export const PROGRAM: ProgramDay[] = [
   {
     day: 8,
     title: 'Cafeína, álcool e jantar',
-    why: 'A cafeína continua no corpo muitas horas depois do café. O álcool pode ajudar a adormecer, mas torna o sono mais leve e acorda-o a meio da noite. Um jantar pesado mesmo antes de deitar também atrapalha.',
+    why: 'A cafeína continua no corpo muitas horas depois do café. O álcool pode ajudar a adormecer, mas torna o sono mais leve e faz acordar a meio da noite. Um jantar pesado mesmo antes de deitar também atrapalha.',
     todo: ['Última cafeína 8 horas antes de deitar (pode ligar o lembrete)', 'Jantar 2 a 3 horas antes de deitar; evitar álcool à noite'],
     practice: { kind: 'respiracao', id: 'suspiro', label: 'Suspiro cíclico' },
   },
@@ -352,9 +352,9 @@ export interface SleepFlags {
 }
 
 export const FLAG_QUESTIONS: [keyof Omit<SleepFlags, 'at'>, string][] = [
-  ['apnea', 'Ressona alto e alguém já reparou em pausas na sua respiração, ou acorda a sentir falta de ar?'],
+  ['apnea', 'Ressona alto e alguém já reparou em pausas na sua respiração, ou acorda com falta de ar?'],
   ['chronic', 'Tem dificuldade em dormir 3 ou mais noites por semana, há 3 meses ou mais?'],
-  ['sleepy', 'Adormece sem querer durante o dia (a ler, em reuniões, ao volante)?'],
+  ['sleepy', 'Adormece sem querer durante o dia (ao ler, em reuniões, ao volante)?'],
   ['legs', 'Ao fim do dia sente uma vontade forte de mexer as pernas, que só passa ao mexê-las?'],
   ['mood', 'A tristeza, a ansiedade ou as preocupações não o deixam dormir há semanas?'],
 ];

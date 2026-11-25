@@ -891,3 +891,7 @@ textarea.field{font-family:inherit;width:100%;box-sizing:border-box}
 .fs-list li.ok .fs-check{background:var(--neon);border-color:var(--neon)}
 .fs-text{flex:1;display:grid;gap:1px}
 .fs-text small{color:var(--mute);font-size:12px}
+
+/* sono: horas lado a lado, sem se sobreporem no iPhone */
+.time-field{display:grid;gap:4px;flex:1 1 130px;min-width:0;max-width:220px}
+.time-field .field{width:100%;box-sizing:border-box;min-width:0;-webkit-appearance:none;appearance:none}

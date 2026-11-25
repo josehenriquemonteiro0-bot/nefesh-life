@@ -111,7 +111,7 @@ export function SleepRitual({ onClose }: { onClose: () => void }) {
 
         {step === 1 && (
           <>
-            <p className="small mute" style={{ marginTop: 0 }}>Tire da cabeça o que a pode manter acordada. Fica guardado só neste telemóvel.</p>
+            <p className="small mute" style={{ marginTop: 0 }}>Tire da cabeça o que o pode manter acordado. Fica guardado só neste telemóvel.</p>
             <label className="small">O que me preocupa (e o que posso fazer amanhã)</label>
             <textarea className="field" rows={3} maxLength={1000} value={worries} onChange={(e) => setWorries(e.target.value)} placeholder="ex.: a reunião de amanhã → rever os slides às 9h" />
             <label className="small" style={{ display: 'block', marginTop: 10 }}>A minha lista para amanhã</label>

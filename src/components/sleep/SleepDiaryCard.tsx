@@ -49,13 +49,13 @@ export function SleepDiaryCard({ id }: { id?: string }) {
         </p>
       ) : (
         <>
-          <p className="small mute" style={{ margin: '6px 0 10px' }}>30 segundos de manhã, sobre a noite passada. É a ferramenta base da terapia para a insónia: mostra o que está mesmo a acontecer.</p>
+          <p className="small mute" style={{ margin: '6px 0 10px' }}>30 segundos de manhã, sobre a noite passada. É a ferramenta base da terapia para a insónia: mostra o que acontece de verdade.</p>
           <div className="row" style={{ gap: 10, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-            <label className="small" style={{ display: 'grid', gap: 4 }}>
+            <label className="small time-field">
               Deitei-me às
               <input type="time" className="field sm" value={d.bed ?? ''} onChange={(e) => set({ bed: e.target.value || undefined })} />
             </label>
-            <label className="small" style={{ display: 'grid', gap: 4 }}>
+            <label className="small time-field">
               Levantei-me às
               <input type="time" className="field sm" value={d.up ?? ''} onChange={(e) => set({ up: e.target.value || undefined })} />
             </label>
@@ -78,7 +78,7 @@ export function SleepDiaryCard({ id }: { id?: string }) {
           </div>
           {calc && (
             <p className="small" style={{ margin: '10px 0 0' }}>
-              Na cama {fmtNum(Math.round((calc.inBed / 60) * 10) / 10)} h · a dormir cerca de <b>{fmtNum(calc.hours)} h</b> · eficiência <b>{calc.eff}%</b>
+              Na cama {fmtNum(Math.round((calc.inBed / 60) * 10) / 10)} h · dormiu cerca de <b>{fmtNum(calc.hours)} h</b> · eficiência <b>{calc.eff}%</b>
             </p>
           )}
           <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 10 }}>
@@ -94,7 +94,7 @@ export function SleepDiaryCard({ id }: { id?: string }) {
             <b>Últimas {st.nights} noites:</b>
             {st.eff !== null && <> eficiência {st.eff}% ·</>}
             {st.lat !== null && <> adormecer {st.lat} min ·</>}
-            {st.wakes !== null && <> acordares {fmtNum(st.wakes)} ·</>}
+            {st.wakes !== null && <> acordou {fmtNum(st.wakes)} vezes por noite ·</>}
             {st.upAvg && <> levantar ~{st.upAvg}</>}
           </p>
           {reading.map((t) => <p key={t} className="small mute" style={{ margin: '4px 0 0' }}>• {t}</p>)}

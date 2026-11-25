@@ -239,7 +239,7 @@ export const MEDITATIONS: Meditation[] = [
     ambient: 'mar',
     steps: [
       ['Deite-se de costas, confortável. Vamos contrair e soltar os músculos, uma parte do corpo de cada vez.', 6],
-      ['Contraia com força moderada, sem dor. Se alguma zona estiver lesionada ou com cãibras, salte-a e fique só a respirar.', 5],
+      ['Contraia com força moderada, sem dor. Se alguma parte do corpo estiver lesionada ou com cãibras, deixe-a de fora e fique só a respirar.', 5],
       ['Faça duas respirações calmas, a soltar bem o ar.', 12],
       ['Comece pelas mãos. Feche-as com força, como se apertasse uma bola… segure… cinco, quatro, três, dois, um.', 2],
       ['E solte. Abra as mãos e repare na diferença: o calor, o peso, o formigueiro.', 18],
@@ -273,7 +273,7 @@ export const MEDITATIONS: Meditation[] = [
     desc: 'Para os pensamentos às voltas: imaginar coisas soltas, sem ligação, até o sono chegar.',
     ambient: 'chuva',
     steps: [
-      ['Esta técnica ajuda quando a cabeça não pára. Deite-se na posição em que costuma dormir e feche os olhos.', 6],
+      ['Esta técnica ajuda quando a cabeça não para. Deite-se na posição em que costuma dormir e feche os olhos.', 6],
       ['A ideia é simples: dar à mente imagens soltas, sem história e sem importância. É o que ela faz sozinha quando está a adormecer.', 6],
       ['Escolha uma palavra simples, por exemplo: PRAIA. Comece pela primeira letra, o P.', 5],
       ['Pense numa palavra que comece por P, qualquer uma. Por exemplo, pão. Imagine um pão durante uns segundos: a cor, a forma, o cheiro.', 15],

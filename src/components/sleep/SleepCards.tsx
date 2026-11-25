@@ -24,11 +24,11 @@ export function SleepScheduleCard({ onRitual }: { onRitual: () => void }) {
       <p className="small mute" style={{ margin: '6px 0 10px' }}>Uma hora antes de deitar: preparar a casa, esvaziar a cabeça, acalmar o corpo e adormecer com um som que se desliga sozinho.</p>
       <button className="btn" style={{ width: '100%' }} onClick={onRitual}>Começar o ritual da noite</button>
       <div className="row" style={{ gap: 10, justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 12 }}>
-        <label className="small" style={{ display: 'grid', gap: 4 }}>
+        <label className="small time-field">
           Hora de deitar
           <input type="time" className="field sm" value={bed} onChange={(e) => validTime(e.target.value) && set({ bed: e.target.value })} />
         </label>
-        <label className="small" style={{ display: 'grid', gap: 4 }}>
+        <label className="small time-field">
           Hora fixa de acordar
           <input type="time" className="field sm" value={wake} onChange={(e) => validTime(e.target.value) && set({ wake: e.target.value })} />
         </label>
