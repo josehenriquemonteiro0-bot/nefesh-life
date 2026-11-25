@@ -398,7 +398,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       if (action === 'corpo/relatorio') {
         if (!key) return json({ error: 'pedido inválido' }, 400, h);
         try {
-          const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'corpo-relatorio', key, ctx);
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'corpo-relatorio', key, ctx);
           const model = env.MODEL?.trim() || 'claude-opus-5-5';
           const r = await proAI.readHealthReport(client, model, env.LIMITS, key, req.headers.get('CF-Connecting-IP') ?? 'sem-ip', b);
           return json(r.body, r.status, h);
@@ -451,7 +451,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         const me = await pro.proOf(db, uid);
         if (me?.status !== 'aprovado' || !pro.isNutriPro(me.kind)) return json({ error: 'Só para nutricionistas e médicos aprovados.' }, 403, h);
         try {
-          const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, action === 'ia/nutri-ditado' ? 'pro-nutri-ditado' : 'pro-nutri-rever', uid, ctx);
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, action === 'ia/nutri-ditado' ? 'pro-nutri-ditado' : 'pro-nutri-rever', uid, ctx);
           const model = env.MODEL?.trim() || 'claude-opus-5-5';
           const ipx = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
           const r = action === 'ia/nutri-ditado' ? await proAI.dictateNutri(client, model, env.LIMITS, uid, ipx, b) : await proAI.reviewNutri(client, model, env.LIMITS, uid, ipx, b);
@@ -463,7 +463,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       if (action === 'ia/ditado' || action === 'ia/rever' || action === 'ia/avaliacao') {
         if ((await pro.proOf(db, uid))?.status !== 'aprovado') return json({ error: 'Acesso de profissional ainda não aprovado.' }, 403, h);
         try {
-          const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, action === 'ia/ditado' ? 'pro-ditado' : action === 'ia/rever' ? 'pro-rever' : 'pro-avaliacao', uid, ctx);
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, action === 'ia/ditado' ? 'pro-ditado' : action === 'ia/rever' ? 'pro-rever' : 'pro-avaliacao', uid, ctx);
           const model = env.MODEL?.trim() || 'claude-opus-5-5';
           const ipx = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
           const r = action === 'ia/ditado' ? await proAI.dictate(client, model, env.LIMITS, uid, ipx, b) : action === 'ia/rever' ? await proAI.review(client, model, env.LIMITS, uid, ipx, b) : await proAI.readAssessment(client, model, env.LIMITS, uid, ipx, b);
@@ -526,7 +526,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
           const ipc = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
           if (!(await check(env.LIMITS, lim, uid, ipc, new Date(), 'f')).ok) return { status: 429, body: { error: 'Já partilhou 2 fotos hoje. Amanhã há mais!' } };
           if (!(await verify.newPhoto(db, uid, b.image))) return { status: 200, body: { ok: false, note: 'Esta foto já foi partilhada.' } };
-          const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'comunidade-foto', uid, ctx);
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'comunidade-foto', uid, ctx);
           const m = await photos.moderate(client, env.MODEL?.trim() || 'claude-opus-5-5', b.image, kind);
           if (!m.safe || !m.fits) return { status: 200, body: { ok: false, note: m.safe ? `Esta foto não parece ser de ${kind === 'spirulina' ? 'Spirulina' : kind === 'treino' ? 'um treino' : 'comida'}. ${m.note}` : 'Esta foto não pode ser partilhada na comunidade.' } };
           await count(env.LIMITS, lim, uid, ipc, new Date(), 'f');
@@ -580,7 +580,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
           await count(env.LIMITS, lim, uid, ipc, new Date(), 'k');
           if (!(await verify.newPhoto(db, uid, image))) return { status: 200, body: { ok: false, note: 'Esta captura já foi usada. Tire uma captura nova.' } };
           const today = social.lisbonDay();
-          const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'captura-saude', uid, ctx);
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'captura-saude', uid, ctx);
           const mt = b.media_type === 'image/png' ? 'image/png' : b.media_type === 'image/webp' ? 'image/webp' : 'image/jpeg';
           const shot = await readHealthShot(client, env.MODEL?.trim() || 'claude-opus-5-5', image, mt, today);
           const got = acceptShot(shot);
@@ -601,7 +601,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
           if (!(await check(env.LIMITS, lim, uid, ipc, new Date(), 'v')).ok) return { status: 429, body: { error: 'Já enviou fotos suficientes hoje.' } };
           await count(env.LIMITS, lim, uid, ipc, new Date(), 'v');
           if (!(await verify.newPhoto(db, uid, image))) return { status: 200, body: { ok: false, note: 'Esta foto já foi usada. Tire uma foto nova da sua Spirulina.' } };
-          const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'prova-spirulina', uid, ctx);
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'prova-spirulina', uid, ctx);
           const mt = b.media_type === 'image/png' ? 'image/png' : b.media_type === 'image/webp' ? 'image/webp' : 'image/jpeg';
           const r = await checkSpirulinaPhoto(client, env.MODEL?.trim() || 'claude-opus-5-5', image, mt);
           const accepted = r.shows_spirulina && !r.is_screen_photo;
@@ -725,7 +725,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     // tabela nutricional (produto fora da Open Food Facts), boletins de análises e receitas
     if (path === '/rotulo' || path === '/analises' || path === '/receita') {
       try {
-        const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, path.slice(1), device, ctx);
+        const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, path.slice(1), device, ctx);
         return await handleDocRead(path.slice(1) as 'rotulo' | 'analises' | 'receita', body as Record<string, unknown>, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
       } catch (err) {
         return apiError(err, h);
@@ -734,7 +734,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     // relatório semanal: o que a IA percebeu
     if (path === '/relatorio') {
       try {
-        const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'relatorio', device, ctx);
+        const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'relatorio', device, ctx);
         return await handleReport(body as Record<string, unknown>, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
       } catch (err) {
         return apiError(err, h);
@@ -743,7 +743,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     // AI Coach por texto
     if (path === '/coach') {
       try {
-        const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'coach', device, ctx);
+        const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'coach', device, ctx);
         return await handleCoach(body as Record<string, unknown>, env.LIMITS, premium ? coachLimits(env) : { device: FREE_COACH_DAILY, ip: FREE_COACH_DAILY * 4, global: 3000 }, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
       } catch (err) {
         return apiError(err, h);
@@ -752,7 +752,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     // leitura do plano alimentar do nutricionista
     if (path === '/dica') {
       try {
-        const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'dica', device, ctx);
+        const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'dica', device, ctx);
         return await handleTip(body as { name?: string; notes?: string }, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h));
       } catch (err) {
         return apiError(err, h);
@@ -760,7 +760,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     }
     if (path === '/plano' || path === '/treino') {
       try {
-        const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, path.slice(1), device, ctx);
+        const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, path.slice(1), device, ctx);
         return await handlePlan(body, env.LIMITS, client, env.MODEL?.trim() || 'claude-opus-5-5', device, ip, (b, st) => json(b, st, h), path === '/treino' ? 'treino' : 'nutri');
       } catch (err) {
         return apiError(err, h);
@@ -777,7 +777,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     const mediaType = body.media_type === 'image/png' ? 'image/png' : body.media_type === 'image/webp' ? 'image/webp' : 'image/jpeg';
     const hint = String(body.hint ?? '').slice(0, 300).trim();
 
-    const client = aiClient(env.ANTHROPIC_API_KEY, env.DB, 'foto', device, ctx);
+    const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, 'foto', device, ctx);
     try {
       const response = await analyzeMealPhoto(client, env.MODEL?.trim() || 'claude-opus-5-5', image, mediaType, hint);
 

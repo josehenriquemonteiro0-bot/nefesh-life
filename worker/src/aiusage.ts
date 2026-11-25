@@ -6,7 +6,7 @@
  * por um código irreversível (SHA-256 truncado); as linhas apagam-se ao fim de 400 dias.
  * Serve para o plano de negócio: quanto custa a IA por pessoa ativa por mês, com o uso real.
  */
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
 import type { DB } from './social';
 
 /** Preço por milhão de tokens (entrada, saída), em dólares. A cache: escrita 1,25× e leitura 0,1× da entrada. */
@@ -42,8 +42,8 @@ interface Ctx { waitUntil(p: Promise<unknown>): void }
  * Cliente da IA que regista o uso de cada resposta (sem atrasar a resposta: o registo corre em segundo plano).
  * `feature` diz para que foi o pedido; `who` é o aparelho ou a conta (vira um código irreversível).
  */
-export function aiClient(apiKey: string, db: DB | undefined, feature: string, who: string, ctx?: Ctx): Anthropic {
-  const client = new Anthropic({ apiKey });
+export function aiClient(make: () => Anthropic, db: DB | undefined, feature: string, who: string, ctx?: Ctx): Anthropic {
+  const client = make();
   if (!db) return client;
   const wrap = <T extends { create: (...a: never[]) => unknown }>(target: T) => {
     const real = target.create.bind(target) as (...a: unknown[]) => Promise<unknown>;

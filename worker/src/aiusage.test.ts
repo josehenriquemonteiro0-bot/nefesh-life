@@ -70,10 +70,9 @@ describe('custo da IA', () => {
   it('o cliente regista cada resposta e devolve-a sem mudanças', async () => {
     const db = memoryDB();
     const fake = { model: 'claude-opus-5-5', usage: U, content: [] };
-    // troca o envio real por uma resposta falsa (antes de criar o cliente que regista)
-    const probe = aiClient('x', undefined, 'coach', 'pessoa');
-    (Object.getPrototypeOf(probe.beta.messages) as { create: unknown }).create = async () => fake;
-    const c3 = aiClient('x', db, 'coach', 'pessoa');
+    // cliente falso (sem rede nem biblioteca): o medidor embrulha o create e regista o uso
+    const make = () => ({ messages: { create: async () => fake }, beta: { messages: { create: async () => fake } } }) as never;
+    const c3 = aiClient(make, db, 'coach', 'pessoa');
     const r = await (c3.beta.messages.create as unknown as () => Promise<unknown>)();
     expect(r).toBe(fake);
     expect((await db.prepare('SELECT calls FROM ai_usage').first<{ calls: number }>())!.calls).toBe(1);
