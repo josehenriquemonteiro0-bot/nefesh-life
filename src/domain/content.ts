@@ -126,6 +126,38 @@ export interface Professional {
   m: string;
 }
 
+/** Parceiros com nome próprio (dados e texto dados pelo próprio profissional, publicados com a sua autorização). */
+export interface Partner {
+  id: string;
+  /** iniciais no avatar */
+  i: string;
+  /** nome do serviço ou da marca */
+  n: string;
+  /** especialidade */
+  a: string;
+  /** quem atende */
+  who: string;
+  /** descrição curta */
+  d: string;
+  /** onde atende */
+  m: string;
+  /** área, para o aviso certo (as terapias integrativas complementam o médico) */
+  area: 'integrativa' | 'nutricao' | 'medicina' | 'exercicio' | 'psicologia';
+}
+
+export const PARTNERS: Partner[] = [
+  {
+    id: 'buddhibio',
+    i: 'BB',
+    n: 'BuddhiBio',
+    a: 'Geobiologia Celular e Naturopatia de Precisão',
+    who: 'Andrea Passos Maisonnave',
+    d: 'Investigação do terreno biológico, saúde intestinal, desintoxicação, equilíbrio mineral, metabolismo, ritmos biológicos e saúde do habitat.',
+    m: 'On line · Atendimento internacional',
+    area: 'integrativa',
+  },
+];
+
 export const PROS: Professional[] = [
   { i: 'NU', n: 'Nutricionista', a: 'Plano alimentar e acompanhamento nutricional', m: 'Online · Portugal e Brasil' },
   { i: 'MI', n: 'Médico(a) de medicina integrativa', a: 'Avaliação clínica e situações que pedem cautela', m: 'Lisboa · Online' },

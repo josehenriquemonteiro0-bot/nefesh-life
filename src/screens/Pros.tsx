@@ -1,4 +1,4 @@
-import { PROS, whatsappLink } from '../domain/content';
+import { PARTNERS, PROS, whatsappLink } from '../domain/content';
 import { useStore } from '../state/store';
 import { DirectoryList } from '../components/ProDirectory';
 
@@ -8,6 +8,25 @@ export function Pros({ openReport }: { openReport: () => void }) {
     <>
       <h1>Profissionais NEFESH</h1>
       <p className="mute">A rede de profissionais parceiros que podem acompanhar a sua alimentação, o seu treino e a sua saúde.</p>
+      {PARTNERS.length > 0 && <h2 style={{ margin: '8px 0 0' }}>Parceiros</h2>}
+      {PARTNERS.map((p) => (
+        <section className="card pro partner" key={p.id}>
+          <div className="av">{p.i}</div>
+          <div>
+            <h2 style={{ margin: '0 0 2px' }} data-raw>{p.n}</h2>
+            <p className="small" style={{ margin: '0 0 2px', fontWeight: 700 }} data-raw>{p.a}</p>
+            <p className="small mute" style={{ margin: '0 0 8px' }} data-raw>{p.who}</p>
+            <p className="small" style={{ margin: '0 0 6px' }}>{p.d}</p>
+            <p className="small mute">{p.m}</p>
+            <div className="row" style={{ justifyContent: 'flex-start' }}>
+              <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de solicitar atendimento com ${p.n} (${p.who})${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener" onClick={() => toast('A abrir o WhatsApp da NEFESH…')}>Solicitar atendimento</a>
+              <button className="btn ghost sm" onClick={openReport}>Enviar relatório</button>
+            </div>
+            {p.area === 'integrativa' && <p className="small mute" style={{ margin: '8px 0 0' }}>Prática integrativa: complementa o acompanhamento médico, não o substitui.</p>}
+          </div>
+        </section>
+      ))}
+      {PARTNERS.length > 0 && <h2 style={{ margin: '8px 0 0' }}>Áreas de acompanhamento</h2>}
       {PROS.map((p) => (
         <section className="card pro" key={p.i}>
           <div className="av">{p.i}</div>
