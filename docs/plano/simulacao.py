@@ -36,9 +36,11 @@ def run(st, N=400, seed_rng=1, shock=None):
     churn_b2b_m = U(0.01, 0.03); renew_b2b = U(0.75, 0.9)
     prepay = U(0.3, 0.6) if st['b2b_year'] else np.zeros(N)
     bundle_take = U(0.2, 0.5); shop_new = U(15, 60) * reg.get('shop', 1); churn_bun = U(0.04, 0.08)
-    organic = U(800, 2500) * mkt; k = U(0.03, 0.07); trial = U(0.04, 0.09) * el_app; t2p = U(0.3, 0.5)
+    organic = U(800, 2500) * mkt; k = U(0.03, 0.07) + (U(0.01, 0.03) if st.get('ref') else 0); trial = U(0.04, 0.09) * el_app; t2p = U(0.3, 0.5)
     churn_m = U(0.06, 0.11) * shock.get('churn', 1); renew_y = U(0.45, 0.65)
     free_ret = U(0.55, 0.7); ai_paid = U(6, 14) * shock.get('ai', 1) * st.get('ai_m', 1) / fx; ai_free = U(0.3, 0.9) * shock.get('ai', 1) * st.get('ai_m', 1) / fx
+    # utilizador comum: influenciadores e conteúdo pago, em custo por instalação (R$ 4 a 15 no Brasil)
+    cpi = U(4, 15) * acq * shock.get('cpi', 1)
     fixed = (6000 + U(0, 3000)) * reg.get('fixed', 1) / fx + st.get('fixed_add', 0)
     delay = shock.get('delay', 0)            # meses sem a app na loja (atraso da Apple)
     net_m = app_m / (1 + vat) * 0.85 * 0.9; net_y = app_y / (1 + vat) * 0.85 * 0.9
@@ -50,7 +52,7 @@ def run(st, N=400, seed_rng=1, shock=None):
     ly_new = np.zeros((H, N))                # licenças anuais novas por mês
     pros = np.zeros(N); pats = np.zeros(N); pat_pay = np.zeros(N)
     b2c_m = np.zeros(N); ctr_m = np.zeros(N); free = np.zeros(N); bun = reg.get('base', 350) * bundle_take
-    pipe_p = np.zeros((H, N)); pipe_c = np.zeros((H, N)); ramp_c = np.zeros(N)
+    pipe_p = np.zeros((H, N)); pipe_c = np.zeros((H, N)); pipe_i = np.zeros((H, N)); ramp_c = np.zeros(N)
     cash = np.zeros(N); low = np.zeros(N); rev_prev = np.zeros(N); apple_due = np.zeros(N); lic_prev = np.zeros(N)
     PAY = np.zeros((T, N)); CASH = np.zeros((T, N)); REV = np.zeros((T, N)); COST = np.zeros((T, N)); MIX = np.zeros((T, 5, N))
     for t in range(T):
@@ -59,8 +61,10 @@ def run(st, N=400, seed_rng=1, shock=None):
             continue
         tt = t - start
         growth = (st['seed'] if tt < st['seed_m'] else 0) + st['alpha'] * rev_prev
-        pipe_p[t + 1] += growth * st['split'] / cpp
-        pipe_c[t + 2] += growth * (1 - st['split']) / cpc
+        inf = st.get('inf', 0)                                   # parte do investimento em influenciadores
+        pipe_i[t + 1] += growth * inf / cpi
+        pipe_p[t + 1] += growth * (1 - inf) * st['split'] / cpp
+        pipe_c[t + 2] += growth * (1 - inf) * (1 - st['split']) / cpc
         new_pros = (founder_pros + pipe_p[t]) * shock.get('pros', 1)
         new_ctr = (founder_b2b * min(1, tt / 2) + pipe_c[t]) * shock.get('b2b', 1)
         pros = pros * 0.97 + new_pros
@@ -81,7 +85,7 @@ def run(st, N=400, seed_rng=1, shock=None):
         corp = (contracts - ramp_c) * seats * seat_use + ramp_c * seats * seat_use * 0.4
         # app (Apple): só depois de a app estar na loja
         live = t >= delay
-        installs = (organic * (1 + 0.03 * t) + k * (free + b2c_m + bun + pats + corp)) * (1 if live else 0.15)
+        installs = (organic * (1 + 0.03 * t) + k * (free + b2c_m + bun + pats + corp) + pipe_i[t] * shock.get('inf', 1)) * (1 if live else 0.15)
         free = free * free_ret + installs * 0.4
         new_subs = installs * trial * t2p + free * 0.002
         renew_app = y_new[t - 12] * renew_y if t >= 12 else 0
@@ -99,7 +103,9 @@ def run(st, N=400, seed_rng=1, shock=None):
         # anual: a empresa paga os lugares contratados adiantado; mensal: paga os lugares em uso
         corp_cash = cy_new[t] * seats * seat_use * seat_y + ctr_m * seats * seat_use * seat_m
         cash_in = apple_cash_now + lic_cash + corp_cash + bun * bun_net
-        cost = fixed + growth + paying * ai_paid + free * ai_free
+        # indicação: quem indica e quem é indicado ganham 1 mês (cerca de 30% das assinaturas novas vêm por indicação)
+        ref_cost = st.get('ref', 0) * new_subs * 0.3 * net_m
+        cost = fixed + growth + paying * ai_paid + free * ai_free + ref_cost
         cash = cash + cash_in - cost
         low = np.minimum(low, cash); rev_prev = rev
         PAY[t] = paying; CASH[t] = cash; REV[t] = rev; COST[t] = cost

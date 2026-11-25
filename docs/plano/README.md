@@ -6,12 +6,14 @@
     `python3 simulacao.py 2` reavalia as melhores com 2.000 futuros e grava `s2.json`.
   - A função `run(estratégia, N, seed_rng, shock)` aceita choques para os testes de crise
     (`delay`, `ai`, `pros`, `b2b`, `churn`).
-- `plano_combinado.py`: o plano recomendado (Brasil enxuto + Europa a partir de jun/2027) e os testes de crise.
-  Uma região é uma estratégia com `reg` (câmbio, IVA, tamanho do mercado, custo de aquisição, mês de arranque).
-- Plano recomendado: Brasil com app R$ 39,90 / R$ 249,90 (70% anual), empresas R$ 29,90 por pessoa com anual
-  adiantado, licença do Pro R$ 249; equipa enxuta com automação por IA, custo de IA 25% mais baixo, empurrão de
-  R$ 60 mil por mês durante 12 meses, reinvestir 40% da receita. Europa a partir de jun/2027: app 9,99 € / 69,99 €,
-  empresas 9,99 € por pessoa, licença 79 €, empurrão de 12 mil € por mês durante 12 meses.
-- Resultado (5.000 futuros): 93% de probabilidade das duas metas, vale de R$ 119 mil (R$ 234 mil em 8 de 10
-  futuros), ~17 mil pagantes em dez/2027 e ~63 mil em dez/2028.
+- `plano_combinado.py`: a versão anterior (Brasil enxuto + Europa) e os seus testes de crise.
+- `refinado.py`: plano refinado com o utilizador comum (influenciadores pagos à frente `inf`, indicação `ref`) e a Europa;
+  `python3 refinado.py 1` varre 540 combinações (1.000 futuros), `python3 refinado.py 2` reavalia as melhores com 5.000.
+- `comparar_refinado.py` compara as variantes; `gate.py` aplica a regra de março (Europa só com 1.200 pagantes no Brasil)
+  e corre as crises.
+- Plano recomendado (IA a custo cheio): app R$ 39,90 / R$ 249,90, empresas R$ 29,90 por pessoa com anual adiantado,
+  licença Pro R$ 249; empurrão de R$ 80 mil por mês durante 12 meses, reinvestir 50% da receita, 70% do esforço em
+  empresas e 30% em profissionais, programa de indicação, influenciadores só por resultado; Europa em jun/2027 se março
+  estiver verde. Resultado: 98% de probabilidade das duas metas, vale de R$ 163 mil (R$ 270 mil em 8 de 10 futuros),
+  ~25 mil pagantes em dez/2027.
 - Todos os trimestres: trocar os intervalos das premissas pelos números reais e correr de novo.
