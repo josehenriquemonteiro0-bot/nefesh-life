@@ -6,7 +6,7 @@
  * Tabelas: pros, pro_students, pro_logs (CREATE IF NOT EXISTS; reversível com DROP TABLE).
  */
 import { localNow, sendPush, type KeyStore } from './push';
-import { WELL_LOG, cleanWell, isWellPro, logWellDay, wellSummary, wellTeamSummary } from './proWell';
+import { cleanTrack, intakeOf, isWellPro, logSymptoms, logWellDay, saveIntake, wellSummary, wellTeamSummary, cleanWell } from './proWell';
 import type { DB } from './social';
 import { isQuiet } from './notify';
 import { cleanProfile, profileEmpty, type StudentProfile } from '../../src/domain/proProfile';
@@ -170,8 +170,8 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     if (module !== mine) continue;
     const { results: recentLogs } = await db.prepare('SELECT day, workout, data, created FROM pro_logs WHERE code = ? ORDER BY day DESC, created DESC LIMIT 12').bind(s.code).all<{ day: string; workout: string; data: string; created: string }>();
     const last = recentLogs[0] ?? null;
-    const parsed = recentLogs.filter((l) => l.workout !== NUTRI_LOG && l.workout !== WELL_LOG).map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
-    const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND workout != '__nutri' AND json_extract(data, '$.status') != 'saltado'").bind(s.code, weekAgo(now)).first<{ n: number }>();
+    const parsed = recentLogs.filter((l) => !l.workout.startsWith('__')).map((l) => { try { return { day: l.day, data: JSON.parse(l.data) as LogData }; } catch { return null; } }).filter((x): x is { day: string; data: LogData } => !!x);
+    const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND substr(workout, 1, 2) != '__' AND json_extract(data, '$.status') != 'saltado'").bind(s.code, weekAgo(now)).first<{ n: number }>();
     let plan: ReturnType<typeof cleanPlan> | null = null;
     try { plan = s.plan ? (JSON.parse(s.plan) as ReturnType<typeof cleanPlan>) : null; } catch { plan = null; }
     const pr = await db.prepare('SELECT data FROM pro_profiles WHERE code = ?').bind(s.code).first<{ data: string }>();
@@ -198,9 +198,9 @@ export async function proState(db: DB, uid: string, now = new Date(), auto = fal
     }
     const unread = await unreadFor(db, s.code, 'pro');
     const sh = await db.prepare('SELECT updated FROM pro_share WHERE code = ?').bind(s.code).first<{ updated: string }>();
-    const lastW = recentLogs.find((l) => l.workout !== NUTRI_LOG && l.workout !== WELL_LOG) ?? null;
+    const lastW = recentLogs.find((l) => !l.workout.startsWith('__')) ?? null;
     const team = await teamOf(db, s.uid, s.code, now);
-    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}), ...(well ? { wellWeek: well.wellWeek, wellPct: well.wellPct, wellNote: well.wellNote } : {}), ...(team.length ? { team } : {}) });
+    students.push({ shareAt: sh?.updated ?? null, unread, alerts, profile, draft, draftAt: dr?.updated ?? null, code: s.code, name: s.name, linked: !!s.uid, status: s.status, version: s.version, plan, updated: s.updated, last: lastW ? { day: lastW.day, workout: lastW.workout, ...(JSON.parse(lastW.data) as Record<string, unknown>) } : null, week: wk?.n ?? 0, ...(nutriPro ? { nutriLast, nutriWeek } : {}), ...(well ? { wellWeek: well.wellWeek, wellPct: well.wellPct, wellNote: well.wellNote, symptoms: well.symptoms, symAt: well.symAt, symNote: well.symNote, intakeAt: well.intakeAt } : {}), ...(team.length ? { team } : {}) });
   }
   return ok({ pro, students, areas });
 }
@@ -379,7 +379,7 @@ export async function studentLogs(db: DB, uid: string, b: Record<string, unknown
 export async function removeStudent(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
   const s = await ownStudent(db, uid, b.code);
   if (!s) return bad('Aluno não encontrado.', 404);
-  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_checkins WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_notes WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_student_kind WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
+  await db.batch([db.prepare('DELETE FROM pro_logs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_profiles WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_drafts WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_assess WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_photos WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_msgs WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_share WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_checkins WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_notes WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_intake WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_student_kind WHERE code = ?').bind(s.code), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(s.code)]);
   return ok();
 }
 
@@ -409,7 +409,7 @@ export async function studentPlan(db: DB, key: string, b: Record<string, unknown
   try { plan = s.plan ? JSON.parse(s.plan) : null; } catch { plan = null; }
   const nutri = isNutriPro(s.pro_kind);
   const visit = nutri || isWellPro(s.pro_kind) ? await db.prepare("SELECT day, time, text FROM pro_notes WHERE code = ? AND kind = 'retorno' AND day >= ? ORDER BY day LIMIT 1").bind(s.code, now.toISOString().slice(0, 10)).first<{ day: string; time: string; text: string }>() : null;
-  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, now)), nextVisit: visit ?? null } : isWellPro(s.pro_kind) ? { nextVisit: visit ?? null } : {}) });
+  return ok({ code: s.code, pro: s.pro_name, kind: s.pro_kind, plan, version: s.version, unread: await unreadFor(db, s.code, 'aluno'), ...(nutri ? { checkinDue: !!plan && (await checkinDue(db, s.code, now)), nextVisit: visit ?? null } : isWellPro(s.pro_kind) ? { nextVisit: visit ?? null, intakeAt: (await db.prepare('SELECT updated FROM pro_intake WHERE code = ?').bind(s.code).first<{ updated: string }>())?.updated ?? null } : {}) });
 }
 
 /** O aluno desliga-se do personal (o histórico do personal fica, sem novos registos). */
@@ -530,6 +530,39 @@ export async function logWellnessDay(db: DB, key: string, b: Record<string, unkn
   const s = await linkedStudent(db, key, b.code);
   if (!s) return bad('Código não ligado a este telemóvel.', 404);
   await logWellDay(db, s.code, b, now);
+  return ok();
+}
+
+/** O paciente avalia os sintomas que o terapeuta escolheu (0 a 10), uma vez por semana. */
+export async function logSymptomCheck(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  const plan = s.plan ? (JSON.parse(s.plan) as { bemestar?: { track?: string[] } }) : null;
+  const track = cleanTrack(plan?.bemestar?.track);
+  if (!track.length) return bad('O terapeuta ainda não escolheu sintomas para acompanhar.');
+  if (!(await logSymptoms(db, s.code, track, b, now))) return bad('Avalie pelo menos um sintoma.');
+  return ok({ day: now.toISOString().slice(0, 10) });
+}
+
+/** O paciente envia a pré-anamnese (antes da consulta). Substitui a anterior. */
+export async function sendIntake(db: DB, key: string, b: Record<string, unknown>, now = new Date()): Promise<R> {
+  const s = await linkedStudent(db, key, b.code);
+  if (!s) return bad('Código não ligado a este telemóvel.', 404);
+  if (!isWellPro(s.pro_kind)) return bad('Só para terapeutas de práticas integrativas.');
+  if (!(await saveIntake(db, s.code, b, now))) return bad('Responda a pelo menos uma pergunta.');
+  return ok({ at: now.toISOString() });
+}
+
+/** O terapeuta lê a pré-anamnese do paciente e, depois de a juntar à ficha, arquiva-a. */
+export async function readIntake(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  return ok({ intake: await intakeOf(db, s.code) });
+}
+export async function archiveIntake(db: DB, uid: string, b: Record<string, unknown>): Promise<R> {
+  const s = await ownStudent(db, uid, b.code);
+  if (!s) return bad('Paciente não encontrado.', 404);
+  await db.prepare('DELETE FROM pro_intake WHERE code = ?').bind(s.code).run();
   return ok();
 }
 
@@ -767,7 +800,7 @@ export async function teamOf(db: DB, studentUid: string | null, code: string, no
     } else {
       if (plan?.workouts.length) {
         summary.push(`Treino: ${plan.workouts.map((w) => `${w.name}${w.focus ? ` (${w.focus})` : ''}`).join(', ')} · ${plan.per_week}× por semana`);
-        const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND workout != '__nutri' AND json_extract(data, '$.status') != 'saltado'").bind(r.code, weekAgo(now)).first<{ n: number }>();
+        const wk = await db.prepare("SELECT COUNT(*) AS n FROM pro_logs WHERE code = ? AND day >= ? AND substr(workout, 1, 2) != '__' AND json_extract(data, '$.status') != 'saltado'").bind(r.code, weekAgo(now)).first<{ n: number }>();
         summary.push(`Treinos feitos nos últimos 7 dias: ${wk?.n ?? 0}`);
       } else summary.push('Treino ainda não enviado.');
     }

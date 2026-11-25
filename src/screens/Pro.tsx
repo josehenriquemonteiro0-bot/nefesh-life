@@ -43,7 +43,7 @@ const REG_HINT: Record<string, string> = {
   integrativo: 'formação ou certificação: naturopatia, terapias integrativas…',
   personal: 'CREF no Brasil, título profissional em Portugal',
 };
-const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅', adesao: '📉', fome: '🍽️', peso: '⚖️', checkin: '📝', retorno: '📅' };
+const ALERT_ICON: Record<string, string> = { enviar: '📨', dor: '😣', parado: '⏸️', saltou: '⏭️', dificil: '🥵', subir: '📈', fim: '📅', adesao: '📉', fome: '🍽️', peso: '⚖️', checkin: '📝', retorno: '📅', sintomas: '📊', anamnese: '📝' };
 const STATUS: Record<string, string> = { seguido: 'concluído como planeado', alterado: 'feito com alterações', saltado: 'não fez' };
 const newEx = (): WorkoutExercise => ({ name: '', sets: 3, reps: '10', load: '', rest: '60 s', notes: '' });
 
@@ -586,7 +586,14 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
                   {s.linked && s.plan?.bemestar ? ` · ${s.wellWeek ?? 0} ${s.wellWeek === 1 ? 'dia' : 'dias'} com hábitos nos últimos 7${s.wellPct != null ? `, adesão ${s.wellPct}%` : ''}` : ''}
                   {s.wellNote ? ` · "${s.wellNote}"` : ''}
                 </p>
-              ) : nutri ? (
+              ) : null}
+              {well && s.symptoms?.length ? (
+                <p className="small" style={{ margin: '0 0 4px' }}>📊 {s.symptoms.map((x) => `${x.label} ${x.n > 1 ? `${x.first}→${x.last}` : x.last}`).join(' · ')}{s.symAt ? <span className="mute"> ({shortDate(s.symAt)})</span> : null}</p>
+              ) : null}
+              {well && s.intakeAt ? (
+                <p className="small gold" style={{ margin: '0 0 4px' }}>📝 Pré-anamnese recebida ({shortDate(s.intakeAt.slice(0, 10))}): abra a Ficha e toque em Juntar.</p>
+              ) : null}
+              {well ? null : nutri ? (
                 <p className="small" style={{ margin: '4px 0' }}>
                   {s.linked ? '✓ Ligado na app' : '⏳ À espera que o paciente use o código'}
                   {s.plan?.nutri ? ' · plano enviado' : s.draft ? ' · plano por enviar' : ' · plano por montar'}

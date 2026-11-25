@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { organizeIntegNotes, proApi, readExamFile, type IntegOrganized, type ProStudent } from '../domain/pro';
-import { INTEG, INTEG_GROUPS, INTEG_KEYS, examOut, integText, type Exam, type IntegKey } from '../domain/proInteg';
+import { INTEG, INTEG_GROUPS, INTEG_KEYS, INTEG_LABEL, examOut, integText, mergeIntake, type Exam, type IntegKey } from '../domain/proInteg';
 import { cleanProfile, type StudentProfile } from '../domain/proProfile';
 import { useStore } from '../state/store';
 import { useLongDictation } from './ProAI';
@@ -12,7 +12,7 @@ const dmy = (d: string) => (d ? d.split('-').reverse().join('/') : 'sem data');
 const FLAG = { alto: '↑ acima', baixo: '↓ abaixo', normal: '', '': '' } as const;
 
 /** Exames de um paciente: uma tabela por exame, com os valores fora da referência em destaque. */
-function ExamCard({ e, onRemove }: { e: Exam; onRemove: () => void }) {
+function ExamCard({ e, onRemove, prev }: { e: Exam; onRemove: () => void; prev: (name: string) => { value: string; date: string } | null }) {
   const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
   const out = e.items.filter((i) => i.flag === 'alto' || i.flag === 'baixo');
@@ -37,7 +37,7 @@ function ExamCard({ e, onRemove }: { e: Exam; onRemove: () => void }) {
                   {shown.map((i, k) => (
                     <tr key={k} className={i.flag === 'alto' || i.flag === 'baixo' ? 'out' : ''}>
                       <td data-raw>{i.name}</td>
-                      <td data-raw><b>{i.value}</b>{i.unit ? ` ${i.unit}` : ''}{FLAG[i.flag] ? <span className="warn-t"> {FLAG[i.flag]}</span> : null}</td>
+                      <td data-raw><b>{i.value}</b>{i.unit ? ` ${i.unit}` : ''}{FLAG[i.flag] ? <span className="warn-t"> {FLAG[i.flag]}</span> : null}{(() => { const pv = prev(i.name); return pv ? <span className="mute small" style={{ display: 'block' }}>antes: {pv.value} ({dmy(pv.date)})</span> : null; })()}</td>
                       <td className="mute" data-raw>{i.ref}</td>
                     </tr>
                   ))}
@@ -56,7 +56,7 @@ function ExamCard({ e, onRemove }: { e: Exam; onRemove: () => void }) {
  * Ficha do paciente para terapias integrativas: anamnese integrativa (não a de um personal nem a de um
  * nutricionista), exames lidos pela IA e notas da consulta organizadas pela IA nos campos certos.
  */
-export function IntegProfileEditor({ student, onClose, onSaved }: { student: Pick<ProStudent, 'code' | 'name' | 'profile'>; onClose: () => void; onSaved: (p: StudentProfile | null) => void }) {
+export function IntegProfileEditor({ student, onClose, onSaved }: { student: Pick<ProStudent, 'code' | 'name' | 'profile' | 'intakeAt'>; onClose: () => void; onSaved: (p: StudentProfile | null) => void }) {
   const { toast } = useStore();
   const [p, setP] = useState<StudentProfile>(student.profile ?? EMPTY);
   const [busy, setBusy] = useState(false);
@@ -64,6 +64,23 @@ export function IntegProfileEditor({ student, onClose, onSaved }: { student: Pic
   const set = (patch: Partial<StudentProfile>) => setP((cur) => ({ ...cur, ...patch }));
   const setI = (k: IntegKey, v: string) => setP((cur) => ({ ...cur, integ: { ...(cur.integ ?? {}), [k]: v } }));
   const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(INTEG_GROUPS.map(([g]) => [g, g === 'motivo' || g === 'saude' || INTEG.some(([k, gg]) => gg === g && student.profile?.integ?.[k])])));
+
+  // pré-anamnese respondida pelo paciente na app
+  const [intake, setIntake] = useState<{ integ: Partial<Record<IntegKey, string>>; sexo: '' | 'f' | 'm'; idade: number | null; at: string } | null>(null);
+  const [intakeMerged, setIntakeMerged] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  useEffect(() => {
+    if (!student.intakeAt) return;
+    proApi<{ intake: typeof intake }>('aluno/pre-anamnese/ler', { code: student.code }).then((r) => setIntake(r.intake)).catch(() => undefined);
+  }, [student.code, student.intakeAt]);
+  const mergeIn = () => {
+    if (!intake) return;
+    const m = mergeIntake(p.integ, intake.integ);
+    setP((cur) => ({ ...cur, sexo: cur.sexo || intake.sexo, idade: cur.idade ?? intake.idade, integ: m.integ }));
+    setOpen((o) => ({ ...o, ...Object.fromEntries(INTEG.filter(([k]) => m.changed.includes(k)).map(([, g]) => [g, true])) }));
+    setIntakeMerged(true);
+    toast(m.changed.length ? `Juntei ${m.changed.length} ${m.changed.length === 1 ? 'resposta' : 'respostas'} à ficha. Confira e toque em Guardar ficha.` : 'A ficha já tinha estas respostas.');
+  };
 
   // notas da consulta → IA → campos
   const [notes, setNotes] = useState('');
@@ -108,6 +125,7 @@ export function IntegProfileEditor({ student, onClose, onSaved }: { student: Pic
     setBusy(true); setErr('');
     try {
       const r = await proApi<{ profile: StudentProfile | null }>('aluno/perfil', { code: student.code, profile: cleanProfile(p) });
+      if (intakeMerged) await proApi('aluno/pre-anamnese/arquivar', { code: student.code }).catch(() => undefined);
       toast(`Ficha de ${student.name} guardada.`);
       onSaved(r.profile);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -120,6 +138,18 @@ export function IntegProfileEditor({ student, onClose, onSaved }: { student: Pic
       <button className="btn ghost sm" onClick={onClose}>← Pacientes</button>
       <h1 style={{ marginBottom: 4 }}>Ficha de {student.name}</h1>
       <p className="small mute" style={{ marginTop: 0 }}>Anamnese integrativa. Tudo opcional: preencha à mão, dite a consulta ou carregue os exames.</p>
+
+      {intake && !intakeMerged && (
+        <section className="card pro-send">
+          <p className="small" style={{ margin: '0 0 6px' }}><b>📝 {student.name} preencheu a pré-anamnese</b> ({dmy(intake.at.slice(0, 10))}) · {Object.keys(intake.integ).length} {Object.keys(intake.integ).length === 1 ? 'resposta' : 'respostas'}</p>
+          <button className="link small inline" onClick={() => setIntakeOpen(!intakeOpen)} aria-expanded={intakeOpen}>{intakeOpen ? '▾ Esconder respostas' : '▸ Ver respostas'}</button>
+          {intakeOpen && INTEG_KEYS.filter((k) => intake.integ[k]).map((k) => <p key={k} className="small" style={{ margin: '6px 0 0' }}><b>{INTEG_LABEL[k]}:</b> <span data-raw>{intake.integ[k]}</span></p>)}
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
+            <button className="btn sm" onClick={mergeIn}>Juntar à ficha</button>
+          </div>
+          <p className="small mute" style={{ margin: '6px 0 0' }}>Os campos vazios ficam com a resposta; nos que já têm texto, a resposta entra no fim como “Paciente: …”.</p>
+        </section>
+      )}
 
       <section className="card pro-ai">
         <p className="small" style={{ margin: '0 0 8px' }}><b>🎙️ Conte a consulta</b> · fale ou cole as suas notas, em qualquer ordem. A IA põe cada informação no campo certo, avisa dos sinais que pedem médico e diz o que falta perguntar.</p>
@@ -156,7 +186,7 @@ export function IntegProfileEditor({ student, onClose, onSaved }: { student: Pic
         <input ref={fileRef} type="file" accept="application/pdf,image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) readExam(f); }} />
         <button className="btn sm" disabled={reading} onClick={() => fileRef.current?.click()}>{reading ? 'A ler o exame…' : '+ Carregar exame'}</button>
         {examMsg && <p className="small neon" style={{ margin: '8px 0 0' }}>{examMsg}</p>}
-        {(p.exames ?? []).map((e) => <ExamCard key={e.id} e={e} onRemove={() => set({ exames: (p.exames ?? []).filter((x) => x.id !== e.id) })} />)}
+        {(p.exames ?? []).map((e, ei, all) => <ExamCard key={e.id} e={e} prev={(name) => { const k = name.toLowerCase(); for (const o of all.slice(ei + 1)) { const it = o.items.find((x) => x.name.toLowerCase() === k); if (it) return { value: `${it.value}${it.unit ? ` ${it.unit}` : ''}`, date: o.date }; } return null; }} onRemove={() => set({ exames: (p.exames ?? []).filter((x) => x.id !== e.id) })} />)}
         <p className="small mute" style={{ margin: '8px 0 0' }}>O documento não fica guardado: só os valores. A leitura dos exames e o diagnóstico são do médico; aqui servem para acompanhar a evolução.</p>
       </section>
 

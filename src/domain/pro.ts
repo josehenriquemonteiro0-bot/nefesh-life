@@ -25,6 +25,12 @@ export interface ProStudent {
   wellWeek?: number;
   wellPct?: number | null;
   wellNote?: string | null;
+  /** sintomas acompanhados: primeira e última avaliação (0 a 10) */
+  symptoms?: { label: string; first: number; last: number; n: number; firstDay: string; lastDay: string }[];
+  symAt?: string | null;
+  symNote?: string | null;
+  /** pré-anamnese respondida pelo paciente e ainda não junta à ficha */
+  intakeAt?: string | null;
   /** os outros profissionais do mesmo paciente (só com autorização dele) */
   team?: { pro: string; kind: string; summary: string[] }[];
   code: string;
@@ -204,7 +210,7 @@ export function clearProPlan(S: AppState) {
 
 /** Ao abrir a app: há versão nova do plano? */
 export async function checkProPlan(code: string) {
-  return proApi<{ code: string; pro: string; kind?: string; plan: ParsedWorkoutPlan | null; version: number; unread?: number; checkinDue?: boolean; nextVisit?: { day: string; time: string; text: string } | null }>('aluno/plano', { code });
+  return proApi<{ code: string; pro: string; kind?: string; plan: ParsedWorkoutPlan | null; version: number; unread?: number; checkinDue?: boolean; nextVisit?: { day: string; time: string; text: string } | null; intakeAt?: string | null }>('aluno/plano', { code });
 }
 
 /** Resumo do treino feito, para o personal. */

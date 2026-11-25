@@ -387,6 +387,8 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         'aluno/partilha': () => pro.studentShare(db, key!, b),
         'aluno/dia': () => pro.logNutriDay(db, key!, b),
         'aluno/habitos': () => pro.logWellnessDay(db, key!, b),
+        'aluno/sintomas': () => pro.logSymptomCheck(db, key!, b),
+        'aluno/pre-anamnese': () => pro.sendIntake(db, key!, b),
         'aluno/checkin': () => pro.studentCheckin(db, env.LIMITS as never, key!, b),
         'aluno/equipa': () => pro.studentTeam(db, key!, b),
       };
@@ -443,6 +445,8 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         'aluno/notas': () => pro.listNotes(db, uid, b),
         'aluno/nota': () => pro.addNote(db, uid, b),
         'aluno/nota/apagar': () => pro.deleteNote(db, uid, b),
+        'aluno/pre-anamnese/ler': () => pro.readIntake(db, uid, b),
+        'aluno/pre-anamnese/arquivar': () => pro.archiveIntake(db, uid, b),
         area: () => pro.switchArea(db, uid, b, env.PRO_AUTO_APPROVE === 'true'),
         'area/pedir': () => pro.requestArea(db, uid, b, env.PRO_AUTO_APPROVE === 'true'),
         diretorio: () => pro.myDirectory(db, uid),

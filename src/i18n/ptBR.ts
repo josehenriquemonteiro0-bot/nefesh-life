@@ -33,6 +33,8 @@ const PAIRS: [string, string][] = [
   ['ecrãs', 'telas'],
   ['ecrã', 'tela'],
   // saúde
+  ['infeções', 'infecções'],
+  ['infeção', 'infecção'],
   ['hipotiroidismo', 'hipotireoidismo'],
   ['hipertiroidismo', 'hipertireoidismo'],
   ['humidade', 'umidade'],

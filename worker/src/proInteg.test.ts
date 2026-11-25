@@ -102,4 +102,49 @@ describe('NEFESH Pro · ficha integrativa', () => {
     expect(calls[0].messages[0].content).toContain('queixa: Cansaço');
     expect((await organizeInteg(fake(out), 'm', kv(), 'a', 'ip', { text: '' })).status).toBe(400);
   });
+
+  it('sintomas: o terapeuta escolhe, o paciente avalia por semana e o painel mostra a evolução', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'andrea', { terms: pro.PRO_TERMS, name: 'Andrea', reg: 'Naturopatia', kind: 'integrativo' }, NOW, true);
+    const code = (await pro.newStudent(db, 'andrea', { name: 'Paula' }, NOW)).body.code as string;
+    const plan = { goals: 'Energia', habits: [{ text: 'Caminhar 20 min', when: 'tarde' }], practices: [], notes: '', track: ['Cansaço', 'Inchaço', 'cansaço', 'Dor de cabeça', 'Ansiedade', 'Azia', 'Insónia', 'Sétimo'] };
+    expect((await pro.savePlan(db, 'andrea', { code, plan: { workouts: [], bemestar: plan } }, NOW)).status).toBe(200);
+    await pro.linkStudent(db, 'd:tel', { code }, NOW);
+    const link = await pro.linkStudent(db, 'd:tel', { code }, NOW);
+    expect((link.body.plan as { bemestar: { track: string[] } }).bemestar.track).toEqual(['Cansaço', 'Inchaço', 'Dor de cabeça', 'Ansiedade', 'Azia', 'Insónia']);
+    const wk = (n: number) => new Date(NOW.getTime() - n * 7 * 864e5);
+    expect((await pro.logSymptomCheck(db, 'd:tel', { code, data: { v: [8, 6, 2, null, null, null] } }, wk(2))).status).toBe(200);
+    expect((await pro.logSymptomCheck(db, 'd:tel', { code, data: { v: [5, 9, 1, null, null, null], note: 'Mais disposta' } }, NOW)).status).toBe(200);
+    expect((await pro.logSymptomCheck(db, 'd:tel', { code, data: { v: [null, 'x', 11] } }, NOW)).status).toBe(400);
+    expect((await pro.logSymptomCheck(db, 'd:outro', { code, data: { v: [1] } }, NOW)).status).toBe(404);
+    const st = (await pro.proState(db, 'andrea', NOW)).body as { students: { symptoms: { label: string; first: number; last: number }[]; symNote: string; alerts: { kind: string; text: string }[] }[] };
+    const s0 = st.students[0];
+    expect(s0.symptoms.find((x) => x.label === 'Cansaço')).toMatchObject({ first: 8, last: 5 });
+    expect(s0.symNote).toBe('Mais disposta');
+    expect(s0.alerts.find((a) => a.kind === 'sintomas')?.text).toContain('Inchaço 6→9');
+  });
+
+  it('pré-anamnese: o paciente responde na app; o terapeuta lê, junta à ficha e arquiva', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'andrea', { terms: pro.PRO_TERMS, name: 'Andrea', reg: 'Naturopatia', kind: 'integrativo' }, NOW, true);
+    const code = (await pro.newStudent(db, 'andrea', { name: 'Paula' }, NOW)).body.code as string;
+    await pro.linkStudent(db, 'd:tel', { code }, NOW);
+    expect((await pro.sendIntake(db, 'd:tel', { code, data: { integ: {} } }, NOW)).status).toBe(400);
+    expect((await pro.sendIntake(db, 'd:tel', { code, data: { sexo: 'f', idade: '42', integ: { queixa: 'Cansaço', sono: 'Acordo às 3h', observacoes: 'não deve passar' } } }, NOW)).status).toBe(200);
+    expect((await pro.linkStudent(db, 'd:tel', { code }, NOW)).body.intakeAt).toBeTruthy();
+    const st = (await pro.proState(db, 'andrea', NOW)).body as { students: { intakeAt: string; alerts: { kind: string }[] }[] };
+    expect(st.students[0].intakeAt).toBeTruthy();
+    expect(st.students[0].alerts.some((a) => a.kind === 'anamnese')).toBe(true);
+    const r = (await pro.readIntake(db, 'andrea', { code })).body.intake as { integ: Record<string, string>; idade: number };
+    expect(r.integ).toEqual({ queixa: 'Cansaço', sono: 'Acordo às 3h' });
+    expect(r.idade).toBe(42);
+    expect((await pro.readIntake(db, 'outro', { code })).status).toBe(404);
+    await pro.archiveIntake(db, 'andrea', { code });
+    expect((await pro.readIntake(db, 'andrea', { code })).body.intake).toBeNull();
+    // um personal não recebe pré-anamnese integrativa
+    await pro.registerPro(db, 'isa', { terms: pro.PRO_TERMS, name: 'Isabela', reg: 'CREF', kind: 'personal' }, NOW, true);
+    const c2 = (await pro.newStudent(db, 'isa', { name: 'João' }, NOW)).body.code as string;
+    await pro.linkStudent(db, 'd:tel2', { code: c2 }, NOW);
+    expect((await pro.sendIntake(db, 'd:tel2', { code: c2, data: { integ: { queixa: 'x' } } }, NOW)).status).toBe(400);
+  });
 });

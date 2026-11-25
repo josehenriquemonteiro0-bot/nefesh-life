@@ -94,9 +94,48 @@ async function exame() {
   ok(get(/b12/i)?.flag === 'normal' && get(/b12/i)?.unit === 'pg/mL', 'B12 · unidade e normal');
 }
 
+async function anamnesePT() {
+  out.push('', '## 3. Notas em português de Portugal, grávida com suplementos', '');
+  const text = 'Joana, 31 anos, grávida de 14 semanas. Vem por enjoos e obstipação. Toma ácido fólico e começou por conta própria chá de sene e óleo de onagra que a amiga recomendou. Médica de família acompanha a gravidez. Dorme bem. Muita azia à noite.';
+  const r = await organizeInteg(client, model, kv(), 'eval', 'ip', { text, integ: { queixa: 'Enjoos' }, sexo: '', idade: null });
+  const b = r.body as { integ: Record<string, string>; alerts: string[]; ask: string[] };
+  out.push('```json', JSON.stringify(b, null, 2), '```', '');
+  const i = b.integ ?? {};
+  ok(/grávida|gravidez/i.test(i.hormonal ?? '') || /grávida|gravidez/i.test(i.doencas ?? ''), 'gravidez registada');
+  ok(/sene/i.test(i.medicacao ?? '') && /onagra/i.test(i.medicacao ?? '') && /f[óo]lico/i.test(i.medicacao ?? ''), 'medicação e suplementos');
+  ok(/enjo/i.test(i.queixa ?? ''), 'mantém a queixa que já estava');
+  const al = (b.alerts ?? []).join(' ');
+  ok(/(gravidez|grávida)/i.test(al) && /(sene|onagra|fitoter|suplement|chá)/i.test(al), 'alerta: fitoterápicos na gravidez');
+  ok(!/(suspend|pare de tomar|parar de tomar|interromp)/i.test(JSON.stringify(b)), 'não manda parar nada');
+}
+
+async function exameAnterior() {
+  out.push('', '## 4. Boletim com coluna de resultado anterior', '');
+  const file = pdf([
+    'LABORATORIO VIDA - Cuiaba MT          Coleta: 15/11/2026',
+    '',
+    'EXAME              RESULTADO   RESULTADO ANTERIOR (10/05/2026)   REFERENCIA',
+    'Ferritina          22 ng/mL    9 ng/mL                           15 a 150',
+    'Vitamina D         34 ng/mL    18 ng/mL                          30 a 100',
+    'Colesterol total   212 mg/dL   230 mg/dL                         inferior a 190',
+  ]);
+  const r = await readExam(client, model, kv(), 'eval', 'ip', { file, media_type: 'application/pdf' });
+  const e = (r.body as { exam?: { date: string; items: { name: string; value: string; flag: string }[] } }).exam;
+  out.push('```json', JSON.stringify(r.body, null, 2), '```', '');
+  ok(!!e, 'exame lido');
+  if (!e) return;
+  const get = (re: RegExp) => e.items.find((x) => re.test(x.name));
+  ok(e.date === '2026-11-15', 'data da coleta atual');
+  ok(get(/ferritina/i)?.value.startsWith('22') === true && get(/ferritina/i)?.flag === 'normal', 'ferritina: o valor atual (22), normal');
+  ok(get(/vitamina d/i)?.value.startsWith('34') === true, 'vitamina D: o valor atual (34)');
+  ok(get(/colesterol/i)?.flag === 'alto', 'colesterol 212 · alto');
+}
+
 const t0 = Date.now();
 try { await anamnese(); } catch (err) { ok(false, `anamnese falhou: ${(err as Error).message}`); }
 try { await exame(); } catch (err) { ok(false, `exame falhou: ${(err as Error).message}`); }
+try { await anamnesePT(); } catch (err) { ok(false, `anamnese PT falhou: ${(err as Error).message}`); }
+try { await exameAnterior(); } catch (err) { ok(false, `exame anterior falhou: ${(err as Error).message}`); }
 out.push('', `${fails ? `❌ ${fails} falha(s)` : '✅ tudo certo'} · ${Math.round((Date.now() - t0) / 1000)} s`);
 writeFileSync(new URL('./relatorio-integ.md', import.meta.url), out.join('\n'));
 console.log(out.join('\n'));

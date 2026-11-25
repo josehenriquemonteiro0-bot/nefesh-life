@@ -125,3 +125,45 @@ export function integText(p: { sexo?: string; idade?: number | null; integ?: Par
   if (out.length) a.push(`Exames fora da referência: ${out.map((i) => `${i.name} ${i.value}${i.unit ? ` ${i.unit}` : ''} (${i.flag}${i.date ? `, ${i.date.split('-').reverse().join('/')}` : ''})`).join('; ')}`);
   return a.join('\n');
 }
+
+/** As perguntas da pré-anamnese, escritas para o paciente (as mesmas chaves da ficha). */
+export const INTAKE_Q: Record<Exclude<IntegKey, 'observacoes'>, string> = {
+  queixa: 'O que o(a) traz à consulta e o que espera dela',
+  historia: 'Quando começou e o que já tentou',
+  doencas: 'Doenças, diagnósticos e cirurgias',
+  medicacao: 'Medicamentos, suplementos e chás que toma (com a dose)',
+  alergias: 'Alergias e intolerâncias',
+  medico: 'Médicos que o(a) acompanham hoje',
+  familia: 'Doenças na família (pais, irmãos, avós)',
+  digestao: 'Digestão e intestino: inchaço, azia, quantas vezes por semana o intestino funciona',
+  sono: 'Como dorme: a que horas se deita, se acorda à noite, se acorda descansado(a)',
+  energia: 'Energia ao longo do dia',
+  emocional: 'Stress, humor e emoções',
+  hormonal: 'Ciclo menstrual, gravidez ou menopausa (se for o caso)',
+  pele: 'Pele, cabelo e unhas',
+  dores: 'Dores e tensões',
+  imunidade: 'Gripes frequentes, herpes, alergias de estação',
+  alimentacao: 'Um dia normal de alimentação, horários e água',
+  habitos: 'Café, álcool e tabaco',
+  movimento: 'Atividade física e sol',
+  rotina: 'Rotina: a que horas acorda, se deita e trabalha',
+  ambiente: 'Casa, quarto e trabalho: humidade ou bolor, produtos químicos, aparelhos ligados no quarto',
+};
+
+/** Sintomas comuns para acompanhar (o terapeuta pode escrever outros). */
+export const TRACK_SUGGEST = ['Cansaço', 'Sono', 'Inchaço', 'Intestino preso', 'Azia', 'Dor de cabeça', 'Ansiedade', 'Irritabilidade', 'Dores no corpo', 'TPM', 'Calores', 'Pele', 'Vontade de doce', 'Névoa mental'];
+
+/** Junta a pré-anamnese à ficha: campos vazios ficam com a resposta; os preenchidos ganham a resposta no fim. */
+export function mergeIntake(cur: Partial<Record<IntegKey, string>> | undefined, add: Partial<Record<IntegKey, string>>): { integ: Partial<Record<IntegKey, string>>; changed: IntegKey[] } {
+  const integ = { ...(cur ?? {}) };
+  const changed: IntegKey[] = [];
+  for (const k of INTEG_KEYS) {
+    const a = add[k]?.trim();
+    if (!a) continue;
+    const c = integ[k]?.trim();
+    if (c && c.toLowerCase().includes(a.toLowerCase())) continue;
+    integ[k] = (c ? `${c}\nPaciente: ${a}` : a).slice(0, 600);
+    changed.push(k);
+  }
+  return { integ, changed };
+}

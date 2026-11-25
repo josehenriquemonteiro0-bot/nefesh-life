@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { shortDate, todayKey } from '../domain/dates';
 import type { ParsedWorkoutPlan } from '../domain/planRead';
 import { checkProPlan, codeLooksValid, normCode, proApi } from '../domain/pro';
-import { WHEN_LABEL, applyWellPlan, clearWellPlan, isWellKind, practiceOf, sendWellDays, syncWellShare, wellWeek, type WellPlan } from '../domain/proWell';
+import { WHEN_LABEL, applyWellPlan, clearWellPlan, isWellKind, practiceOf, sendWellDays, symptomsDue, syncWellShare, wellWeek, type WellPlan } from '../domain/proWell';
+import { IntakeForm, SymptomCheck } from './WellIntake';
 import { isNutriKind } from '../domain/proNutriClient';
 import { useStore } from '../state/store';
 import { ChatThread } from './ProChat';
@@ -23,6 +24,10 @@ export function WellLinkCard() {
   const [unread, setUnread] = useState(0);
   const [visit, setVisit] = useState<{ day: string; time: string; text: string } | null>(null);
   const [open, setOpen] = useState(false);
+  const [intakeAt, setIntakeAt] = useState<string | null>(null);
+  const [intake, setIntake] = useState(false);
+  const [symOpen, setSymOpen] = useState(false);
+  const [symDone, setSymDone] = useState(false);
   const { start, node } = usePractice((m) => m >= 1 && toast(`Prática feita: ${m >= 2 ? Math.round(m) : m} min. 🌿`));
 
   const check = (manual = false) => {
@@ -31,6 +36,7 @@ export function WellLinkCard() {
       .then((r) => {
         setUnread(r.unread ?? 0);
         setVisit(r.nextVisit ?? null);
+        setIntakeAt(r.intakeAt ?? null);
         if (S.wellShare?.on && S.wellShare.at !== todayKey()) syncWellShare(S, true).then(() => update((d) => { d.wellShare = { on: true, at: todayKey() }; })).catch(() => undefined);
         if (r.version > link.version || (r.plan?.bemestar && !plan)) {
           update((d) => applyWellPlan(d, r as never));
@@ -99,11 +105,18 @@ export function WellLinkCard() {
             {plan.notes && <p className="small" style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap' }}>📝 {plan.notes}</p>}
           </>
         )}
+        {plan?.track?.length && !symDone && symptomsDue(S) ? (
+          symOpen ? <SymptomCheck track={plan.track} pro={link.pro} onDone={() => { setSymOpen(false); setSymDone(true); }} />
+            : <div className="pro-ask" style={{ marginTop: 10 }}><p className="small" style={{ margin: '0 0 6px' }}>📊 <b>{link.pro}</b> quer saber como estiveram os sintomas nesta semana. Leva 30 segundos.</p><button className="btn sm" onClick={() => setSymOpen(true)}>Responder</button></div>
+        ) : null}
+        {intake ? <IntakeForm code={link.code} pro={link.pro} sentAt={intakeAt} onSent={(at) => { setIntakeAt(at); setIntake(false); }} onClose={() => setIntake(false)} />
+          : !intakeAt && <div className="pro-ask" style={{ marginTop: 10 }}><p className="small" style={{ margin: '0 0 6px' }}>📝 Preencha a sua <b>ficha de saúde</b> para {link.pro} antes da consulta: a sessão rende mais.</p><button className="btn sm" onClick={() => setIntake(true)}>Preencher ficha</button></div>}
         {visit && <p className="small" style={{ margin: '8px 0 0' }}>📅 Próxima sessão: <b>{shortDate(visit.day)}{visit.time ? ` às ${visit.time}` : ''}</b>{visit.text ? ` · ${visit.text}` : ''}</p>}
         <div className="row" style={{ gap: 8, justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 10 }}>
           <button className="btn sm" onClick={() => { setChat(true); setUnread(0); }}>💬 Falar com {link.pro}{unread ? <span className="badge">{unread}</span> : null}</button>
           {!plan && <button className="btn ghost sm" onClick={() => check(true)}>Ver se já chegou</button>}
           <button className="btn ghost sm" onClick={() => setOpen(!open)} aria-expanded={open}>Partilha</button>
+          {intakeAt && !intake && <button className="btn ghost sm" onClick={() => setIntake(true)}>📝 Ficha de saúde</button>}
         </div>
         {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
         {open && (
