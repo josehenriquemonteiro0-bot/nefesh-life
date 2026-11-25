@@ -57,3 +57,18 @@ describe('AI Coach', () => {
     expect(coachLimits({ TEST_MODE: 'true' }).device).toBe(40);
   });
 });
+
+describe('ações em formato compacto (só os campos usados)', () => {
+  it('aceita registos só com os campos que se aplicam e preenche o resto por omissão', () => {
+    const a = cleanActions([
+      { type: 'agua', value: 2 },
+      { type: 'refeicao', meal: 'almoco', items: [{ name: 'Arroz', grams: 150, food_id: 'arroz_branco' }, { name: 'Molho caseiro', grams: 30, kcal100: 120, p100: 2, c100: 8, f100: 9 }] },
+      { type: 'lembrete', note: 'Exame de sangue', date: '2026-11-27', time: '08:00' },
+    ]);
+    expect(a).toHaveLength(3);
+    expect(a[0]).toMatchObject({ type: 'agua', value: 2, meal: '', note: '', replace: false, exercises: [], items: [] });
+    expect(a[1].items[0]).toMatchObject({ food_id: 'arroz_branco', grams: 150 });
+    expect(a[1].items[1]).toMatchObject({ food_id: '', kcal100: 120 });
+    expect(a[2]).toMatchObject({ date: '2026-11-27', time: '08:00', note: 'Exame de sangue' });
+  });
+});
