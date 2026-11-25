@@ -32,6 +32,11 @@ const PAIRS: [string, string][] = [
   ['os ecrãs', 'as telas'],
   ['ecrãs', 'telas'],
   ['ecrã', 'tela'],
+  // saúde
+  ['hipotiroidismo', 'hipotireoidismo'],
+  ['hipertiroidismo', 'hipertireoidismo'],
+  ['humidade', 'umidade'],
+  ['bolor', 'mofo'],
   // menu do iPhone
   ['Definições → [o seu nome] → Subscrições', 'Ajustes → [o seu nome] → Assinaturas'],
   // cupão → cupom; bónus → bônus

@@ -790,6 +790,12 @@ html.no-scroll,html.no-scroll body{overflow:hidden;overscroll-behavior:none;heig
 .pro-savebar .btn{white-space:nowrap;flex:0 0 auto}
 .pro-send{margin-top:6px;border:1px solid rgba(0,254,138,.35)}
 .pro-upload{border:1px dashed rgba(0,254,138,.45)}
+.pro-exam{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.pro-exam-t{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.pro-exam-t td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;overflow-wrap:anywhere}
+.pro-exam-t td:first-child{width:42%}
+.pro-exam-t td:last-child{width:26%;font-size:12px}
+.pro-exam-t tr.out td:first-child{font-weight:700}
 .pro-ask{margin-top:12px;padding:12px;border-radius:12px;border:1px solid rgba(0,254,138,.35);background:rgba(0,254,138,.06)}
 .pro-profile .lbl{margin:14px 0 6px;font-weight:700}
 .pro-profile .lbl:first-child{margin-top:0}

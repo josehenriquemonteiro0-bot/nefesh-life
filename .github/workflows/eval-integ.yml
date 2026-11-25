@@ -1,0 +1,34 @@
+# Avaliação real da IA da ficha integrativa (notas da consulta e exames), só quando é pedida.
+# Usa a chave ANTHROPIC_API_KEY dos segredos; custa poucos cêntimos por execução.
+name: Avaliação da IA · ficha integrativa
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Modelo
+        default: claude-opus-5-5
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || secrets.ANTHTOPIC_API_KEY }}
+      MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npx -y tsx eval/integ.ts
+      - run: cat eval/relatorio-integ.md >> "$GITHUB_STEP_SUMMARY"
+        if: always()

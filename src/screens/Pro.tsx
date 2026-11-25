@@ -11,6 +11,7 @@ import { whatsappShare } from '../domain/content';
 import { useStore } from '../state/store';
 import { DictationCard, ReviewCard } from '../components/ProAI';
 import { ProfileEditor } from '../components/ProProfile';
+import { IntegProfileEditor } from '../components/ProInteg';
 import { libraryVideo, loadVideos } from '../domain/exVideos';
 import { StudentAssessments } from '../components/ProAssess';
 import { ChatThread } from '../components/ProChat';
@@ -474,7 +475,8 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   if (reportOf) return <ShareReport student={reportOf} onClose={() => setReportOf(null)} />;
   if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
-  if (profileOf) return <ProfileEditor nutri={nutri || well} student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
+  if (profileOf && well) return <IntegProfileEditor student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
+  if (profileOf) return <ProfileEditor nutri={nutri} student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;
   if (visitsOf) return <NutriVisits student={visitsOf} onClose={() => { setVisitsOf(null); load(); }} />;
   if (logs && nutri) return <NutriLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
   if (logs) return <StudentLogs student={logs} onClose={() => setLogs(null)} onComment={(ref) => { setChatOf({ s: logs, ref }); setLogs(null); }} />;
@@ -556,7 +558,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             {askProfile && (
               <div className="pro-ask">
                 <p className="small" style={{ margin: 0 }}><b>✓ Código de {askProfile.name}: {askProfile.code}</b></p>
-                <p className="small" style={{ margin: '6px 0 8px' }}>{well ? `Quer preencher a ficha de ${askProfile.name} (objetivo, doenças, medicação, alergias, rotina)? Ajuda a montar o plano de bem-estar com segurança.` : nutri ? `Quer preencher a ficha de ${askProfile.name} (medidas, objetivo, anamnese: doenças, medicação, alergias, rotina)? As metas do plano são sugeridas a partir dela.` : `Quer registar um perfil mais detalhado de ${askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.`}</p>
+                <p className="small" style={{ margin: '6px 0 8px' }}>{well ? `Quer preencher a ficha de ${askProfile.name}? Motivo da consulta, saúde, sono, digestão, emoções, ambiente e exames. Pode ditar a consulta e carregar os exames: a IA organiza.` : nutri ? `Quer preencher a ficha de ${askProfile.name} (medidas, objetivo, anamnese: doenças, medicação, alergias, rotina)? As metas do plano são sugeridas a partir dela.` : `Quer registar um perfil mais detalhado de ${askProfile.name} (sexo, idade, medidas, objetivo, experiência, lesões)? Ajuda a IA a adaptar o treino.`}</p>
                 <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
                   <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code) ?? ({ code: askProfile.code, name: askProfile.name, profile: null } as ProStudent); setAskProfile(null); setProfileOf(st); }}>{nutri || well ? 'Preencher ficha' : 'Registar perfil'}</button>
                   <button className="btn ghost sm" onClick={() => { const st = students.find((x) => x.code === askProfile.code); setAskProfile(null); if (st) setEdit(st); }}>{nutri || well ? 'Agora não, montar plano' : 'Agora não, montar treino'}</button>
@@ -565,7 +567,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
             )}
             {askPlan && !askProfile && (
               <div className="pro-ask">
-                <p className="small" style={{ margin: '0 0 8px' }}>{nutri || well ? 'Ficha' : 'Perfil'} de {askPlan.name} guardad{nutri || well ? 'a' : 'o'}. Montar o {well ? 'plano de bem-estar' : nutri ? 'plano alimentar' : 'treino'} agora?</p>
+                <p className="small" style={{ margin: '0 0 8px' }}>{nutri || well ? `Ficha de ${askPlan.name} guardada.` : `Perfil de ${askPlan.name} guardado.`} Montar o {well ? 'plano de bem-estar' : nutri ? 'plano alimentar' : 'treino'} agora?</p>
                 <div className="row" style={{ gap: 8, justifyContent: 'flex-start' }}>
                   <button className="btn sm" onClick={() => { const st = students.find((x) => x.code === askPlan.code) ?? askPlan; setAskPlan(null); setEdit(st); }}>{nutri || well ? 'Montar plano' : 'Montar treino'}</button>
                   <button className="link small inline" onClick={() => setAskPlan(null)}>Depois</button>

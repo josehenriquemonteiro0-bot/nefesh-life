@@ -84,6 +84,8 @@ const FEATURE_LABEL: Record<string, string> = {
   'pro-avaliacao': 'Pro: avaliação física',
   'pro-nutri-ditado': 'Pro: ditado do plano alimentar',
   'pro-nutri-rever': 'Pro: revisão do plano alimentar',
+  'pro-exames': 'Pro: leitura de exames',
+  'pro-integ-anamnese': 'Pro: anamnese integrativa',
   'comunidade-foto': 'Comunidade: verificação de foto',
   'captura-saude': 'Captura do app Saúde',
   'prova-spirulina': 'Prova da Spirulina',

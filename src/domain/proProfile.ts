@@ -1,5 +1,6 @@
 /** Perfil do aluno registado pelo profissional (sem dependências: a app e o servidor usam-no). */
 import { cleanAnamnese } from './proNutri';
+import { cleanExams, cleanInteg, type Exam, type IntegKey } from './proInteg';
 export interface StudentProfile {
   sexo: '' | 'f' | 'm';
   idade: number | null;
@@ -18,6 +19,10 @@ export interface StudentProfile {
   dataAval?: string;
   /** anamnese nutricional (nutricionistas e médicos) */
   anamnese?: Partial<Record<import('./proNutri').AnamKey, string>>;
+  /** anamnese integrativa (terapias integrativas) */
+  integ?: Partial<Record<IntegKey, string>>;
+  /** exames trazidos pelo paciente: só os valores (o documento não fica guardado) */
+  exames?: Exam[];
 }
 
 /** Perímetros (cm). */
@@ -60,11 +65,13 @@ export function cleanProfile(p: unknown): StudentProfile {
     fc: num(o.fc, 30, 150),
     dataAval: /^\d{4}-\d{2}-\d{2}$/.test(String(o.dataAval ?? '')) ? String(o.dataAval) : '',
     ...(o.anamnese && Object.keys(cleanAnamnese(o.anamnese)).length ? { anamnese: cleanAnamnese(o.anamnese) } : {}),
+    ...(o.integ && Object.keys(cleanInteg(o.integ)).length ? { integ: cleanInteg(o.integ) } : {}),
+    ...(cleanExams(o.exames).length ? { exames: cleanExams(o.exames) } : {}),
   };
 }
 
 export const profileEmpty = (p: StudentProfile | null | undefined) =>
-  !p || Object.entries(p).every(([k, v]) => (k === 'medidas' || k === 'anamnese' ? !v || !Object.values(v).some((x) => x !== null && x !== undefined && x !== '') : v === '' || v === null || v === undefined));
+  !p || Object.entries(p).every(([k, v]) => (k === 'exames' ? !Array.isArray(v) || !v.length : k === 'medidas' || k === 'anamnese' || k === 'integ' ? !v || !Object.values(v).some((x) => x !== null && x !== undefined && x !== '') : v === '' || v === null || v === undefined));
 
 /** Uma linha curta (cartão do aluno e pedidos à IA). */
 export function profileText(p: StudentProfile | null | undefined): string {
@@ -79,6 +86,8 @@ export function profileText(p: StudentProfile | null | undefined): string {
     p.dias ? `disponível ${p.dias}× por semana` : '',
     p.lesoes ? `lesões/limitações: ${p.lesoes}` : '',
     p.notas ? `notas: ${p.notas}` : '',
+    p.integ?.queixa ? `queixa: ${p.integ.queixa.length > 90 ? `${p.integ.queixa.slice(0, 88)}…` : p.integ.queixa}` : '',
+    p.exames?.length ? `${p.exames.length} ${p.exames.length === 1 ? 'exame' : 'exames'}` : '',
     p.gordura ? `${fmt(p.gordura)}% de gordura` : '',
     p.magra ? `${fmt(p.magra)} kg de massa magra` : '',
     p.fc ? `FC repouso ${p.fc} bpm` : '',

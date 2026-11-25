@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { proApi, type ProStudent } from '../domain/pro';
 import { PRACTICE_IDS, WHEN_LABEL, practiceOf, type WellPlan } from '../domain/proWell';
 import { shortDate } from '../domain/dates';
+import { IntegBrief } from './ProInteg';
 import { useStore } from '../state/store';
 import { convertText, currentLocale } from '../i18n/locale';
 
@@ -37,6 +38,7 @@ export function WellEditor({ student, onClose, onSaved }: { student: ProStudent;
       <button className="btn ghost sm" onClick={onClose}>← Pacientes</button>
       <h1 style={{ marginBottom: 4 }}>Plano de bem-estar de {student.name}</h1>
       <p className="small mute" style={{ marginTop: 0 }}>Hábitos e práticas que o paciente marca na app, todos os dias. Sem prescrição de dieta nem de medicação.</p>
+      <IntegBrief profile={student.profile} />
       <section className="card">
         <label className="small">Objetivos<textarea className="field" rows={2} maxLength={300} value={p.goals} onChange={(e) => setP({ ...p, goals: e.target.value })} placeholder="ex.: dormir melhor, mais energia de manhã, digestão mais tranquila" /></label>
         <label className="small" style={{ display: 'block', marginTop: 8 }}>Duração

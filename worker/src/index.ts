@@ -37,6 +37,7 @@ import * as together from './together';
 import * as photos from './photos';
 import * as notify from './notify';
 import * as pro from './pro';
+import { isWellPro } from './proWell';
 import { deleteAccount, getData, sessionUser, setConsents, userIdForEmail, healthKey, healthPull, healthPush, login, logout, recover, register, saveData, type Result } from './account';
 import { originAllowed } from './origin';
 import { accessOf, logAccess, purgeAccess, tokenOf } from './accesslog';
@@ -456,6 +457,20 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
           const model = env.MODEL?.trim() || 'claude-opus-5-5';
           const ipx = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
           const r = action === 'ia/nutri-ditado' ? await proAI.dictateNutri(client, model, env.LIMITS, uid, ipx, b) : await proAI.reviewNutri(client, model, env.LIMITS, uid, ipx, b);
+          return json(r.body, r.status, h);
+        } catch (err) {
+          return apiError(err, h);
+        }
+      }
+      if (action === 'ia/exames' || action === 'ia/integrativa') {
+        const me = await pro.proOf(db, uid);
+        const okKind = action === 'ia/exames' ? isWellPro(me?.kind) || pro.isNutriPro(me?.kind) : isWellPro(me?.kind);
+        if (me?.status !== 'aprovado' || !okKind) return json({ error: action === 'ia/exames' ? 'Só para terapeutas integrativos, nutricionistas e médicos aprovados.' : 'Só para terapeutas integrativos aprovados.' }, 403, h);
+        try {
+          const client = aiClient(() => new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), env.DB, action === 'ia/exames' ? 'pro-exames' : 'pro-integ-anamnese', uid, ctx);
+          const model = env.MODEL?.trim() || 'claude-opus-5-5';
+          const ipx = req.headers.get('CF-Connecting-IP') ?? 'sem-ip';
+          const r = action === 'ia/exames' ? await proAI.readExam(client, model, env.LIMITS, uid, ipx, b) : await proAI.organizeInteg(client, model, env.LIMITS, uid, ipx, b);
           return json(r.body, r.status, h);
         } catch (err) {
           return apiError(err, h);

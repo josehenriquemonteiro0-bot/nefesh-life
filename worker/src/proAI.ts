@@ -11,6 +11,7 @@ import { check, count, type CounterStore, type Limits } from './limits';
 import { cleanPlan } from './pro';
 import { MEASURE_KEYS, cleanProfile } from '../../src/domain/proProfile';
 import { cleanNutri } from '../../src/domain/proNutri';
+import { INTEG, INTEG_KEYS, cleanExam, cleanInteg } from '../../src/domain/proInteg';
 
 export const DICTATE_LIMITS: Limits = { device: 80, ip: 200, global: 4000 };
 export const REVIEW_LIMITS: Limits = { device: 30, ip: 100, global: 2000 };
@@ -456,4 +457,113 @@ export async function reviewNutri(client: Anthropic, model: string, store: Count
   if (!r) return { status: 502, body: { error: 'A IA não conseguiu rever agora. Tente outra vez.' } };
   await count(store, REVIEW_LIMITS, uid, ip, new Date(), 'nr');
   return { status: 200, body: { general: (r.general ?? []).map((g) => String(g).trim().slice(0, 300)).filter(Boolean).slice(0, 6), notes: (r.notes ?? []).map((n) => ({ meal: String(n.meal ?? '').slice(0, 40), note: String(n.note ?? '').trim().slice(0, 240) })).filter((n) => n.note).slice(0, 10) } };
+}
+
+/* ───────── terapias integrativas: exames do paciente e anamnese organizada pela IA ───────── */
+
+export const EXAM_LIMITS: Limits = { device: 40, ip: 120, global: 2000 };
+const EXAM_SCHEMA = {
+  type: 'object',
+  properties: {
+    is_exam: { type: 'boolean', description: 'true se o documento tem resultados de exames (análises clínicas, painel hormonal, mineralograma, laudo de imagem…)' },
+    date: { type: 'string', description: 'data da colheita ou do exame AAAA-MM-DD; "" se não aparecer' },
+    lab: { type: 'string', description: 'laboratório ou clínica; "" se não aparecer' },
+    title: { type: 'string', description: 'nome curto do exame, ex.: "Hemograma e bioquímica", "Painel hormonal", "Mineralograma", "Ecografia abdominal"' },
+    items: {
+      type: 'array',
+      description: 'TODOS os resultados com valor, pela ordem do documento',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'nome como no documento, ex.: "Ferritina", "Vitamina D (25-OH)", "TSH"' },
+          value: { type: 'string', description: 'o valor como aparece, com vírgula decimal (ex.: "18,5", "< 0,5", "Negativo")' },
+          unit: { type: 'string', description: 'ex.: ng/mL, mg/dL, %; "" se não tiver' },
+          ref: { type: 'string', description: 'valores de referência do laboratório, curtos (ex.: "30 a 100"); "" se não tiver' },
+          flag: { type: 'string', enum: ['baixo', 'normal', 'alto', ''], description: 'comparando com a referência do PRÓPRIO documento; "" se não houver referência ou não for comparável' },
+        },
+        required: ['name', 'value', 'unit', 'ref', 'flag'],
+        additionalProperties: false,
+      },
+    },
+    note: { type: 'string', description: 'só para laudos descritivos (imagem, endoscopia…): a conclusão/impressão diagnóstica transcrita, curta; "" nos outros' },
+  },
+  required: ['is_exam', 'date', 'lab', 'title', 'items', 'note'],
+  additionalProperties: false,
+} as const;
+
+export const EXAM_SYSTEM = `Transcreves exames que um paciente leva a um terapeuta de práticas integrativas (Portugal e Brasil): análises clínicas (hemograma, bioquímica, perfil lipídico, glicemia, insulina, tiroide, vitaminas, ferro/ferritina, minerais, hormonas, PCR), painéis hormonais, mineralograma (cabelo), exames de fezes ou urina, e laudos de imagem.
+- Transcreve TODOS os resultados que têm valor, pela ordem do documento, com o nome, o valor, a unidade e a referência como no documento. Converte pontos decimais para vírgula. No hemograma, inclui a série vermelha, a branca e as plaquetas (valores absolutos; percentagens só se não houver absolutos).
+- flag: compara o valor com a referência do PRÓPRIO laboratório (por sexo/idade/fase, se o documento indicar qual se aplica). Se o documento marcar o valor (asterisco, negrito, H/L, ↑/↓), segue essa marcação. Sem referência: "".
+- Laudos descritivos (ecografia, ressonância, endoscopia): transcreve a conclusão em "note"; items só com medidas numéricas, se houver.
+- Se houver vários exames de datas diferentes, usa o mais recente e diz isso no title.
+- Não inventes valores, não interpretes, não sugeres diagnósticos nem tratamentos.`;
+
+export async function readExam(client: Anthropic, model: string, store: CounterStore, uid: string, ip: string, b: Record<string, unknown>): Promise<R> {
+  const data = String(b.file ?? '');
+  const media = String(b.media_type ?? '');
+  if (!data || data.length > MAX_FILE_CHARS || !/^[A-Za-z0-9+/=]+$/.test(data)) return { status: 400, body: { error: 'Ficheiro inválido ou demasiado grande (máximo 6 MB).' } };
+  const content: Anthropic.Beta.BetaContentBlockParam[] = [];
+  if (media === 'application/pdf') content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
+  else if (['image/jpeg', 'image/png', 'image/webp'].includes(media)) content.push({ type: 'image', source: { type: 'base64', media_type: media as 'image/jpeg', data } });
+  else return { status: 400, body: { error: 'Use um PDF ou uma fotografia.' } };
+  const allowed = await check(store, EXAM_LIMITS, uid, ip, new Date(), 'ie');
+  if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de leituras de hoje. Tente amanhã.' } };
+  content.push({ type: 'text', text: 'Transcreve os resultados deste exame.' });
+  const response = await client.beta.messages.create({
+    model,
+    max_tokens: 12000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    system: EXAM_SYSTEM,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: EXAM_SCHEMA as never } },
+    messages: [{ role: 'user', content }],
+  });
+  if (response.stop_reason === 'refusal') return { status: 422, body: { error: 'Não foi possível ler este documento.' } };
+  const text = response.content.find((x) => x.type === 'text');
+  if (!text || text.type !== 'text') return { status: 502, body: { error: 'resposta vazia' } };
+  await count(store, EXAM_LIMITS, uid, ip, new Date(), 'ie');
+  const r = JSON.parse(text.text) as Record<string, unknown>;
+  const exam = r.is_exam ? cleanExam(r) : null;
+  return { status: 200, body: exam ? { found: true, exam } : { found: false } };
+}
+
+const INTEG_FIELD = { type: 'string', description: 'o texto COMPLETO deste campo depois das notas (o que já lá estava + o novo, sem repetir); "" se as notas não trazem nada para ele' } as const;
+const INTEG_SCHEMA = {
+  type: 'object',
+  properties: {
+    sexo: { type: 'string', enum: ['f', 'm', ''] },
+    idade: n,
+    ...Object.fromEntries(INTEG_KEYS.map((k) => [k, INTEG_FIELD])),
+    alerts: { type: 'array', items: { type: 'string' }, description: 'sinais que pedem avaliação médica e cuidados com medicação/fitoterápicos/suplementos; [] se nada' },
+    ask: { type: 'array', items: { type: 'string' }, description: 'até 6 perguntas importantes que ainda faltam fazer ao paciente' },
+    summary: { type: 'string', description: 'uma frase com o que foi registado' },
+  },
+  required: ['sexo', 'idade', ...INTEG_KEYS, 'alerts', 'ask', 'summary'],
+  additionalProperties: false,
+} as const;
+
+export const INTEG_SYSTEM = `Ajudas um terapeuta de práticas integrativas (naturopatia, geobiologia e outras práticas complementares) a preencher a anamnese de um paciente na app NEFESH Life Pro.
+Recebes a ficha atual (campos) e as notas da consulta, ditadas por voz ou escritas (podem ter erros de transcrição, abreviaturas e frases soltas).
+- Distribui cada informação pelo campo certo, escrita de forma clara e curta, sem perder detalhes (doses, frequências, há quanto tempo, horários). Campos:
+${INTEG.map(([k, , l]) => `  ${k}: ${l}`).join('\n')}
+- Num campo que já tem texto, devolve o texto completo: mantém o que lá estava e junta o novo (se as notas corrigirem algo, corrige). Campo sem nada novo: "".
+- Usa as palavras do paciente e do terapeuta; não acrescentes interpretações, diagnósticos nem tratamentos. Escreve na mesma variante do português das notas (Brasil ou Portugal).
+- alerts (para o terapeuta, curtos): sinais que pedem avaliação médica antes ou em paralelo — perda de peso sem explicação, sangue nas fezes, na urina ou no vómito, dor no peito, falta de ar, febre que não passa, alterações neurológicas súbitas, dor forte ou que piora, ideias de morte ou de se magoar, gravidez ou amamentação com fitoterápicos/suplementos; e possíveis interações entre a medicação e fitoterápicos ou suplementos citados (ex.: hipericão com antidepressivos ou anticoncecionais; ginkgo, alho ou ómega 3 em dose alta com anticoagulantes; alcaçuz com hipertensão). Nunca sugeres parar ou mudar medicação. [] se nada.
+- ask: perguntas que faltam para uma anamnese integrativa segura e útil (ex.: medicação, alergias, acompanhamento médico, intestino, sono, ciclo), só as mais importantes, no máximo 6.`;
+
+export async function organizeInteg(client: Anthropic, model: string, store: CounterStore, uid: string, ip: string, b: Record<string, unknown>): Promise<R> {
+  const text = String(b.text ?? '').trim().slice(0, 8000);
+  if (text.length < 3) return { status: 400, body: { error: 'Fale ou escreva as notas da consulta.' } };
+  const allowed = await check(store, DICTATE_LIMITS, uid, ip, new Date(), 'ia');
+  if (!allowed.ok) return { status: 429, body: { error: 'Chegou ao limite de hoje. Tente amanhã.' } };
+  const cur = cleanInteg(b.integ);
+  const p = cleanProfile({ sexo: b.sexo, idade: b.idade });
+  const user = `Ficha atual:\nsexo: ${p.sexo || '—'} · idade: ${p.idade ?? '—'}\n${INTEG_KEYS.map((k) => `${k}: ${cur[k] ?? ''}`).join('\n')}${b.exams ? `\n\nExames: ${String(b.exams).slice(0, 1500)}` : ''}\n\nNotas da consulta:\n${text}`;
+  const r = await ask<Record<string, unknown>>(client, model, INTEG_SYSTEM, user, INTEG_SCHEMA, 'medium');
+  if (!r) return { status: 502, body: { error: 'A IA não conseguiu organizar agora. Tente outra vez.' } };
+  await count(store, DICTATE_LIMITS, uid, ip, new Date(), 'ia');
+  const got = cleanInteg(r);
+  const who = cleanProfile({ sexo: r.sexo, idade: typeof r.idade === 'number' && r.idade >= 0 ? r.idade : null });
+  const list = (v: unknown, k: number) => (Array.isArray(v) ? v : []).map((x) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, 240)).filter(Boolean).slice(0, k);
+  return { status: 200, body: { integ: got, sexo: who.sexo, idade: who.idade, alerts: list(r.alerts, 8), ask: list(r.ask, 6), summary: String(r.summary ?? '').slice(0, 300) } };
 }

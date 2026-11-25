@@ -327,3 +327,14 @@ export async function syncTeam(S: AppState, on: boolean) {
   const codes = [S.proLink?.code, S.nutriLink?.code].filter(Boolean) as string[];
   await Promise.all(codes.map((code) => proApi('aluno/equipa', { code, on })));
 }
+
+/** Exame do paciente (PDF ou foto) → valores, para a ficha integrativa. O documento não é guardado. */
+export async function readExamFile(file: File): Promise<{ found: boolean; exam?: import('./proInteg').Exam }> {
+  return proApi('ia/exames', await fileBody(file));
+}
+
+/** Notas da consulta (ditadas ou escritas) → campos da anamnese integrativa, alertas e perguntas em falta. */
+export interface IntegOrganized { integ: Partial<Record<import('./proInteg').IntegKey, string>>; sexo: '' | 'f' | 'm'; idade: number | null; alerts: string[]; ask: string[]; summary: string }
+export async function organizeIntegNotes(body: { text: string; integ: unknown; sexo?: string; idade?: number | null; exams?: string }): Promise<IntegOrganized> {
+  return proApi('ia/integrativa', body);
+}
