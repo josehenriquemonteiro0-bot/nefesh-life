@@ -19,9 +19,20 @@ export function Pros({ openReport }: { openReport: () => void }) {
             <p className="small" style={{ margin: '0 0 6px' }}>{p.d}</p>
             <p className="small mute">{p.m}</p>
             <div className="row" style={{ justifyContent: 'flex-start' }}>
-              <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de solicitar atendimento com ${p.n} (${p.who})${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener" onClick={() => toast('A abrir o WhatsApp da NEFESH…')}>Solicitar atendimento</a>
+              <a
+                className="btn sm"
+                href={p.whatsapp
+                  ? whatsappLink(`Olá ${p.first ?? p.who}! Encontrei a ${p.n} na NEFESH Life e gostaria de solicitar um atendimento${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`, p.whatsapp)
+                  : whatsappLink(`Olá NEFESH! Gostava de solicitar atendimento com ${p.n} (${p.who})${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)}
+                target="_blank"
+                rel="noopener"
+                onClick={() => toast(p.whatsapp ? `A abrir o WhatsApp de ${p.first ?? p.n}…` : 'A abrir o WhatsApp da NEFESH…')}
+              >
+                Solicitar atendimento
+              </a>
               <button className="btn ghost sm" onClick={openReport}>Enviar relatório</button>
             </div>
+            {p.instagram && <a className="link small" href={p.instagram} target="_blank" rel="noopener">Ver no Instagram ↗</a>}
             {p.area === 'integrativa' && <p className="small mute" style={{ margin: '8px 0 0' }}>Prática integrativa: complementa o acompanhamento médico, não o substitui.</p>}
           </div>
         </section>

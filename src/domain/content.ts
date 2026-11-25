@@ -11,7 +11,7 @@ export const INSTAGRAM_REEL = 'https://www.instagram.com/reel/DdYy4DwxYOd/';
 
 export const whatsappShare = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
-export const whatsappLink = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+export const whatsappLink = (text: string, number = WHATSAPP_NUMBER) => `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 export const APP_VERSION = '0.2.0';
 export const CAPS_PER_BOTTLE = 120;
 export const CAPSULE_MG = 500;
@@ -143,6 +143,11 @@ export interface Partner {
   m: string;
   /** área, para o aviso certo (as terapias integrativas complementam o médico) */
   area: 'integrativa' | 'nutricao' | 'medicina' | 'exercicio' | 'psicologia';
+  /** WhatsApp do próprio profissional (só dígitos, com o indicativo do país); sem ele, o pedido vai para a NEFESH */
+  whatsapp?: string;
+  /** primeiro nome para a mensagem ("Olá Andrea!") */
+  first?: string;
+  instagram?: string;
 }
 
 export const PARTNERS: Partner[] = [
@@ -155,6 +160,9 @@ export const PARTNERS: Partner[] = [
     d: 'Investigação do terreno biológico, saúde intestinal, desintoxicação, equilíbrio mineral, metabolismo, ritmos biológicos e saúde do habitat.',
     m: 'On line · Atendimento internacional',
     area: 'integrativa',
+    whatsapp: '5554996422663',
+    first: 'Andrea',
+    instagram: 'https://www.instagram.com/buddhibio',
   },
 ];
 
