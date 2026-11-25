@@ -1,4 +1,5 @@
 import { bestStreak, reorderText, stock, streakBreak } from '../domain/stats';
+import { requestRitual } from './sleep/SleepRitual';
 import { whatsappLink } from '../domain/content';
 import { indexTrend } from '../domain/liveIndex';
 import { useEffect, type ReactNode } from 'react';
@@ -101,8 +102,9 @@ export function NextActionCard({ go }: { go: Nav }) {
     else if (na.kind === 'refeicao') go('nutri');
     else if (na.kind === 'checkin') go('check');
     else if (na.kind === 'treino') go('treino');
+    else if (na.kind === 'ritual') { requestRitual(); go('sono'); }
   };
-  const label = { dose: 'Tomei', med: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Fazer o check-in', treino: 'Treinar', desafio: 'Fiz', feito: '' }[na.kind];
+  const label = { dose: 'Tomei', med: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Fazer o check-in', treino: 'Treinar', desafio: 'Fiz', ritual: 'Começar', feito: '' }[na.kind];
   return (
     <section className="card next-action na-big" data-tour="proxima">
       <div className="row">

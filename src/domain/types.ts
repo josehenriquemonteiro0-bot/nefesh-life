@@ -96,6 +96,11 @@ export interface DayLog {
   };
   /** origem de cada valor medível (sem entrada = escrito pela pessoa) */
   src?: Partial<Record<SourcedField, DataSource>>;
+  /** diário do sono da noite anterior (deitar, adormecer, acordares, levantar, qualidade) */
+  sleepD?: import('./sleep').SleepDiary;
+  /** ritual da noite feito neste dia, e o que a pessoa escreveu para esvaziar a cabeça (só no telemóvel) */
+  ritual?: boolean;
+  nightDump?: { worries?: string; tomorrow?: string };
 }
 
 export interface Bottle {
@@ -238,6 +243,8 @@ export interface AppState {
   /** o que o assistente sabe: factos pedidos pela pessoa, padrões escondidos e lembretes confirmados */
   memory?: { facts?: { id: string; text: string; at: string }[]; hidden?: string[] };
   reminders?: { id: string; date: string; time: string; text: string }[];
+  /** sono: horas de deitar e acordar, lembretes, programa de 14 dias e sinais de alerta */
+  sleep?: import('./sleep').SleepSettings;
   /** peso e medidas ao longo do tempo (cm, kg) */
   bodyLog?: {
     date: string; peso?: number; cintura?: number; anca?: number; pescoco?: number;

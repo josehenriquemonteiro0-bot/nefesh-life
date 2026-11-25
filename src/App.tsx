@@ -316,7 +316,7 @@ export function App() {
       nutri: <Nutrition />,
       treino: <Training openHealth={openHealth} />,
       pro: <Pro go={go} openAccount={() => openAccount('perfil', 'entrar')} />,
-      sono: <Sleep />,
+      sono: <Sleep go={go} />,
       ciclo: <Women go={go} />,
       mente: <Mind go={go} />,
       corpo: <Body />,

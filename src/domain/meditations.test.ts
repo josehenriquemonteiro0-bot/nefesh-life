@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { MEDITATIONS, estimateSeconds, suggested } from './meditations';
 
 describe('biblioteca de meditação', () => {
-  it('tem 12 sessões, 4 grátis, e cada uma dura perto do anunciado', () => {
-    expect(MEDITATIONS).toHaveLength(12);
-    expect(MEDITATIONS.filter((m) => m.free).map((m) => m.id)).toEqual(['ritual', 'ansiedade', 'pausa', 'desligar']);
+  it('tem 16 sessões, 6 grátis, e cada uma dura perto do anunciado', () => {
+    expect(MEDITATIONS).toHaveLength(16);
+    expect(MEDITATIONS.filter((m) => m.free).map((m) => m.id)).toEqual(['ritual', 'ansiedade', 'pausa', 'desligar', 'pmr', 'acordado']);
     for (const m of MEDITATIONS) {
       const min = estimateSeconds(m) / 60;
       expect(min, m.id).toBeGreaterThan(m.minutes * 0.7);

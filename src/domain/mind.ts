@@ -7,9 +7,11 @@ import { keyDaysAgo } from './dates';
 import type { AppState, DayLog } from './types';
 
 export interface Technique {
-  id: 'coerencia' | 'quadrada' | '478';
+  id: 'coerencia' | 'quadrada' | '478' | 'expira' | 'suspiro' | 'narinas';
   name: string;
   text: string;
+  /** boa para a noite (aparece no ecrã do sono e no ritual) */
+  night?: boolean;
   /** fases em segundos: inspirar, reter, expirar, reter */
   steps: [string, number][];
 }
@@ -17,7 +19,10 @@ export interface Technique {
 export const TECHNIQUES: Technique[] = [
   { id: 'coerencia', name: 'Coerência (5–5)', text: 'Inspire 5 segundos, expire 5. Acalma e equilibra; boa para qualquer momento do dia.', steps: [['Inspire', 5], ['Expire', 5]] },
   { id: 'quadrada', name: 'Respiração quadrada', text: 'Inspire 4, segure 4, expire 4, segure 4. Ajuda a focar antes de uma tarefa ou reunião.', steps: [['Inspire', 4], ['Segure', 4], ['Expire', 4], ['Segure', 4]] },
-  { id: '478', name: '4-7-8 para dormir', text: 'Inspire 4, segure 7, expire devagar 8. Para desacelerar à noite (se ficar tonto, volte a respirar normalmente).', steps: [['Inspire', 4], ['Segure', 7], ['Expire', 8]] },
+  { id: '478', name: '4-7-8 para dormir', text: 'Inspire 4, segure 7, expire devagar 8. Para desacelerar à noite (se ficar tonto, volte a respirar normalmente).', steps: [['Inspire', 4], ['Segure', 7], ['Expire', 8]], night: true },
+  { id: 'expira', name: 'Expiração prolongada (4–8)', text: 'Inspire 4 segundos pelo nariz e solte o ar devagar durante 8. A expiração longa ativa o lado do sistema nervoso que acalma o corpo. Sem reter o ar: boa para quem fica tonto com o 4-7-8.', steps: [['Inspire', 4], ['Expire devagar', 8]], night: true },
+  { id: 'suspiro', name: 'Suspiro cíclico', text: 'Duas inspirações pelo nariz (uma funda e outra curta, para encher bem) e uma expiração longa pela boca. Num estudo, 5 minutos por dia baixaram a ansiedade mais do que a meditação.', steps: [['Inspire', 3], ['Inspire mais um pouco', 1], ['Expire longo', 7]], night: true },
+  { id: 'narinas', name: 'Narinas alternadas', text: 'Da tradição do yoga: tape a narina direita com o polegar e inspire pela esquerda; tape a esquerda e expire pela direita; inspire pela direita, troque e expire pela esquerda. Ritmo calmo, sem forçar (a evidência é mais limitada).', steps: [['Inspire pela esquerda', 4], ['Expire pela direita', 6], ['Inspire pela direita', 4], ['Expire pela esquerda', 6]], night: true },
 ];
 export const techniqueOf = (id: string) => TECHNIQUES.find((t) => t.id === id) ?? TECHNIQUES[0];
 
@@ -32,7 +37,7 @@ export function breathPhase(tech: Technique, t: number) {
   let big = false;
   for (const [name, n] of tech.steps) {
     // "Segure" mantém o tamanho da fase anterior (cheio depois de inspirar, vazio depois de expirar)
-    big = name === 'Inspire' ? true : name === 'Expire' ? false : big;
+    big = name.startsWith('Inspire') ? true : name.startsWith('Expire') ? false : big;
     if (x < n) return { name, left: Math.ceil(n - x), n, big };
     x -= n;
   }

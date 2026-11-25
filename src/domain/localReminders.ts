@@ -7,6 +7,7 @@ import { cycleReminders } from './women';
 import { dayKey } from './dates';
 import { fastingReminders } from './fasting';
 import { reminderTimes } from './meds';
+import { sleepReminders } from './sleep';
 import type { AppState } from './types';
 
 export interface LocalReminder {
@@ -41,6 +42,8 @@ export function localReminders(S: AppState, now = new Date()): LocalReminder[] {
   if (valid(S.reminder)) out.push({ id: stableId('spirulina'), title: 'Hora do seu ritual NEFESH 🌿', body: 'Está na hora da sua Spirulina de hoje. Um toque para marcar a toma.', daily: S.reminder });
   // medicação e suplementos: uma notificação por hora (sem nomes)
   for (const t of reminderTimes(S).filter(valid)) out.push({ id: stableId(`med${t}`), title: `💊 Lembrete das ${t}`, body: 'Está na hora da sua medicação ou suplemento. Toque para marcar a toma na app.', daily: t });
+  // sono: ritual da noite, última cafeína e luz da manhã (se a pessoa os ligou)
+  for (const r of sleepReminders(S)) out.push({ id: stableId(r.key), title: r.title, body: r.body, daily: r.time });
   // lembretes únicos: os combinados com o assistente, os do ciclo e os do jejum (próximos 30 dias)
   const today = dayKey(now);
   const limit = new Date(now.getTime() + 30 * 864e5);

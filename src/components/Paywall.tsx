@@ -26,7 +26,7 @@ const BENEFITS = [
   'Foto do prato: a IA estima os alimentos, as calorias e a proteína',
   'Leitura com IA do plano do seu nutricionista ou personal',
   'Treino completo: séries, cargas, histórico e progressão automática',
-  'Sono e recuperação com tendências',
+  'Sono: tendências, padrões pessoais, o programa "Dormir melhor em 14 dias" e o Yoga Nidra',
   'Relatórios semanais e mensais completos e a Personal Health Timeline',
   'Biblioteca completa de meditações',
 ];

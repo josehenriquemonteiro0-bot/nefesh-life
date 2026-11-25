@@ -7,8 +7,9 @@ import type { AppState, DayLog } from './types';
 import { medsToday } from './meds';
 import { MICRO, challengeState } from './firstWeek';
 import type { AreaKey } from './types';
+import { DEFAULT_BED, validTime } from './sleep';
 
-export type ActionKind = 'dose' | 'med' | 'agua' | 'refeicao' | 'checkin' | 'treino' | 'desafio' | 'feito';
+export type ActionKind = 'dose' | 'med' | 'agua' | 'refeicao' | 'checkin' | 'treino' | 'desafio' | 'ritual' | 'feito';
 export interface NextAction {
   kind: ActionKind;
   title: string;
@@ -64,6 +65,14 @@ export function nextAction(S: AppState, l: DayLog, now = new Date()): NextAction
   if (h >= 20 && h < 22.5 && !has('jantar')) return { kind: 'refeicao', title: 'Registar o jantar', detail: 'Uma foto do prato chega.', when: 'até às 22:30' };
   // 4. check-in ao fim do dia
   if (h >= 18 && !l.e) return { kind: 'checkin', title: 'Fazer o check-in', detail: '30 segundos: como foi o seu dia?', when: 'antes de dormir' };
+  // 4b. o ritual da noite, na hora antes de deitar (só para quem escolheu a hora de deitar ou ligou o lembrete)
+  if (S.sleep && (S.sleep.ritualRemind || S.sleep.bed) && !l.ritual) {
+    const bed = validTime(S.sleep.bed) ? S.sleep.bed : DEFAULT_BED;
+    let b = Number(bed.slice(0, 2)) + Number(bed.slice(3)) / 60;
+    if (b < 12) b += 24;
+    const hh = h < 12 ? h + 24 : h;
+    if (hh >= b - 1.25 && hh < b + 1) return { kind: 'ritual', title: 'Ritual da noite', detail: 'Luzes baixas, esvaziar a cabeça, uma respiração e um som para adormecer.', when: `antes das ${bed}` };
+  }
   // 5. a toma que ainda falta mais tarde
   const later = slots.findIndex((_, i) => !doses[i]);
   if (later >= 0) return { kind: 'dose', slot: later, title: `Spirulina (${slots[later].l.toLowerCase()})`, detail: 'Pode marcar já, se tomou.', when: slotTime(later) };
