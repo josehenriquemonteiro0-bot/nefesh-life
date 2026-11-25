@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COACH_SCHEMA, COACH_SYSTEM, cleanActions, cleanMessages, coachLimits, handleCoach } from './coach';
+import { COACH_SYSTEM, cleanActions, cleanMessages, coachLimits, handleCoach } from './coach';
 
 const kv = () => { const m = new Map<string, string>(); return { get: async (k: string) => m.get(k) ?? null, put: async (k: string, v: string) => void m.set(k, v) }; };
 const json = (b: unknown, s: number) => new Response(JSON.stringify(b), { status: s });
@@ -55,37 +55,5 @@ describe('AI Coach', () => {
     expect(r.status).toBe(429);
     // na fase de teste o limite é largo
     expect(coachLimits({ TEST_MODE: 'true' }).device).toBe(40);
-  });
-});
-
-describe('ações em formato compacto (só os campos usados)', () => {
-  it('aceita registos só com os campos que se aplicam e preenche o resto por omissão', () => {
-    const a = cleanActions([
-      { type: 'agua', value: 2 },
-      { type: 'refeicao', meal: 'almoco', items: [{ name: 'Arroz', grams: 150, food_id: 'arroz_branco' }, { name: 'Molho caseiro', grams: 30, kcal100: 120, p100: 2, c100: 8, f100: 9 }] },
-      { type: 'lembrete', note: 'Exame de sangue', date: '2026-11-27', time: '08:00' },
-    ]);
-    expect(a).toHaveLength(3);
-    expect(a[0]).toMatchObject({ type: 'agua', value: 2, meal: '', note: '', replace: false, exercises: [], items: [] });
-    expect(a[1].items[0]).toMatchObject({ food_id: 'arroz_branco', grams: 150 });
-    expect(a[1].items[1]).toMatchObject({ food_id: '', kcal100: 120 });
-    expect(a[2]).toMatchObject({ date: '2026-11-27', time: '08:00', note: 'Exame de sangue' });
-  });
-});
-
-describe('esquema do assistente dentro dos limites da API', () => {
-  it('no máximo 24 campos opcionais (a API recusa mais)', () => {
-    let optional = 0;
-    const walk = (node: unknown) => {
-      if (!node || typeof node !== 'object') return;
-      const n = node as { type?: string; properties?: Record<string, unknown>; required?: string[]; items?: unknown };
-      if (n.type === 'object' && n.properties) {
-        const req = new Set(n.required ?? []);
-        for (const [k, v] of Object.entries(n.properties)) { if (!req.has(k)) optional++; walk(v); }
-      }
-      if (n.items) walk(n.items);
-    };
-    walk(COACH_SCHEMA);
-    expect(optional).toBeLessThanOrEqual(24);
   });
 });

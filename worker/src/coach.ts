@@ -32,7 +32,7 @@ export const COACH_SCHEMA = {
     reply: { type: 'string', description: 'Resposta curta à pessoa (no máximo 3 frases), em português de Portugal, na terceira pessoa de cortesia ("você"/forma neutra).' },
     actions: {
       type: 'array',
-      description: 'Registos a criar a partir do que a pessoa disse sobre HOJE. Vazio se ela só fez uma pergunta. Em cada registo, escreve só os campos que se aplicam a esse tipo (omite os outros).',
+      description: 'Registos a criar a partir do que a pessoa disse sobre HOJE. Vazio se ela só fez uma pergunta.',
       items: {
         type: 'object',
         properties: {
@@ -62,7 +62,7 @@ export const COACH_SCHEMA = {
                 kg: { type: 'number', description: 'carga em kg (0 se não disse ou peso do corpo)' },
                 feel: { type: 'string', enum: ['facil', 'certo', 'dificil', 'falhei', ''], description: 'como correu, se a pessoa disse ("foi fácil", "custou muito", "não consegui acabar"); "" se não disse' },
               },
-              required: ['gym_id', 'name'],
+              required: ['gym_id', 'name', 'sets', 'reps', 'kg', 'feel'],
               additionalProperties: false,
             },
           },
@@ -82,13 +82,12 @@ export const COACH_SCHEMA = {
                 c100: { type: 'number', description: 'só se food_id = "": hidratos por 100 g' },
                 f100: { type: 'number', description: 'só se food_id = "": gordura por 100 g' },
               },
-              required: ['food_id', 'name', 'grams'],
+              required: ['food_id', 'name', 'grams', 'kcal100', 'p100', 'c100', 'f100'],
               additionalProperties: false,
             },
           },
         },
-        // só o tipo é obrigatório: o modelo escreve apenas os campos que usa (menos texto de saída, menos custo)
-        required: ['type', 'value'],
+        required: ['type', 'value', 'option', 'status', 'note', 'meal', 'intensity', 'date', 'time', 'challenge', 'level', 'friends', 'screen', 'exercises', 'title', 'replace', 'items'],
         additionalProperties: false,
       },
     },

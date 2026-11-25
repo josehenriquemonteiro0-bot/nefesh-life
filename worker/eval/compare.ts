@@ -64,7 +64,7 @@ async function image(q: string): Promise<{ data: string; url: string } | null> {
 }
 
 async function main() {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 120_000, maxRetries: 1 });
   let last: Anthropic.Message | null = null;
   const real = client.beta.messages.create.bind(client.beta.messages);
   (client.beta.messages as { create: unknown }).create = async (...a: unknown[]) => {
@@ -90,6 +90,7 @@ async function main() {
         body = { error: String((e as Error).message ?? e) };
       }
       const ms = Date.now() - t0;
+      console.error(`[${c.id}] ${m}: ${(ms / 1000).toFixed(1)} s${body.error ? ' · ERRO ' + String(body.error) : ''}`);
       const lm = last as Anthropic.Message | null;
       const cst = cost(m, lm?.usage as never);
       totals[m].cost += cst;
