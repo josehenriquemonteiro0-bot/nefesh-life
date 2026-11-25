@@ -1,6 +1,11 @@
-# Plano mestre 2027–2028: modelo de simulação
+# Plano mestre: modelo de simulação
 
-- Documento do plano: https://claude.ai/artifact/3hM6ZimQdkapqRXhd2GMQx
+- **Plano em vigor (estágio 1, sem empresas):** https://claude.ai/artifact/6BDkWmqqJMUiYC5YSmzRod
+  - `estagio1.py` (varrimento sem empresas, degraus de 1, 5 e 10 mil até 2029), `paciente_paga.py` (licença Pro vs. paciente
+    paga com código), `estagio1_final.py` (números do plano: R$ 20 mil/mês por 6 meses, reinvestir 40%, crises e variantes).
+  - Premissa decisiva: custo da IA por pagante (uso normal ≈ R$ 6/mês). Medido em produção na página da equipa → Custo da IA.
+  - `realista.py`: porque as empresas passaram para o estágio 2 (com vendas a empresas difíceis, o plano com empresas cai para 17%).
+- Plano anterior, com empresas (histórico, estágio 2): https://claude.ai/artifact/3hM6ZimQdkapqRXhd2GMQx
 - `simulacao.py`: o modelo usado (Monte Carlo mensal, dez/2026 → dez/2028, base de 350 clientes).
   - `python3 simulacao.py 1` corre a 1.ª etapa (34.560 estratégias × 60 futuros) e grava `s1.json`;
     `python3 simulacao.py 2` reavalia as melhores com 2.000 futuros e grava `s2.json`.
