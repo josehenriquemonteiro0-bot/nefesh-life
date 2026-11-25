@@ -121,6 +121,7 @@ export function ProsCard({ go }: { go: Nav }) {
       <div className="row" style={{ justifyContent: 'flex-start', gap: 8, marginTop: 12 }}>
         <a className="btn sm" href={whatsappLink(`Olá NEFESH! Gostava de ter acompanhamento profissional${S.ans?.name ? `. O meu nome é ${S.ans.name}` : ''}.`)} target="_blank" rel="noopener">Pedir acompanhamento</a>
         <button className="btn ghost sm" onClick={() => go('pros')}>Ver profissionais</button>
+        <button className="btn ghost sm" onClick={() => go('cuidados')}>Tenho um código</button>
       </div>
     </section>
   );
@@ -206,6 +207,11 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
           <h2>Já usava a NEFESH Life?</h2>
           <p className="small mute">Entre na sua conta para trazer o seu plano. Se guardou uma cópia em ficheiro, recupere-a em "Os meus dados", aqui em baixo.</p>
           <button className="btn ghost sm" onClick={openLogin}>Entrar na minha conta</button>
+        </section>
+        <section className="card">
+          <h2>Recebeu um código de um profissional?</h2>
+          <p className="small mute">Se o seu médico, nutricionista, terapeuta ou personal o acompanha pela NEFESH, use aqui o código que ele lhe enviou (NP-XXXX-XXXX).</p>
+          <button className="btn ghost sm" onClick={() => go('cuidados')}>Tenho um código</button>
         </section>
         <DataCard />
       </>

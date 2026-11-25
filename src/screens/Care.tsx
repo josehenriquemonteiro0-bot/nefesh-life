@@ -1,3 +1,5 @@
+import { MyProsCard } from '../components/MyPros';
+import type { Nav } from '../App';
 import { useRef, useState } from 'react';
 import { DecimalInput } from '../components/DecimalInput';
 import { LABS, VISIT_KINDS, labDef, labFlag, labSeries, newId, preventionFor, type LabResult, type PrevStatus } from '../domain/care';
@@ -515,10 +517,11 @@ function RemindersCard() {
 }
 
 /** Cuidados: medicação, prevenção, análises e consultas. */
-export function Care() {
+export function Care({ go }: { go: Nav }) {
   return (
     <>
       <h1>Cuidados</h1>
+      <MyProsCard go={go} />
       <RemindersCard />
       <MedsCard />
       <PreventionCard />

@@ -305,7 +305,7 @@ export function App() {
     else if (quiz && quiz.qi < QUIZ.length) screen = <Quiz state={quiz} setState={setQuiz} onCancel={cancelQuiz} />;
     else if (quiz) screen = <Plan answers={quiz.draft} isNew go={go} onAdopt={adopt} onCancel={cancelQuiz} onReassess={() => startQuiz()} openScience={openScience} />;
     else screen = <Plan answers={S.ans} go={go} onReassess={() => startQuiz()} openScience={openScience} />;
-  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social' && tab !== 'coach' && tab !== 'sono' && tab !== 'mente' && tab !== 'pro') {
+  } else if (!S.ans && tab !== 'pros' && tab !== 'recipes' && tab !== 'nutri' && tab !== 'treino' && tab !== 'perfil' && tab !== 'conta' && tab !== 'social' && tab !== 'coach' && tab !== 'sono' && tab !== 'mente' && tab !== 'cuidados' && tab !== 'pro') {
     screen = <Home go={go} startQuiz={() => startQuiz()} onReset={resetDemo} openBottle={openBottle} openLogin={() => openAccount('quiz', 'entrar')} openHealth={openHealth} />;
   } else {
     screen = {
@@ -320,7 +320,7 @@ export function App() {
       ciclo: <Women go={go} />,
       mente: <Mind go={go} />,
       corpo: <Body />,
-      cuidados: <Care />,
+      cuidados: <Care go={go} />,
       coach: <Coach go={go} />,
       saude: null,
       pros: <Pros openReport={() => setReportOpen(true)} />,
