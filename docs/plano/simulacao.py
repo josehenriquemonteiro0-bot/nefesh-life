@@ -31,6 +31,10 @@ def run(st, N=400, seed_rng=1, shock=None):
     founder_pros = U(6, 15) * mkt; founder_b2b = U(0.3, 1.2) * el_seat * mkt
     pro_active = U(0.45, 0.7); pat_add = U(1.5, 4.0); pat_cap = U(15, 30)
     lic_adopt = U(0.20, 0.45) * el_lic; pat_conv = U(0.12, 0.30) * el_app
+    # paciente paga com o código do profissional (sem licença que inclua pacientes): conversão mais alta, preço com desconto, comissão ao profissional
+    if st.get('pat_code'):
+        lic_adopt = np.zeros(N); pat_conv = U(*st.get('pat_conv', (0.25, 0.45)))
+    pat_churn_x = st.get('pat_churn_x', 1.0)
     pro_year = U(0.3, 0.5) if st['pro_year'] else np.zeros(N)
     seats = U(60, 200); seat_use = U(0.5, 0.8)
     churn_b2b_m = U(0.01, 0.03); renew_b2b = U(0.75, 0.9)
@@ -44,6 +48,7 @@ def run(st, N=400, seed_rng=1, shock=None):
     fixed = (6000 + U(0, 3000)) * reg.get('fixed', 1) / fx + st.get('fixed_add', 0)
     delay = shock.get('delay', 0)            # meses sem a app na loja (atraso da Apple)
     net_m = app_m / (1 + vat) * 0.85 * 0.9; net_y = app_y / (1 + vat) * 0.85 * 0.9
+    net_p = (st.get('pat_price', app_m) / (1 + vat) * 0.85 * 0.9 * (1 - st.get('comm', 0))) if st.get('pat_code') else net_m
     lic_m = lic_p * 0.9; lic_y = lic_p * 10 * 0.9; seat_m = seat_p * 0.9; seat_y = seat_p * 10 * 0.9; bun_net = 15 * 0.9
 
     H = T + 13
@@ -74,7 +79,7 @@ def run(st, N=400, seed_rng=1, shock=None):
         d_lic = np.maximum(0, lic_act - lic_prev); lic_prev = lic_act
         ly_new[t] = d_lic * pro_year + (ly_new[t - 12] * 0.85 if t >= 12 else 0)   # licenças anuais novas + renovações
         pats_lic = pats * lic_adopt
-        pat_pay = pat_pay * (1 - churn_m) + np.maximum(0, pats * (1 - lic_adopt) * pat_conv - pat_pay) * 0.5
+        pat_pay = pat_pay * (1 - churn_m * pat_churn_x) + np.maximum(0, pats * (1 - lic_adopt) * pat_conv - pat_pay) * 0.5
         # empresas: anuais (renovam ao 12.º mês) ou mensais
         renewed = cy_new[t - 12] * renew_b2b if t >= 12 else 0
         cy_new[t] = new_ctr * prepay + renewed
@@ -96,9 +101,9 @@ def run(st, N=400, seed_rng=1, shock=None):
         b2c = b2c_m + b2c_y
         paying = b2c + pat_pay + pats_lic + bun + corp
         # receita reconhecida (para decidir o reinvestimento) e caixa real
-        rev = (b2c_m + pat_pay) * net_m + b2c_y * net_y / 12 + lic_act * lic_m + corp * seat_m + bun * bun_net
+        rev = b2c_m * net_m + pat_pay * net_p + b2c_y * net_y / 12 + lic_act * lic_m + corp * seat_m + bun * bun_net
         apple_cash_now = apple_due                               # a Apple paga o mês anterior
-        apple_due = (b2c_m + pat_pay) * net_m + y_new[t] * net_y
+        apple_due = b2c_m * net_m + pat_pay * net_p + y_new[t] * net_y
         lic_cash = lic_act * (1 - pro_year) * lic_m + ly_new[t] * lic_y   # mensais pagam todos os meses; anuais pagam o ano adiantado
         # anual: a empresa paga os lugares contratados adiantado; mensal: paga os lugares em uso
         corp_cash = cy_new[t] * seats * seat_use * seat_y + ctr_m * seats * seat_use * seat_m
