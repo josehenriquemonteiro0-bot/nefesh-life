@@ -39,7 +39,7 @@ nutricionista,dieta,calorias,jejum intermitente,treino,meditação,sono,spirulin
 
 **Descrição:**
 ```
-A NEFESH Life reúne num só app tudo o que cuida de você: alimentação, treino, sono, mente, corpo e cuidados de saúde. E deixa entrar quem acompanha você de perto: o seu nutricionista, personal trainer ou médico.
+A NEFESH Life reúne num só app tudo o que cuida de você: alimentação, treino, sono, mente, corpo e cuidados de saúde. E deixa entrar quem acompanha você de perto: o seu nutricionista, personal trainer, médico ou terapeuta.
 
 ASSISTENTE DE VOZ
 • Fale como fala com uma pessoa: "almocei arroz, feijão e frango", "comecei o jejum até as 16h", "me lembre do exame na sexta". O NEFESH Voice Assistant registra por você.
@@ -71,10 +71,11 @@ COMUNIDADE
 • Ligas semanais, amigos e equipes, com pontos pelos seus hábitos.
 
 NEFESH LIFE PRO — PARA PROFISSIONAIS
-• Nutricionistas, personal trainers e médicos com registro profissional validado.
+• Nutricionistas, personal trainers e médicos com registro profissional validado, e terapeutas de práticas integrativas com formação confirmada.
 • Ficha e anamnese do paciente, plano alimentar por voz e passo a passo com a tabela TACO, treinos, prescrição de jejum.
+• Terapias integrativas: anamnese integrativa organizada pela IA a partir das notas da consulta, leitura de exames, plano de bem-estar com hábitos e práticas guiadas, sintomas acompanhados semana a semana.
 • Acompanhamento em tempo real: adesão diária, check-in semanal, avisos de quem precisa de atenção, conversa, consultas e relatórios.
-• O paciente escolhe o que compartilha com cada profissional.
+• O paciente usa um só código em Cuidados e escolhe o que compartilha com cada profissional.
 
 PRIVACIDADE
 • Os seus dados ficam no seu celular. A conta é opcional.
@@ -100,7 +101,7 @@ Primeira versão da NEFESH Life no iPhone, com o app Saúde (Apple Health), lemb
 
 **Texto promocional** (153):
 ```
-Fale com o assistente, fotografe o prato e acompanhe treino, sono, jejum e medicação. E traga o seu nutricionista, personal trainer ou médico para a app.
+Fale com o assistente, fotografe o prato e acompanhe treino, sono, jejum e medicação. E traga o seu nutricionista, personal trainer, médico ou terapeuta para a app.
 ```
 
 **Palavras-chave** (95):
@@ -110,7 +111,7 @@ nutricionista,dieta,calorias,jejum intermitente,treino,ginásio,meditação,sono
 
 **Descrição:**
 ```
-A NEFESH Life junta numa só app tudo o que cuida de si: alimentação, treino, sono, mente, corpo e cuidados de saúde. E deixa entrar quem o acompanha de perto: o seu nutricionista, personal trainer ou médico.
+A NEFESH Life junta numa só app tudo o que cuida de si: alimentação, treino, sono, mente, corpo e cuidados de saúde. E deixa entrar quem o acompanha de perto: o seu nutricionista, personal trainer, médico ou terapeuta.
 
 ASSISTENTE DE VOZ
 • Fale como fala com uma pessoa: "almocei arroz, feijão e frango", "comecei o jejum até às 16h", "lembra-me da análise na sexta". O NEFESH Voice Assistant regista por si.
@@ -142,10 +143,11 @@ COMUNIDADE
 • Ligas semanais, amigos e equipas, com pontos pelos seus hábitos.
 
 NEFESH LIFE PRO — PARA PROFISSIONAIS
-• Nutricionistas, personal trainers e médicos com registo profissional validado.
+• Nutricionistas, personal trainers e médicos com registo profissional validado, e terapeutas de práticas integrativas com formação confirmada.
 • Ficha e anamnese do paciente, plano alimentar por voz e passo a passo, treinos, prescrição de jejum.
+• Terapias integrativas: anamnese integrativa organizada pela IA a partir das notas da consulta, leitura de exames, plano de bem-estar com hábitos e práticas guiadas, sintomas acompanhados semana a semana.
 • Acompanhamento em tempo real: adesão diária, check-in semanal, avisos de quem precisa de atenção, conversa, consultas e relatórios.
-• O paciente escolhe o que partilha com cada profissional.
+• O paciente usa um só código em Cuidados e escolhe o que partilha com cada profissional.
 
 PRIVACIDADE
 • Os seus dados ficam no seu telemóvel. A conta é opcional.
@@ -174,14 +176,14 @@ Respostas coerentes com o que a app faz e com a Política de Privacidade.
 |---|---|---|---|
 | **Informação de contacto → E-mail** | Sim (só com conta) | Funcionalidade da app; Publicidade ou marketing do programador (só se aceitar e-mails) | Sim |
 | **Informação de contacto → Nome** | Sim (com conta: nome na ficha e apelido na comunidade) | Funcionalidade da app | Sim |
-| **Saúde e fitness → Saúde** | Sim (com conta ou partilha com profissional: peso, medidas, condições, medicação, análises, ciclo) | Funcionalidade da app | Sim |
+| **Saúde e fitness → Saúde** | Sim (com conta ou com um profissional do Pro: peso, medidas, condições, medicação, análises, ciclo; e o que o paciente envia ao profissional: ficha de saúde, sintomas semanais, resumo partilhado, diário do sono; e a ficha e os exames que o profissional regista) | Funcionalidade da app | Sim |
 | **Saúde e fitness → Fitness** | Sim (com conta: passos, treinos, sono) | Funcionalidade da app | Sim |
 | **Conteúdo do utilizador → Fotos ou vídeos** | Sim (fotos publicadas na comunidade, apagadas em 24 h) | Funcionalidade da app | Sim |
 | **Conteúdo do utilizador → Outro conteúdo** | Sim (mensagens a amigos e profissionais, notas) | Funcionalidade da app | Sim |
 | **Compras → Histórico de compras** | Sim (códigos dos frascos de Spirulina registados e a assinatura NEFESH Premium: plano e data de fim) | Funcionalidade da app | Sim |
 | **Identificadores → ID do utilizador** | Sim (com conta) | Funcionalidade da app | Sim |
 | **Identificadores → ID do dispositivo** | Sim (identificador próprio da app, para os limites diários da IA) | Funcionalidade da app | Não |
-| **Dados de utilização → Interação com o produto** | Sim (estatísticas anónimas diárias, pode desligar) | Análises | Não |
+| **Dados de utilização → Interação com o produto** | Sim (estatísticas anónimas diárias, pode desligar; contagem diária dos pedidos à IA por função, com um código irreversível) | Análises | Não |
 | **Diagnóstico → Dados de falhas** | Sim (avisos anónimos de erro: mensagem, ecrã, versão) | Funcionalidade da app | Não |
 
 **Não recolhidos:** localização (o GPS dos treinos fica no telemóvel), contactos, histórico de navegação/pesquisa,

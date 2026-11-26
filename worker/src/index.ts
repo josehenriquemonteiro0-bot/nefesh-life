@@ -700,6 +700,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         if (r.status === 200 && uid && env.DB) {
           await social.leave(env.DB, uid);
           await env.DB.prepare('DELETE FROM premium WHERE uid = ?').bind(uid).run();
+          await pro.forgetUser(env.DB, uid);
         }
         return send(r);
       }

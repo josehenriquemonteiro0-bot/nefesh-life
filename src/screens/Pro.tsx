@@ -25,7 +25,7 @@ import { isTestCopy } from '../testDate';
 import type { Nav } from '../App';
 
 /** Versão dos Termos do NEFESH Life Pro (igual a PRO_TERMS no servidor). */
-const PRO_TERMS = '2026-11-24';
+const PRO_TERMS = '2026-11-26';
 
 const LIB = [...Object.values(GYM), ...EXERCISES].map((e) => ({ name: e.name, area: e.area }));
 const EFFORT: Record<string, string> = { facil: 'fácil', ok: 'na medida', dificil: 'difícil' };

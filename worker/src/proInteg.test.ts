@@ -153,4 +153,24 @@ describe('NEFESH Pro · ficha integrativa', () => {
     expect(r.sleep).toEqual({ nights: 9, eff: 78, asleepH: 6.2, lat: 42, wakes: 2.5, q: 2, bedAvg: '23:40', upAvg: null });
     expect(pro.cleanShare({})).not.toHaveProperty('sleep');
   });
+
+  it('apagar a conta: o profissional perde tudo o que registou; o paciente desliga-se e o que partilhava é apagado', async () => {
+    const db = memoryDB();
+    await pro.registerPro(db, 'andrea', { terms: pro.PRO_TERMS, name: 'Andrea', reg: 'Naturopatia', kind: 'integrativo' }, NOW, true);
+    const code = (await pro.newStudent(db, 'andrea', { name: 'Paula' }, NOW)).body.code as string;
+    await pro.saveProfile(db, 'andrea', { code, profile: { integ: { queixa: 'Cansaço' } } }, NOW);
+    await pro.linkStudent(db, 'paula-conta', { code }, NOW);
+    await pro.sendIntake(db, 'paula-conta', { code, data: { integ: { sono: 'mal' } } }, NOW);
+    await pro.studentShare(db, 'paula-conta', { code, on: true, summary: { from: '2026-11-01', to: '2026-11-14', days: [], avg: {} } }, NOW);
+    // a paciente apaga a conta: o link e o que partilhava desaparecem; a ficha da terapeuta fica
+    expect(await pro.forgetUser(db, 'paula-conta', NOW)).toEqual({ students: 0, links: 1 });
+    const n = async (t: string) => (await db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).first<{ n: number }>())!.n;
+    expect(await n('pro_share')).toBe(0);
+    expect(await n('pro_intake')).toBe(0);
+    expect(await n('pro_profiles')).toBe(1);
+    expect((await db.prepare('SELECT uid FROM pro_students').first<{ uid: string | null }>())!.uid).toBeNull();
+    // a terapeuta apaga a conta: tudo o que registou desaparece
+    expect(await pro.forgetUser(db, 'andrea', NOW)).toEqual({ students: 1, links: 0 });
+    for (const t of ['pro_students', 'pro_profiles', 'pros']) expect(await n(t)).toBe(0);
+  });
 });

@@ -128,7 +128,7 @@ export async function ensurePreapproved(db: DB, uid: string, p: { name: string; 
 
 /** `auto` (só no servidor de teste): o acesso fica aprovado logo, sem passar pela página da equipa. */
 /** Versão dos Termos do NEFESH Life Pro e do acordo de tratamento de dados (legal/termos-pro.html). */
-export const PRO_TERMS = '2026-11-24';
+export const PRO_TERMS = '2026-11-26';
 const TERMS_MSG = 'Para continuar, aceite os Termos do NEFESH Life Pro e o acordo de tratamento de dados.';
 async function acceptTerms(db: DB, uid: string, now: Date) {
   await db.prepare('INSERT INTO pro_terms (uid, version, at) VALUES (?, ?, ?) ON CONFLICT(uid, version) DO NOTHING').bind(uid, PRO_TERMS, now.toISOString()).run();
@@ -386,6 +386,31 @@ export async function removeStudent(db: DB, uid: string, b: Record<string, unkno
 /* ───────── lado do aluno (com conta, ou só com este telemóvel) ───────── */
 
 /** Quem é o aluno: a conta, se tiver; senão, o telemóvel. */
+const CODE_TABLES = ['pro_logs', 'pro_profiles', 'pro_drafts', 'pro_assess', 'pro_photos', 'pro_msgs', 'pro_share', 'pro_checkins', 'pro_notes', 'pro_intake', 'pro_student_kind'];
+
+/**
+ * Apagar a conta: se for profissional, apaga os seus alunos/pacientes e tudo o que registou;
+ * se for aluno/paciente, desliga-se dos profissionais e apaga o que partilhava (o profissional
+ * fica só com o que ele próprio registou). O aceite dos Termos do Pro fica, como prova.
+ */
+export async function forgetUser(db: DB, uid: string, now = new Date()) {
+  const { results: mine } = await db.prepare('SELECT code FROM pro_students WHERE pro = ?').bind(uid).all<{ code: string }>();
+  for (const { code } of mine) await db.batch([...CODE_TABLES.map((t) => db.prepare(`DELETE FROM ${t} WHERE code = ?`).bind(code)), db.prepare('DELETE FROM pro_students WHERE code = ?').bind(code)]);
+  const { results: links } = await db.prepare('SELECT code FROM pro_students WHERE uid = ?').bind(uid).all<{ code: string }>();
+  for (const { code } of links) await db.batch([
+    db.prepare("UPDATE pro_students SET uid = NULL, status = 'terminado', updated = ? WHERE code = ?").bind(now.toISOString(), code),
+    db.prepare('DELETE FROM pro_share WHERE code = ?').bind(code),
+    db.prepare('DELETE FROM pro_intake WHERE code = ?').bind(code),
+  ]);
+  await db.batch([
+    db.prepare('DELETE FROM pro_team WHERE key = ?').bind(uid),
+    db.prepare('DELETE FROM pro_directory WHERE uid = ?').bind(uid),
+    db.prepare('DELETE FROM pro_areas WHERE uid = ?').bind(uid),
+    db.prepare('DELETE FROM pros WHERE uid = ?').bind(uid),
+  ]);
+  return { students: mine.length, links: links.length };
+}
+
 export const studentKey = (uid: string | null, device: unknown) => (uid ? uid : /^[a-z0-9-]{8,64}$/i.test(String(device ?? '')) ? `d:${device}` : null);
 
 async function linkedStudent(db: DB, key: string, code: unknown) {
