@@ -195,7 +195,7 @@ export async function sendNutriDays(S: AppState, now = new Date()) {
 /** Liga/desliga a partilha do resumo com o nutricionista (com as medidas e as análises só se autorizado). */
 export async function syncNutriShare(S: AppState, on: boolean) {
   if (!S.nutriLink) return;
-  await proApi('aluno/partilha', on ? { code: S.nutriLink.code, on: true, summary: shareSummary(S, new Date(), { body: !!S.nutriShare?.body, labs: !!S.nutriShare?.labs, nutri: true }) } : { code: S.nutriLink.code, on: false });
+  await proApi('aluno/partilha', on ? { code: S.nutriLink.code, on: true, summary: shareSummary(S, new Date(), { body: !!S.nutriShare?.body, labs: !!S.nutriShare?.labs, sleep: !!S.nutriShare?.sleep, nutri: true }) } : { code: S.nutriLink.code, on: false });
 }
 
 export function clearProPlan(S: AppState) {

@@ -137,6 +137,8 @@ export function NutriLinkCard() {
                   <span className="small"><b>Incluir as medidas e avaliações do corpo</b></span></label>
                 <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={!!S.nutriShare.labs} onChange={(e) => share({ labs: e.target.checked }, e.target.checked ? 'Análises incluídas no resumo.' : 'Análises retiradas do resumo.')} />
                   <span className="small"><b>Incluir as análises clínicas</b> <span className="mute">(glicemia, colesterol, ferritina… as que registou em Cuidados)</span></span></label>
+                <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={!!S.nutriShare.sleep} onChange={(e) => share({ sleep: e.target.checked }, e.target.checked ? 'Diário do sono incluído no resumo.' : 'Diário do sono retirado do resumo.')} />
+                  <span className="small"><b>Incluir o diário do sono</b> <span className="mute">(só números: horários, tempo até adormecer, despertares, qualidade)</span></span></label>
               </>
             )}
           </div>

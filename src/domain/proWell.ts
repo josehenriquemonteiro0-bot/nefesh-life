@@ -76,7 +76,7 @@ export async function sendWellDays(S: AppState, now = new Date()) {
 /** Partilha (ou deixa de partilhar) o resumo de bem-estar (sono, humor, stress, energia…) com o terapeuta. */
 export async function syncWellShare(S: AppState, on: boolean) {
   if (!S.wellLink) return;
-  await proApi('aluno/partilha', on ? { code: S.wellLink.code, on: true, summary: shareSummary(S, new Date(), {}) } : { code: S.wellLink.code, on: false });
+  await proApi('aluno/partilha', on ? { code: S.wellLink.code, on: true, summary: shareSummary(S, new Date(), { labs: !!S.wellShare?.labs, sleep: !!S.wellShare?.sleep }) } : { code: S.wellLink.code, on: false });
 }
 
 /** Semana do plano (se tiver duração). */

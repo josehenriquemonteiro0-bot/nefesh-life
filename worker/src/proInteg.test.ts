@@ -147,4 +147,10 @@ describe('NEFESH Pro · ficha integrativa', () => {
     await pro.linkStudent(db, 'd:tel2', { code: c2 }, NOW);
     expect((await pro.sendIntake(db, 'd:tel2', { code: c2, data: { integ: { queixa: 'x' } } }, NOW)).status).toBe(400);
   });
+
+  it('partilha: o diário do sono passa limpo (só números e horas válidas)', () => {
+    const r = pro.cleanShare({ from: '2026-11-01', to: '2026-11-14', days: [], avg: {}, sleep: { nights: 9, eff: 78, asleepH: 6.2, lat: 42, wakes: 2.5, q: 2, bedAvg: '23:40', upAvg: '<b>', note: 'texto' } });
+    expect(r.sleep).toEqual({ nights: 9, eff: 78, asleepH: 6.2, lat: 42, wakes: 2.5, q: 2, bedAvg: '23:40', upAvg: null });
+    expect(pro.cleanShare({})).not.toHaveProperty('sleep');
+  });
 });

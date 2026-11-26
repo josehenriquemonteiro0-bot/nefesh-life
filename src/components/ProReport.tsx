@@ -21,7 +21,7 @@ function Days({ days, pick, max, label }: { days: ShareDay[]; pick: (d: ShareDay
 }
 
 /** Relatório de bem-estar que o aluno partilhou (últimos 14 dias). */
-export function ShareReport({ student, onClose }: { student: ProStudent; onClose: () => void }) {
+export function ShareReport({ student, onClose, who = 'aluno' }: { student: ProStudent; onClose: () => void; who?: 'aluno' | 'paciente' }) {
   const [r, setR] = useState<{ report: ShareSummary; updated: string } | null>(null);
   const [err, setErr] = useState('');
   useEffect(() => {
@@ -30,7 +30,7 @@ export function ShareReport({ student, onClose }: { student: ProStudent; onClose
   const x = r?.report;
   return (
     <>
-      <button className="btn ghost sm" onClick={onClose}>← Alunos</button>
+      <button className="btn ghost sm" onClick={onClose}>← {who === 'paciente' ? 'Pacientes' : 'Alunos'}</button>
       <h1 style={{ marginBottom: 4 }}>Relatório de {student.name}</h1>
       {err && <p className="small warn-t">{err}</p>}
       {!r && !err && <p className="small mute">A carregar…</p>}
@@ -60,6 +60,22 @@ export function ShareReport({ student, onClose }: { student: ProStudent; onClose
                   {x.nutri.changes.map((c, i) => <p key={i} style={{ margin: '4px 0 0' }}>{c}</p>)}
                 </details>
               )}
+            </section>
+          )}
+          {x.sleep && x.sleep.nights > 0 && (
+            <section className="card" style={{ marginTop: 10 }}>
+              <p className="small mute" style={{ marginTop: 0 }}>🌙 Diário do sono · {x.sleep.nights} {x.sleep.nights === 1 ? 'noite' : 'noites'}</p>
+              <table className="cmp">
+                <tbody>
+                  {x.sleep.bedAvg && <tr><td>Hora de deitar (média)</td><td><b>{x.sleep.bedAvg}</b></td></tr>}
+                  {x.sleep.upAvg && <tr><td>Hora de levantar (média)</td><td><b>{x.sleep.upAvg}</b></td></tr>}
+                  {x.sleep.asleepH !== null && <tr><td>Horas dormidas</td><td><b>{fmt(x.sleep.asleepH)} h</b></td></tr>}
+                  {x.sleep.eff !== null && <tr><td>Eficiência do sono</td><td className={x.sleep.eff < 85 ? 'warn-t' : ''}><b>{x.sleep.eff}%</b> <span className="small mute">(referência ≥ 85%)</span></td></tr>}
+                  {x.sleep.lat !== null && <tr><td>Tempo até adormecer</td><td className={x.sleep.lat > 30 ? 'warn-t' : ''}><b>{Math.round(x.sleep.lat)} min</b> <span className="small mute">(referência &lt; 30)</span></td></tr>}
+                  {x.sleep.wakes !== null && <tr><td>Despertares por noite</td><td><b>{fmt(x.sleep.wakes)}</b></td></tr>}
+                  {x.sleep.q !== null && <tr><td>Qualidade</td><td><b>{fmt(x.sleep.q)}/5</b></td></tr>}
+                </tbody>
+              </table>
             </section>
           )}
           {x.labs && x.labs.length > 0 && (
@@ -94,7 +110,7 @@ export function ShareReport({ student, onClose }: { student: ProStudent; onClose
               </table>
             </section>
           )}
-          <p className="small mute">Valores registados pelo aluno na NEFESH Life. Médias só dos dias com registo. Atualizado a {new Date(r!.updated).toLocaleDateString('pt-PT')}.</p>
+          <p className="small mute">Valores registados pelo {who} na NEFESH Life. Médias só dos dias com registo. Atualizado a {new Date(r!.updated).toLocaleDateString('pt-PT')}.</p>
         </>
       )}
     </>

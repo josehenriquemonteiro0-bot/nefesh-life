@@ -24,4 +24,16 @@ describe('relatório partilhado com o personal', () => {
     expect(txt).not.toContain('costas');
     expect(txt).not.toContain('família');
   });
+
+  it('diário do sono só com autorização e só números', () => {
+    const now = new Date('2026-11-22T12:00:00');
+    const S = { ans: null, evals: [], logs: {
+      '2026-11-22': { sleepD: { bed: '23:30', lat: 40, wakes: 2, waso: 30, up: '07:00', q: 2, note: 'pesadelo' } },
+      '2026-11-21': { sleepD: { bed: '00:00', lat: 20, wakes: 1, waso: 10, up: '07:00', q: 3 } },
+    } } as unknown as AppState;
+    expect(shareSummary(S, now, {})).not.toHaveProperty('sleep');
+    const r = shareSummary(S, now, { sleep: true });
+    expect(r.sleep).toMatchObject({ nights: 2, lat: 30, wakes: 1.5, q: 2.5, upAvg: '07:00' });
+    expect(JSON.stringify(r)).not.toContain('pesadelo');
+  });
 });

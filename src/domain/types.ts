@@ -166,9 +166,9 @@ export interface AppState {
   /** terapeuta de práticas integrativas (NEFESH Pro): ligação, plano de bem-estar e partilha do resumo */
   wellLink?: { code: string; pro: string; version: number; at: string };
   wellPlan?: import('./proWell').WellPlan | null;
-  wellShare?: { on: boolean; at?: string };
+  wellShare?: { on: boolean; at?: string; labs?: boolean; sleep?: boolean };
   proNutriRx?: import('./proNutri').NutriRx | null;
-  nutriShare?: { on: boolean; at?: string; body?: boolean; labs?: boolean };
+  nutriShare?: { on: boolean; at?: string; body?: boolean; labs?: boolean; sleep?: boolean };
   /** os profissionais da pessoa (personal e nutricionista) veem o essencial uns dos outros */
   teamShare?: boolean;
   /** jejum intermitente: definições, jejuns feitos e prescrição de um profissional por ativar */

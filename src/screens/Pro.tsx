@@ -472,7 +472,7 @@ export function Pro({ go, openAccount }: { go: Nav; openAccount: () => void }) {
   if (logs && well) return <WellLogs student={logs} onClose={() => setLogs(null)} />;
   if (edit && nutri) return <NutriEditor student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
   if (edit) return <PlanEditor kind={pro?.kind} student={edit} others={students} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />;
-  if (reportOf) return <ShareReport student={reportOf} onClose={() => setReportOf(null)} />;
+  if (reportOf) return <ShareReport who={who} student={reportOf} onClose={() => setReportOf(null)} />;
   if (chatOf) return <ChatThread code={chatOf.s.code} me="pro" other={chatOf.s.name} initialRef={chatOf.ref} onClose={() => { setChatOf(null); load(); }} />;
   if (assessOf) return <StudentAssessments student={students.find((x) => x.code === assessOf.code) ?? assessOf} onClose={() => { setAssessOf(null); load(); }} />;
   if (profileOf && well) return <IntegProfileEditor student={profileOf} onClose={() => setProfileOf(null)} onSaved={(profile) => { const st = { ...profileOf, profile }; setProfileOf(null); load(); if (!st.plan) setAskPlan(st); }} />;

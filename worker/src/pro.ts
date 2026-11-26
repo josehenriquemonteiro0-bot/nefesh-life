@@ -630,6 +630,11 @@ export function cleanShare(x: unknown) {
         hunger: n1(y.hunger, 5) ?? null, fastAvg: n1(y.fastAvg, 48) ?? null, fastDays: n1(y.fastDays, 14) ?? 0,
       };
     })() } : {}),
+    ...(o.sleep && typeof o.sleep === 'object' ? { sleep: (() => {
+      const y = o.sleep as Record<string, unknown>;
+      const hm = (z: unknown) => (typeof z === 'string' && /^\d{2}:\d{2}$/.test(z) ? z : null);
+      return { nights: n1(y.nights, 14) ?? 0, eff: n1(y.eff, 100) ?? null, asleepH: n1(y.asleepH, 16) ?? null, lat: n1(y.lat, 300) ?? null, wakes: n1(y.wakes, 30) ?? null, q: n1(y.q, 5) ?? null, bedAvg: hm(y.bedAvg), upAvg: hm(y.upAvg) };
+    })() } : {}),
   };
 }
 

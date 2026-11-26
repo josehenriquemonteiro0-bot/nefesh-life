@@ -37,7 +37,7 @@ export function WellLinkCard() {
         setUnread(r.unread ?? 0);
         setVisit(r.nextVisit ?? null);
         setIntakeAt(r.intakeAt ?? null);
-        if (S.wellShare?.on && S.wellShare.at !== todayKey()) syncWellShare(S, true).then(() => update((d) => { d.wellShare = { on: true, at: todayKey() }; })).catch(() => undefined);
+        if (S.wellShare?.on && S.wellShare.at !== todayKey()) syncWellShare(S, true).then(() => update((d) => { d.wellShare = { ...(d.wellShare ?? { on: true }), on: true, at: todayKey() }; })).catch(() => undefined);
         if (r.version > link.version || (r.plan?.bemestar && !plan)) {
           update((d) => applyWellPlan(d, r as never));
           toast(!plan ? `O plano de bem-estar de ${r.pro} chegou. 🌿` : `${r.pro} atualizou o seu plano de bem-estar. 🌿`);
@@ -60,6 +60,15 @@ export function WellLinkCard() {
     const t = window.setTimeout(() => sendWellDays(S).catch(() => undefined), 1500);
     return () => window.clearTimeout(t);
   }, [doneKey, link?.code, plan?.habits.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const share = async (patch: Partial<NonNullable<typeof S.wellShare>>, msg: string) => {
+    const next = { ...(S.wellShare ?? { on: false }), ...patch };
+    try {
+      await syncWellShare({ ...S, wellShare: next }, next.on);
+      update((d) => { d.wellShare = next.on ? { ...next, at: todayKey() } : { on: false }; });
+      toast(msg);
+    } catch (er) { toast((er as Error).message); }
+  };
 
   if (link) {
     const done = new Set(todayLog.wellDone ?? []);
@@ -121,16 +130,17 @@ export function WellLinkCard() {
         {chat && <ChatThread code={link.code} me="aluno" other={link.pro} asSheet onClose={() => setChat(false)} />}
         {open && (
           <div className="pro-share">
-            <label className="check"><input type="checkbox" checked={!!S.wellShare?.on} onChange={async (e) => {
-              const on = e.target.checked;
-              try {
-                await syncWellShare(S, on);
-                update((d) => { d.wellShare = on ? { on: true, at: todayKey() } : { on: false }; });
-                toast(on ? `${link.pro} passa a ver o seu resumo.` : `Deixou de partilhar. ${link.pro} já não vê o resumo.`);
-              } catch (er) { toast((er as Error).message); }
-            }} />
-              <span className="small"><b>Partilhar o meu resumo com {link.pro}</b><br /><span className="mute">Últimos 14 dias, só números: sono, energia, humor, stress, água, treino e passos. Nunca o diário escrito, notas, ciclo ou medicação. Pode desligar quando quiser e o que estava partilhado é apagado.</span></span>
+            <label className="check"><input type="checkbox" checked={!!S.wellShare?.on} onChange={(e) => share({ on: e.target.checked }, e.target.checked ? `${link.pro} passa a ver o seu resumo.` : `Deixou de partilhar. ${link.pro} já não vê o resumo.`)} />
+              <span className="small"><b>Partilhar o meu resumo com {link.pro}</b><br /><span className="mute">Últimos 14 dias, só números: sono, energia, stress, água, treino e passos. Nunca o diário escrito, notas, ciclo ou medicação. Pode desligar quando quiser e o que estava partilhado é apagado.</span></span>
             </label>
+            {S.wellShare?.on && (
+              <>
+                <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={!!S.wellShare.sleep} onChange={(e) => share({ sleep: e.target.checked }, e.target.checked ? 'Diário do sono incluído no resumo.' : 'Diário do sono retirado do resumo.')} />
+                  <span className="small"><b>Incluir o diário do sono</b> <span className="mute">(só números: horários, tempo até adormecer, despertares, qualidade)</span></span></label>
+                <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={!!S.wellShare.labs} onChange={(e) => share({ labs: e.target.checked }, e.target.checked ? 'Análises incluídas no resumo.' : 'Análises retiradas do resumo.')} />
+                  <span className="small"><b>Incluir as análises clínicas</b> <span className="mute">(as que registou em Cuidados)</span></span></label>
+              </>
+            )}
           </div>
         )}
         <p className="small mute" style={{ margin: '10px 0 0' }}>As práticas integrativas complementam o acompanhamento médico, não o substituem. Não deixe nenhum tratamento sem falar com o seu médico.</p>

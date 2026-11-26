@@ -11,6 +11,7 @@ import { keyDaysAgo } from './dates';
 import { planFor } from './plan';
 import { tookOn } from './stats';
 import { weekTrainAdherence } from './trainAdherence';
+import { diaryStats } from './sleep';
 import type { AppState } from './types';
 
 export interface ShareDay { d: string; e?: number; sleepH?: number; stress?: number; steps?: number; water?: boolean; kcal?: number; prot?: number; train?: number }
@@ -25,7 +26,11 @@ export interface ShareSummary {
   body?: ShareBody[];
   labs?: ShareLab[];
   nutri?: ShareNutri;
+  /** diário do sono, só números (só com autorização própria) */
+  sleep?: ShareSleep;
 }
+/** Médias do diário do sono (14 noites): eficiência, horas dormidas, minutos até adormecer, despertares, qualidade e horários. */
+export interface ShareSleep { nights: number; eff: number | null; asleepH: number | null; lat: number | null; wakes: number | null; q: number | null; bedAvg: string | null; upAvg: string | null }
 /** Para o nutricionista: adesão ao plano por dia, alterações, fome e jejum. */
 export interface ShareNutri { adherence: number | null; days: { d: string; pct: number | null; hunger?: number }[]; changes: string[]; hunger: number | null; fastAvg: number | null; fastDays: number }
 export interface ShareLab { name: string; unit: string; value: number; date: string; prev: number | null; lo: number | null; hi: number | null }
@@ -49,7 +54,7 @@ const avg = (a: (number | undefined)[]) => {
   return v.length ? Math.round((v.reduce((s, x) => s + x, 0) / v.length) * 10) / 10 : null;
 };
 
-export function shareSummary(S: AppState, now = new Date(), opts: { body?: boolean; labs?: boolean; nutri?: boolean } = { body: !!S.proShare?.body }): ShareSummary {
+export function shareSummary(S: AppState, now = new Date(), opts: { body?: boolean; labs?: boolean; nutri?: boolean; sleep?: boolean } = { body: !!S.proShare?.body }): ShareSummary {
   const keys = Array.from({ length: 14 }, (_, i) => keyDaysAgo(13 - i, now));
   const goalWater = S.ans ? planFor(S).water : 8;
   const days: ShareDay[] = keys.map((k) => {
@@ -85,5 +90,6 @@ export function shareSummary(S: AppState, now = new Date(), opts: { body?: boole
     ...(opts.body ? { body: bodyEvolution(bodySeries(S)).slice(0, 40).map((r) => ({ label: r.label, unit: r.unit, first: r.first, last: r.last, from: r.firstDate, to: r.lastDate, diff: r.diff })) } : {}),
     ...(opts.labs ? { labs: labSeries(S).slice(0, 30).map((x) => ({ name: x.name, unit: x.unit, value: x.last.value, date: x.last.date, prev: x.change !== null ? Math.round((x.last.value - x.change) * 100) / 100 : null, lo: x.last.lo ?? null, hi: x.last.hi ?? null })) } : {}),
     ...(opts.nutri ? { nutri: nutriBlock(S, keys) } : {}),
+    ...(opts.sleep ? (() => { const d = diaryStats(S, 14, now); return d.nights ? { sleep: { nights: d.nights, eff: d.eff, asleepH: d.asleepH, lat: d.lat, wakes: d.wakes, q: d.q, bedAvg: d.bedAvg, upAvg: d.upAvg } } : {}; })() : {}),
   };
 }
