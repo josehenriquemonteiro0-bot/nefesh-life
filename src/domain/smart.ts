@@ -38,6 +38,8 @@ export interface SmartState {
   remind?: boolean;
   /** Início com todos os cartões, sem recolher */
   all?: boolean;
+  /** primeiro dia com o Início inteligente (o Início adaptativo só observa a partir daqui) */
+  since?: string;
 }
 
 const MAX_EV = 600;
@@ -366,7 +368,8 @@ export function noteCard(S: AppState, id: HomeCardId, now = new Date()) {
  */
 export function collapsedCards(S: AppState, now = new Date()): Set<HomeCardId> {
   const out = new Set<HomeCardId>();
-  if (S.smart?.all || !S.planStart || S.planStart > keyDaysAgo(14, now)) return out;
+  // conta 14 dias desde que o Início inteligente começou a observar (quem já usava a app não perde cartões no primeiro dia)
+  if (S.smart?.all || !S.smart?.since || S.smart.since > keyDaysAgo(14, now)) return out;
   const cut = keyDaysAgo(14, now);
   for (const id of Object.keys(CARD_LABEL) as HomeCardId[]) {
     const seen = S.smart?.seen?.[id];

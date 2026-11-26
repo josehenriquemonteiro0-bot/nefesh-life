@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { FirstStepsCard } from '../components/FirstSteps';
 import { FastingMini } from '../components/Fasting';
 import { MonthCelebration, showMonth } from '../components/MonthCelebration';
@@ -216,7 +216,9 @@ export function HabitsCard() {
 }
 
 export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth, openSignup, openScience }: { go: Nav; startQuiz: () => void; onReset: () => void; openBottle: () => void; openLogin: () => void; openHealth: () => void; openSignup?: () => void; openScience?: () => void }) {
-  const { S } = useStore();
+  const { S, update } = useStore();
+  // Início adaptativo: começa a observar hoje (os cartões só se recolhem 14 dias depois)
+  useEffect(() => { if (S.ans && !S.smart?.since && !S.sample) update((d) => { d.smart = { ...(d.smart ?? {}), since: todayKey() }; }); }, [S.ans, S.smart?.since]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!S.ans)
     return (

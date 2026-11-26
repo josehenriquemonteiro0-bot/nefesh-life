@@ -101,9 +101,9 @@ describe('Início inteligente', () => {
   it('Início adaptativo: só depois de 14 dias; o que não usa recolhe; "mostrar tudo" desliga', () => {
     const S = base();
     const now = at('2026-11-26', '10:00');
-    S.planStart = '2026-11-20';
+    S.smart = { since: '2026-11-20' };
     expect(collapsedCards(S, now).size).toBe(0);
-    S.planStart = '2026-10-01';
+    S.smart = { since: '2026-11-01' };
     noteCard(S, 'energia', at('2026-11-25', '10:00'));
     const c = collapsedCards(S, now);
     expect(c.has('energia')).toBe(false);
