@@ -16,9 +16,11 @@ import { nextReassessment } from '../domain/progress';
 import { weeklyReport } from '../domain/weekReport';
 import { useStore } from '../state/store';
 import { useDoseToggle } from '../state/doses';
+import { learnedNext, skipRoutine } from '../domain/smart';
+import { isNative } from '../domain/platform';
+import { usePractice } from './sleep/usePractice';
 import { ChallengeCard, JourneyDayCard } from './FirstWeek';
 import { AccountAskCard, LaterQuestionCard } from './LaterQuestion';
-import { Icon } from './Icon';
 import type { Nav } from '../App';
 
 const RINGS = [
@@ -90,7 +92,10 @@ export function DayPanel({ go }: { go: Nav }) {
 export function NextActionCard({ go }: { go: Nav }) {
   const { S, todayLog: l, update, updateToday, toast } = useStore();
   const { toggle } = useDoseToggle();
+  const { start, node } = usePractice((m) => m >= 1 && toast(`Feito: ${Math.round(m)} min. 😮‍💨`));
   const na = nextAction(S, l);
+  // rotina aprendida (ex.: costuma treinar às 18h): passa à frente, exceto a Spirulina e a medicação da hora
+  const learned = na.kind !== 'dose' && na.kind !== 'med' ? learnedNext(S, l) : null;
   const goalW = planFor(S).water;
   const run = () => {
     if (na.kind === 'dose' && na.slot !== undefined) toggle(na.slot);
@@ -104,6 +109,37 @@ export function NextActionCard({ go }: { go: Nav }) {
     else if (na.kind === 'treino') go('treino');
     else if (na.kind === 'ritual') { requestRitual(); go('sono'); }
   };
+  const runLearned = () => {
+    if (!learned) return;
+    if (learned.k === 'treino') go('treino');
+    else if (learned.k === 'meditacao') go('mente');
+    else if (learned.k === 'respiracao') start({ kind: 'respiracao', id: new Date().getHours() >= 21 ? '478' : 'coerencia', minutes: 5 });
+    else if (learned.k === 'checkin') go('check');
+    else if (learned.k === 'diario') go('sono');
+    else if (learned.k === 'ritual') { requestRitual(); go('sono'); }
+  };
+  if (learned) {
+    const btn = { treino: 'Treinar', meditacao: 'Meditar', respiracao: 'Respirar 5 min', checkin: 'Fazer o check-in', diario: 'Preencher', ritual: 'Começar' }[learned.k as 'treino'] ?? 'Abrir';
+    return (
+      <section className="card next-action na-big" data-tour="proxima">
+        {node}
+        <div className="row">
+          <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>A seguir · pelo seu hábito</p>
+          <span className="na-when">🕐 {learned.when}</span>
+        </div>
+        <h2 style={{ margin: '4px 0 2px' }}>{learned.title}</h2>
+        <p className="small mute" style={{ margin: 0 }}>{learned.detail} ({learned.n} {learned.days === 'fds' ? 'fins de semana' : 'dias'} à volta das {learned.when})</p>
+        <button className="btn full big" onClick={runLearned}>{btn}</button>
+        <div className="row" style={{ marginTop: 6 }}>
+          <button className="link small inline" onClick={() => { update((d) => skipRoutine(d, learned.k)); toast('Combinado. Hoje não volto a sugerir.'); }}>Hoje não</button>
+          {na.kind !== 'feito' && <span className="small mute">Depois: {na.title.toLowerCase()}</span>}
+        </div>
+        {isNative() && S.notifications && !S.smart?.remind && (
+          <button className="link small inline" style={{ marginTop: 6 }} onClick={() => { update((d) => { d.smart = { ...(d.smart ?? {}), remind: true }; }); toast('Combinado: vai receber um aviso 15 minutos antes das suas rotinas. 🔔'); }}>🔔 Avisar 15 min antes das minhas rotinas</button>
+        )}
+      </section>
+    );
+  }
   const label = { dose: 'Tomei', med: 'Tomei', agua: '+ 1 copo', refeicao: 'Registar', checkin: 'Fazer o check-in', treino: 'Treinar', desafio: 'Fiz', ritual: 'Começar', feito: '' }[na.kind];
   return (
     <section className="card next-action na-big" data-tour="proxima">
@@ -250,23 +286,4 @@ export function EnergyWeek({ go }: { go: Nav }) {
 }
 
 /** Atalhos: Nutrição, Sono, Mente e Treino. */
-export function Shortcuts({ go }: { go: Nav }) {
-  const items: [Parameters<Nav>[0], string, Parameters<typeof Icon>[0]['name']][] = [
-    ['nutri', 'Nutrição', 'recipes'],
-    ['sono', 'Sono', 'moon'],
-    ['mente', 'Mente', 'mind'],
-    ['treino', 'Treino', 'flame'],
-  ];
-  return (
-    <div className="shortcuts" role="navigation" aria-label="Atalhos">
-      {items.map(([t, label, icon]) => (
-        <button key={t} onClick={() => go(t)}>
-          <span className="sc-ic"><Icon name={icon} /></span>
-          <span className="small">{label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export const AREA_LABEL = Object.fromEntries(AREAS);

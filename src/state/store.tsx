@@ -3,6 +3,7 @@ import { STORAGE_KEY } from '../domain/content';
 import { todayKey } from '../domain/dates';
 import { blankState } from '../domain/sample';
 import type { AppState, DayLog } from '../domain/types';
+import { detectEvents, recordEvents } from '../domain/smart';
 
 function load(): AppState | null {
   try {
@@ -54,6 +55,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setS((prev) => {
       const next = structuredClone(prev);
       fn(next);
+      // Início inteligente: o que acabou de ser registado hoje fica com a hora (para aprender as rotinas)
+      if (!next.sample) {
+        const k = todayKey();
+        try { recordEvents(next, detectEvents(prev.logs?.[k], next.logs?.[k])); } catch { /* nunca impede o registo */ }
+      }
       next.updatedAt = new Date().toISOString();
       return next;
     });

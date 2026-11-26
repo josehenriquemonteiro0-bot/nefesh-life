@@ -146,6 +146,8 @@ export interface AppState {
   /** Início progressivo (só para quem começou com esta versão) e o interruptor do Perfil */
   homeProgressive?: boolean;
   homeAll?: boolean;
+  /** Início inteligente: hábitos aprendidos, atalhos, insights (só no telemóvel e na conta) */
+  smart?: import('./smart').SmartState;
   /** já usou o assistente pelo menos uma vez (Primeiros passos) */
   usedCoach?: boolean;
   /** fechou o cartão Primeiros passos */

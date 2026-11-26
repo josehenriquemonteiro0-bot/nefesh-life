@@ -1,7 +1,10 @@
+import type { ReactNode } from 'react';
 import { FirstStepsCard } from '../components/FirstSteps';
 import { FastingMini } from '../components/Fasting';
 import { MonthCelebration, showMonth } from '../components/MonthCelebration';
-import { DayPanel, EnergyWeek, NextActionCard, Shortcuts, TodayCarousel } from '../components/HomePanel';
+import { DayPanel, EnergyWeek, NextActionCard, TodayCarousel } from '../components/HomePanel';
+import { DiscoverCard, InsightCard, SmartShortcuts } from '../components/SmartHome';
+import { CARD_LABEL, collapsedCards, noteCard, type HomeCardId } from '../domain/smart';
 import { testDays } from '../testDate';
 import { homeVisibility } from '../domain/firstWeek';
 import { QUIZ } from '../domain/onboarding';
@@ -101,6 +104,27 @@ function StatusStrip({ go }: { go: Nav }) {
       )}
       {unread > 0 && <i className="badge-new">{unread}</i>}
     </button>
+  );
+}
+
+/** Cartão opcional do Início: conta como usado quando a pessoa lhe toca; se estiver recolhido, não aparece. */
+function Adaptive({ id, hidden, children }: { id: HomeCardId; hidden: Set<HomeCardId>; children: ReactNode }) {
+  const { S, update } = useStore();
+  if (hidden.has(id)) return null;
+  return <div onClickCapture={() => { if (S.smart?.seen?.[id] !== todayKey()) update((d) => noteCard(d, id)); }}>{children}</div>;
+}
+
+/** "Mais": os cartões recolhidos, para voltar a abrir, e a opção de ver sempre tudo. */
+function MoreCards({ hidden }: { hidden: Set<HomeCardId> }) {
+  const { update } = useStore();
+  if (!hidden.size) return null;
+  return (
+    <section className="card">
+      <p className="small gold" style={{ margin: 0, fontWeight: 700 }}>Mais</p>
+      <p className="small mute" style={{ margin: '4px 0 8px' }}>Recolhi o que não abre há duas semanas, para o Início ficar mais simples.</p>
+      <div className="chips">{[...hidden].map((id) => <button key={id} className="chip sm" onClick={() => update((d) => noteCard(d, id))}>+ {CARD_LABEL[id]}</button>)}</div>
+      <button className="link small inline" style={{ marginTop: 8 }} onClick={() => update((d) => { d.smart = { ...(d.smart ?? {}), all: true }; })}>Mostrar sempre tudo</button>
+    </section>
   );
 }
 
@@ -222,6 +246,7 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
   const day = S.planStart ? daysSince(S.planStart) + 1 : 1;
   const low = S.stockCaps > 0 && st.days <= 7;
   const vis = homeVisibility(S);
+  const hide = collapsedCards(S);
 
   return (
     <>
@@ -234,6 +259,9 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       <FirstStepsCard go={go} />
       <DayPanel go={go} />
       <NextActionCard go={go} />
+      <SmartShortcuts go={go} />
+      <InsightCard />
+      <DiscoverCard go={go} />
       {low && (
         <section className="card">
           <div className="row">
@@ -251,18 +279,15 @@ export function Home({ go, startQuiz, onReset, openBottle, openLogin, openHealth
       )}
       <FastingMini onOpen={() => go('nutri')} />
       <TodayCarousel go={go} openScience={openScience} startQuiz={startQuiz} openSignup={openSignup} />
-      <EnergyWeek go={go} />
-      <Shortcuts go={go} />
-
       <SpirulinaCheck />
 
-
-
-      {/* cartões que vão abrindo (Início progressivo) */}
-      {vis.show.has('comunidade') && <StatusStrip go={go} />}
-      {vis.show.has('passos') && <ActivityCard openHealth={openHealth} />}
-      {vis.show.has('habitos') && <HabitsCard />}
-      {vis.show.has('pros') && <ProsCard go={go} />}
+      {/* cartões opcionais: os que não usa há 14 dias recolhem-se em "Mais" (Início adaptativo) */}
+      <Adaptive id="energia" hidden={hide}><EnergyWeek go={go} /></Adaptive>
+      {vis.show.has('comunidade') && <Adaptive id="comunidade" hidden={hide}><StatusStrip go={go} /></Adaptive>}
+      {vis.show.has('passos') && <Adaptive id="passos" hidden={hide}><ActivityCard openHealth={openHealth} /></Adaptive>}
+      {vis.show.has('habitos') && <Adaptive id="habitos" hidden={hide}><HabitsCard /></Adaptive>}
+      {vis.show.has('pros') && <Adaptive id="pros" hidden={hide}><ProsCard go={go} /></Adaptive>}
+      <MoreCards hidden={hide} />
     </>
   );
 }

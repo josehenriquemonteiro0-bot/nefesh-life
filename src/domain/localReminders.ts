@@ -8,6 +8,7 @@ import { dayKey } from './dates';
 import { fastingReminders } from './fasting';
 import { reminderTimes } from './meds';
 import { sleepReminders } from './sleep';
+import { hhmm, routines } from './smart';
 import type { AppState } from './types';
 
 export interface LocalReminder {
@@ -44,6 +45,11 @@ export function localReminders(S: AppState, now = new Date()): LocalReminder[] {
   for (const t of reminderTimes(S).filter(valid)) out.push({ id: stableId(`med${t}`), title: `💊 Lembrete das ${t}`, body: 'Está na hora da sua medicação ou suplemento. Toque para marcar a toma na app.', daily: t });
   // sono: ritual da noite, última cafeína e luz da manhã (se a pessoa os ligou)
   for (const r of sleepReminders(S)) out.push({ id: stableId(r.key), title: r.title, body: r.body, daily: r.time });
+  // horários aprendidos (Início inteligente): 15 min antes da hora habitual, se a pessoa os ligou
+  if (S.smart?.remind) {
+    const TXT: Record<string, string> = { treino: 'Daqui a pouco é a hora do seu treino. 💪', meditacao: 'Daqui a pouco é a hora da sua meditação. 🧘', respiracao: 'Uma pausa para respirar 5 minutos? 😮‍💨', checkin: 'Como foi o seu dia? O check-in leva 30 segundos.', diario: 'Como dormiu? Preencha o diário do sono.', ritual: 'Daqui a pouco é a hora do seu ritual da noite. 🌙' };
+    for (const r of routines(S, now)) if (TXT[r.k]) out.push({ id: stableId(`smart-${r.k}`), title: 'NEFESH Life', body: TXT[r.k], daily: hhmm(r.m - 15) });
+  }
   // lembretes únicos: os combinados com o assistente, os do ciclo e os do jejum (próximos 30 dias)
   const today = dayKey(now);
   const limit = new Date(now.getTime() + 30 * 864e5);

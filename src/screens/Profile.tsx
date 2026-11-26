@@ -36,6 +36,12 @@ function PushToggle() {
     return (
       <>
         {isNative() && <p className="small mute" style={{ margin: '12px 0 0' }}>Os lembretes (Spirulina, medicação, assistente, ciclo e jejum) ficam agendados neste iPhone e tocam mesmo com a app fechada.</p>}
+        {isNative() && (
+          <label className="check" style={{ marginTop: 12 }}>
+            <input type="checkbox" checked={!!S.smart?.remind} onChange={(e) => { const on = e.target.checked; update((d) => { d.smart = { ...(d.smart ?? {}), remind: on }; }); toast(on ? 'Vai receber um aviso 15 minutos antes das suas rotinas.' : 'Lembretes das rotinas desligados.'); }} />
+            <span className="small">Lembretes nos horários que aprendi <span className="mute">(15 min antes de quando costuma treinar, meditar, fazer o check-in…)</span></span>
+          </label>
+        )}
         {/* avisos da comunidade chegam por Web Push: na app do iPhone ficam para quando houver notificações do servidor (APNs) */}
         {S.community && !isNative() && (
           <label className="check" style={{ marginTop: 12 }}>

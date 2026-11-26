@@ -188,8 +188,12 @@ function PhotoSheet({ onClose }: { onClose: () => void }) {
 }
 
 /** Cartão no diário: abre a câmara, ou indica que a funcionalidade ainda não está ligada. */
+/** Pedido de outro ecrã (atalho "Foto do prato" no Início): abre a câmara assim que a Nutrição abrir. */
+let wantPhoto = false;
+export const requestPhoto = () => { wantPhoto = true; };
+
 export function PhotoMealCard() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => { const w = wantPhoto; wantPhoto = false; return w; });
   const { S } = useStore();
   if (!PHOTO_API)
     return (
